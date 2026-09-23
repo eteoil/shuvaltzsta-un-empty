@@ -33,7 +33,14 @@
     "comboBonusMax": 1.0,
     "openMultiplier": 2,
     "backMultiplier": 2,
-    "laneBeatsVisible": 8
+    "laneBeatsVisible": 8,
+    "score": {
+      "perfect": 100,
+      "good": 50,
+      "maxCombo": 20,
+      "win": 3000,
+      "hpLeft": 10
+    }
   },
   "bgm": {
     "battle": {

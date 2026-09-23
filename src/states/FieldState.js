@@ -13,7 +13,6 @@ export class FieldState {
     this.session = game.session;
     this.map = game.session.map;
     this.move = null;
-    this.bumpArmed = false;
     this.enemyDefs = {};
   }
 
@@ -47,7 +46,6 @@ export class FieldState {
         const enc = this.encounterAt(this.p.i + d.di, this.p.j + d.dj);
         if (enc) { this.trigger(enc); return; }
       }
-      if (DIRS[btn]) this.bumpArmed = true;
     }
 
     if (this.move) {
@@ -63,18 +61,14 @@ export class FieldState {
     this.p.dir = d.face;
     const ni = this.p.i + d.di;
     const nj = this.p.j + d.dj;
+    // ぶつかっても話しかけはしない。向きだけ変わるので、A で話しかける
     if (this.walkable(ni, nj)) {
       this.move = { from: [this.p.i, this.p.j], to: [ni, nj], t: 0 };
-      this.bumpArmed = true;
       this.game.sfx.play('step');
-      return;
     }
-    const enc = this.encounterAt(ni, nj);
-    if (enc && this.bumpArmed) this.trigger(enc);
   }
 
   trigger(enc) {
-    this.bumpArmed = false;
     this.game.sfx.play('confirm');
     this.game.runEncounter(enc);
   }

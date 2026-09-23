@@ -60,7 +60,8 @@ export class Game {
   async newGame() {
     const map = await loadMap(this.config.startMap);
     const [i, j, dir] = map.start;
-    this.session = { map, player: { i, j, dir }, flags: {} };
+    // totalScore はプロットの「総スコア」（エンディングの分岐に使う）。戦闘ごとのスコアを足していく
+    this.session = { map, player: { i, j, dir }, flags: {}, totalScore: 0 };
     this.states.change(new FieldState(this));
   }
 
@@ -72,16 +73,23 @@ export class Game {
   async runEncounter(enc) {
     const won = !!this.session.flags[enc.id];
     const enemy = loadEnemy(enc.enemy);
+    const giveUp = enc.dialogGiveUp ? loadDialog(enc.dialogGiveUp) : null;
     const dialog = await loadDialog(won ? enc.dialogRematch : enc.dialogBefore);
     this.states.push(new DialogState(this, dialog, async () => {
       const { def, patterns } = await enemy;
-      this.states.change(new BattleState(this, { def, patterns, onEnd: (r) => this.afterBattle(enc, r) }));
+      this.states.change(new BattleState(this, {
+        def,
+        patterns,
+        giveUp: await giveUp,
+        onEnd: (outcome, score) => this.afterBattle(enc, outcome, score),
+      }));
     }));
   }
 
   // 負けたらマップの開始地点からやり直し（仮。セーブポイントができたらそこへ）
-  async afterBattle(enc, outcome) {
+  async afterBattle(enc, outcome, score) {
     const s = this.session;
+    s.totalScore += score;
     if (outcome === 'win') {
       s.flags[enc.id] = true;
     } else {

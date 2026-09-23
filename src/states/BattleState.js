@@ -9,6 +9,7 @@ import { Judge } from '../battle/Judge.js';
 import { PlayerProfile } from '../battle/PlayerProfile.js';
 import { Enemy } from '../battle/Enemy.js';
 import { areaTiles } from '../battle/areas.js';
+import { DialogState } from './DialogState.js';
 
 const THREATS = new Set(['enemy.attack', 'enemy.feint']);
 const LANE = { y: 280, h: 40, judgeX: 44 };
@@ -21,8 +22,10 @@ export class BattleState {
   name = STATES.RHYTHM_BATTLE;
   pausable = true;
 
-  constructor(game, { def, patterns, onEnd }) {
+  // giveUp：勝ったとき、リザルトの前に流す会話（無ければすぐリザルト）
+  constructor(game, { def, patterns, giveUp = null, onEnd }) {
     this.game = game;
+    this.giveUp = giveUp;
     this.def = def;
     this.patternData = patterns;
     this.onEnd = onEnd;
@@ -211,8 +214,12 @@ export class BattleState {
         this.banner = { text: p.phase === 'fight' ? 'FIGHT!' : 'READY', beat: ev.beat };
         break;
       case 'system.finish':
-        this.phase = 'result';
-        this.resultBeat = ev.beat;
+        if (this.outcome === 'win' && this.giveUp) {
+          this.phase = 'talk';
+          this.game.states.push(new DialogState(this.game, this.giveUp, () => this.showResult(this.beats.currentBeat)));
+        } else {
+          this.showResult(ev.beat);
+        }
         break;
       case 'enemy.move': {
         if (this.enemy.down) break;
@@ -408,11 +415,24 @@ export class BattleState {
     this.finishBeat = at;
   }
 
+  showResult(beat) {
+    this.phase = 'result';
+    this.resultBeat = beat;
+    this.resultAt = performance.now();
+  }
+
+  // 係数は gameConfig の battle.score。勝ったときだけ勝利ボーナスと残りHPを足す
+  get score() {
+    const k = this.cfg.score;
+    const base = this.stats.perfect * k.perfect + this.stats.good * k.good + this.maxCombo * k.maxCombo;
+    return this.outcome === 'win' ? base + k.win + this.player.hp * k.hpLeft : base;
+  }
+
   leave() {
     if (this.leaving) return;
     this.leaving = true;
     this.game.bgm.stop(0.6);
-    this.onEnd(this.outcome);
+    this.onEnd(this.outcome, this.score);
   }
 
   // ---------------------------------------------------------------- 演出
@@ -690,15 +710,21 @@ export class BattleState {
     }
     if (this.phase === 'result') {
       const win = this.outcome === 'win';
-      panel(g, 110, 48, W - 220, 176, { alpha: 0.95 });
-      text(g, win ? 'WIN!' : 'LOSE…', cx, 60, { size: 32, color: win ? COLORS.perfect : COLORS.rose, align: 'center' });
+      panel(g, 110, 34, W - 220, 232, { alpha: 0.95 });
+      text(g, win ? 'WIN!' : 'LOSE…', cx, 44, { size: 32, color: win ? COLORS.perfect : COLORS.rose, align: 'center' });
       const rows = [['PERFECT', this.stats.perfect], ['GOOD', this.stats.good], ['MISS', this.stats.miss], ['MAX COMBO', this.maxCombo]];
       rows.forEach(([k, v], i) => {
-        text(g, k, 138, 104 + i * 22, { color: COLORS.muted });
-        text(g, String(v), W - 138, 104 + i * 22, { align: 'right' });
+        text(g, k, 138, 88 + i * 22, { color: COLORS.muted });
+        text(g, String(v), W - 138, 88 + i * 22, { align: 'right' });
       });
+      g.fillStyle = COLORS.line;
+      g.fillRect(134, 180, W - 268, 1);
+      // 総スコアはカウントアップで出す（演出）
+      const shown = Math.round(this.score * Math.min(1, (now - this.resultAt) / 900));
+      text(g, 'SCORE', 138, 192, { color: COLORS.brass });
+      text(g, shown.toLocaleString('en-US'), W - 138, 186, { size: 24, color: COLORS.perfect, align: 'right' });
       if (beat >= this.resultBeat + this.bpb && Math.floor(now / 400) % 2 === 0) {
-        text(g, 'A：つぎへ', cx, 196, { color: COLORS.signal, align: 'center' });
+        text(g, 'A：つぎへ', cx, 232, { color: COLORS.signal, align: 'center' });
       }
     }
   }

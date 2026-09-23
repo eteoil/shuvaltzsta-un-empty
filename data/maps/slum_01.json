@@ -20,6 +20,7 @@
         { "id": "zipper", "at": [5, 1], "dir": "sw" }
       ],
       "dialogBefore": "ch01_encounter",
+      "dialogGiveUp": "ch01_giveup",
       "dialogWin": "ch01_win",
       "dialogLose": "ch01_lose",
       "dialogRematch": "ch01_rematch"
