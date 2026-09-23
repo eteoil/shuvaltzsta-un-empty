@@ -58,7 +58,7 @@ export class BattleState {
     this.flash = null;
 
     const bgmDef = config.bgm.battle;
-    this.fightBeat = (bgmDef.loopBars[0] - 1) * this.bpb;
+    this.fightBeat = (bgmDef.loopFromBar - 1) * this.bpb;
     this.beats.start(bgm.play('battle', clock.now + 0.1));
     this.tracks.system.add({ beat: this.fightBeat - 2 * this.bpb, type: 'system.phase', payload: { phase: 'ready' } });
     this.tracks.system.add({ beat: this.fightBeat, type: 'system.phase', payload: { phase: 'fight' } });

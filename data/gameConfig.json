@@ -33,9 +33,10 @@
     "battle": {
       "src": "assets/bgm/battle.mp3",
       "startBar": 1,
-      "loopBars": [9, 25],
-      "outroBar": 26,
-      "offsetMs": 0
+      "loopFromBar": 9,
+      "loopToBar": 25,
+      "outroFromBar": 25,
+      "offsetMs": 23
     }
   },
   "volume": {

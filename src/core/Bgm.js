@@ -1,4 +1,4 @@
-// 曲の区間は小節番号でデータに持ち、秒への換算はここだけで行う（憲法⑯）。
+// 曲の区間は「n 小節目の頭」でデータに持ち、秒への換算はここだけで行う（憲法⑯）。
 // 曲ファイルが読めない時は、同じテンポのクリック音をプレースホルダーとして鳴らす（憲法⑩）
 export class Bgm {
   constructor(clock, config) {
@@ -43,7 +43,7 @@ export class Bgm {
     return this.voices.length > 0 || !!this.click;
   }
 
-  // at に startBar から鳴らし始め、loopBars の区間を繰り返す。
+  // at に startBar から鳴らし始め、loopFromBar の頭から loopToBar の頭までを繰り返す。
   // 戻り値は「1小節目の頭」が鳴る AudioContext 時刻。Beat 0 はここになる
   play(key, at) {
     this.stop(0);
@@ -53,8 +53,8 @@ export class Bgm {
     const buffer = this.buffers[key];
     if (buffer) {
       this.voice(buffer, at, startSec + offset, {
-        start: this.barTime(def.loopBars[0]) + offset,
-        end: this.barTime(def.loopBars[1] + 1) + offset,
+        start: this.barTime(def.loopFromBar) + offset,
+        end: this.barTime(def.loopToBar) + offset,
       });
     } else {
       this.click = { zero: at - startSec, next: Math.round(startSec / this.spb), until: Infinity };
@@ -63,14 +63,14 @@ export class Bgm {
     return at - startSec;
   }
 
-  // 決着後：at（Beat の格子に乗った時刻）から outroBar 以降を最後まで流す
+  // 決着後：at（Beat の格子に乗った時刻）から outroFromBar の頭以降を最後まで流す
   outro(at) {
     const cur = this.current;
     if (!cur) return;
     for (const v of this.voices) this.fade(v, at, 0.004);
     const buffer = this.buffers[cur.key];
     if (buffer) {
-      this.voice(buffer, at, this.barTime(cur.def.outroBar) + cur.offset, null);
+      this.voice(buffer, at, this.barTime(cur.def.outroFromBar) + cur.offset, null);
     } else if (this.click) {
       this.click.until = at;
       [523, 659, 784, 1047].forEach((f, i) => this.blip(f, 0.16, 0.35, at + i * this.spb / 2));
