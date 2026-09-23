@@ -16,6 +16,11 @@
   --gap: 16px;
 }
 
+/* JavaScript の返事を待たずにブラウザが判断できるよう、拡大・スクロールの禁止は全要素に直接書く */
+*, *::before, *::after {
+  touch-action: none;
+}
+
 * {
   box-sizing: border-box;
   -webkit-user-select: none;

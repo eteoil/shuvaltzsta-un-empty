@@ -11,6 +11,25 @@ const KEYMAP = {
 
 const DPAD = new Set(['up', 'down', 'left', 'right']);
 
+// 主処理が詰まっていると、iOS は preventDefault の返事を待たずに拡大してしまう。
+// 拡大されたら、viewport の指定を書き換え直して等倍へ戻させる
+function undoZoom() {
+  const vv = window.visualViewport;
+  const meta = document.querySelector('meta[name="viewport"]');
+  if (!vv || !meta) return;
+  const base = meta.content;
+  let pending = false;
+  vv.addEventListener('resize', () => {
+    if (vv.scale <= 1.01 || pending) return;
+    pending = true;
+    meta.content = `${base},minimum-scale=1`;
+    requestAnimationFrame(() => {
+      meta.content = base;
+      pending = false;
+    });
+  });
+}
+
 // 押した瞬間の AudioContext 時刻を添えてキューに積む。判定は各 State がこの時刻で行う
 export class Input {
   constructor(clock, root) {
@@ -25,8 +44,11 @@ export class Input {
     // iOS Safari は viewport の user-scalable=no を無視し、連打をダブルタップとみなして拡大する。
     // ボタンは pointer イベントで受けているので、タッチの既定動作（拡大・スクロール・選択）はすべて止める
     const stop = (e) => { if (e.cancelable) e.preventDefault(); };
-    for (const type of ['touchstart', 'touchmove', 'touchend']) document.addEventListener(type, stop, { passive: false });
+    for (const target of [document, root]) {
+      for (const type of ['touchstart', 'touchmove', 'touchend']) target.addEventListener(type, stop, { passive: false });
+    }
     for (const type of ['gesturestart', 'gesturechange', 'gestureend', 'dblclick']) document.addEventListener(type, stop);
+    undoZoom();
 
     window.addEventListener('keydown', (e) => {
       const btn = KEYMAP[e.code];

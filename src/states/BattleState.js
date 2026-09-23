@@ -71,6 +71,14 @@ export class BattleState {
     this.flash = null;
     this.cam = null;
 
+    // 色替えは初回に画像を作るので、戦闘中に引っかからないよう先に済ませておく
+    for (const a of [...this.def.actors, { sprite: 'player', palette: null }]) {
+      for (const frame of Object.keys(this.game.assets.def(a.sprite).frames)) {
+        this.game.assets.get(a.sprite, frame, a.palette);
+        this.game.assets.get(a.sprite, frame, WHITE);
+      }
+    }
+
     this.fightBeat = (config.bgm.battle.loopFromBar - 1) * this.bpb;
     this.beats.start(bgm.play('battle', clock.now + 0.1));
     this.tracks.system.add({ beat: this.fightBeat - 2 * this.bpb, type: 'system.phase', payload: { phase: 'ready' } });
