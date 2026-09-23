@@ -1,7 +1,9 @@
-"""拡大して描かれたドット絵を、1ドット＝1pxのチップに戻す。
+"""参考画像から、ゲームで使う 1ドット＝1px の画像を起こす。
 
-参考画像は1ドットが 12.5px（キャラ）/ 10px（床）で描かれている。
-各マスの中央付近で一番多い色をそのマスの色とする。
+- キャラと床：1ドットが 12.5px（キャラ）/ 10px（床）で描かれている。
+  各マスの中央付近で一番多い色をそのマスの色とする。
+- タイトル：ぼかしの入った線画を画面（480×320）に合わせて縮め、2値化して1px幅の線にする。
+  手描きのメニュー文字はゲーム側で描くので消す。
 
     pip install pillow
     python3 tools/extract_sprites.py
@@ -11,7 +13,7 @@
 from collections import Counter
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parent.parent
 REF = ROOT / "art" / "reference"
@@ -45,6 +47,35 @@ def extract(src: Path, cell: float, w: int, h: int) -> Image.Image:
     return out
 
 
+# タイトル：(参考画像, 縮小率, 左から切る幅, 線とみなす濃さ, 消す範囲)
+TITLE = {
+    "src": "title.png",
+    "size": (480, 320),
+    "scale": 0.54,
+    "crop_left": 12,
+    "threshold": 70,
+    "erase": [(0, 0, 927, 5), (0, 524, 927, 526), (592, 288, 782, 398)],
+    "line": (58, 44, 36, 255),
+}
+
+
+def extract_title(t: dict) -> Image.Image:
+    gray = Image.open(REF / t["src"]).convert("L")
+    ink = gray.point(lambda v: 255 - v)
+    draw = ImageDraw.Draw(ink)
+    for box in t["erase"]:
+        draw.rectangle((box[0], box[1], box[2] - 1, box[3] - 1), fill=0)
+    w, h = round(ink.width * t["scale"]), round(ink.height * t["scale"])
+    small = ink.resize((w, h), Image.BOX).point(lambda v: 255 if v > t["threshold"] else 0)
+    W, H = t["size"]
+    out = Image.new("RGBA", (W, H))
+    line = Image.new("RGBA", (W, H), t["line"])
+    mask = Image.new("L", (W, H))
+    mask.paste(small.crop((t["crop_left"], max(0, h - H), t["crop_left"] + W, h)), (0, max(0, H - h)))
+    out.paste(line, (0, 0), mask)
+    return out
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     for name, (src, cell, w, h) in JOBS.items():
@@ -52,6 +83,9 @@ def main() -> None:
         img.save(OUT / f"{name}.png", optimize=True)
         colors = sum(1 for _, c in img.getcolors(maxcolors=w * h) if c[3])
         print(f"{name}.png  {w}x{h}  {colors} colors")
+    title = extract_title(TITLE)
+    title.save(OUT / "title.png", optimize=True)
+    print(f"title.png  {title.width}x{title.height}")
 
 
 if __name__ == "__main__":

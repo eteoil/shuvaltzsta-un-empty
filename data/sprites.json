@@ -18,5 +18,13 @@
     "frames": {
       "default": "assets/img/floor_block.png"
     }
+  },
+  "title": {
+    "size": [480, 320],
+    "anchor": [0, 0],
+    "placeholder": "blank",
+    "frames": {
+      "default": "assets/img/title.png"
+    }
   }
 }

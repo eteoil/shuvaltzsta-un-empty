@@ -21,7 +21,7 @@ python3 -m http.server 8000
 
 ## 操作
 
-画面下のボタン（クリック・タップ）かキーボード。
+画面下のボタン（クリック・タップ）かキーボード。タイトルでは START で PRESS START からメニューへ進み、NEW GAME を選ぶ。左上のランプはボタンを押している間だけ光る。
 
 | ボタン | キーボード | 探索 | 戦闘 |
 | --- | --- | --- | --- |
@@ -83,7 +83,7 @@ assets/
   img/                ドット絵チップ（1ドット＝1px。表示時はぼかさずに拡大）
   bgm/battle.mp3      戦闘曲
 art/reference/        ドット絵の元にした参考画像
-tools/extract_sprites.py  参考画像 → チップ の変換
+tools/extract_sprites.py  参考画像 → チップ・タイトル線画 の変換
 ```
 
 ## 戦闘の流れ
@@ -123,12 +123,13 @@ EventTrack は `enemy` と `system`（`system.*` と `bgm.*`）の2本。`fx.*` 
 - **敵の行動を増やす**：`data/patterns/` に JSON を足し、敵の `patterns` に id を書く。`tags` の `approach` は3マス以上離れているとき、`basic` は通常、`feint` は回避が多い相手、`counter` は攻撃が多い相手、`rush` は2マス離れているときや敵の HP が少ないときに選ばれやすい。攻撃の範囲は `payload.area` に `front1`（正面1マス）/ `front3`（正面の横3マス）/ `line3`（正面へ3マス）/ `around`（周囲8マス）/ `around2`（周囲2マスまで）で書く。`"dodgeable": false` を付けると B で避けられない攻撃（紫のマス）になる。`tags` の `heavy` は、プレイヤーが隣にいるときに選ばれやすい。
 - **敵を増やす**：`data/enemies/` に JSON を足し、マップの `encounters` から呼ぶ。見た目は `sprite` と `palette`（色の置き換え表）で決まる。
 - **調整する**：テンポ・判定幅・ダメージ・先読み拍数・戦場の広さ・歩く速さは `data/gameConfig.json`。
-- **ドット絵を差し替える**：`art/reference/` の画像を差し替えて `python3 tools/extract_sprites.py`（要 Pillow）。画像が無い間は仮の絵で動く。
+- **ドット絵を差し替える**：`art/reference/` の画像を差し替えて `python3 tools/extract_sprites.py`（要 Pillow）。画像が無い間は仮の絵で動く。タイトルの線画（`title.png`）は、縮小率・2値化の濃さ・消す範囲（手描きのメニュー文字）をスクリプト内の `TITLE` で調整する。
 
 ブラウザのコンソールで `game` を見ると、今の State・EventTrack・敵AIの選択履歴を覗ける。
 
 ## まだ無いもの
 
+- タイトルの LOAD DATA と OPTION（いまは「準備中」と出るだけ）。
 - 初回起動時のリズム調整（プロットの「初回起動時は強制的にリズム調整開始」）。いまは `audioOffsetMs` を手で変える。
 - TOWN / DUNGEON / SHOP の各 State、お金と体力、セーブ。負けるとマップの開始地点に戻る仮仕様。
 - チャック・ジッパー・イプティムのドット絵。敵は主人公のチップを色替えした仮の姿。

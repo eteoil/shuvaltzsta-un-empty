@@ -82,7 +82,7 @@ function placeholder(def, frame) {
   const c = canvasOf(w, h);
   const g = c.getContext('2d');
   if (def.placeholder === 'block') drawBlock(g, w, h);
-  else drawFigure(g, w, h, frame);
+  else if (def.placeholder === 'figure') drawFigure(g, w, h, frame);
   return c;
 }
 

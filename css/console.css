@@ -85,16 +85,15 @@ body {
   box-shadow: inset 0 2px 6px rgba(0, 0, 0, .6);
 }
 
-.bezel-top, .bezel-bottom {
+.bezel-top {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-bottom: 6px;
   font-size: 11px;
   letter-spacing: .24em;
   color: var(--label);
 }
-.bezel-top { margin-bottom: 6px; }
-.bezel-bottom { justify-content: flex-end; margin-top: 6px; letter-spacing: .12em; }
 
 .led {
   width: 7px;
@@ -104,6 +103,8 @@ body {
   transition: background .08s;
 }
 .led.on { background: var(--led-on); box-shadow: 0 0 6px var(--led-on); }
+.led + span { transition: color .08s; }
+.led.on + span { color: var(--led-on); }
 
 canvas {
   display: block;
