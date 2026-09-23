@@ -8,6 +8,8 @@
   --label: #9294b4;
   --pad: #16182c;
   --pad-hi: #2b2f4f;
+  --pad-down: #0b0c19;
+  --arrow: #3a4070;
   --ab: #de7392;
   --ab-lo: #8f3d58;
   --pill: #171a30;
@@ -162,11 +164,16 @@ button:focus-visible { outline: 2px solid var(--led-on); outline-offset: 2px; }
   height: 0;
   border: 7px solid transparent;
 }
-.pad.up::before    { border-bottom-color: var(--pad-hi); margin-top: 8px; }
-.pad.down::before  { border-top-color: var(--pad-hi); margin-top: calc(var(--cell) - 22px); }
-.pad.left::before  { border-right-color: var(--pad-hi); margin-left: 6px; }
-.pad.right::before { border-left-color: var(--pad-hi); margin-right: 6px; margin-left: auto; }
-.pad.on { background: var(--pad-hi); transform: translateY(2px); }
+.pad.up::before    { border-bottom-color: var(--arrow); margin-top: 8px; }
+.pad.down::before  { border-top-color: var(--arrow); margin-top: calc(var(--cell) - 22px); }
+.pad.left::before  { border-right-color: var(--arrow); margin-left: 6px; }
+.pad.right::before { border-left-color: var(--arrow); margin-right: 6px; margin-left: auto; }
+/* 押している間は沈んだ色。本体の色に溶けないよう、明るくせず暗くする */
+.pad.on { background: var(--pad-down); box-shadow: inset 0 3px 5px rgba(0, 0, 0, .7); }
+.pad.up.on::before    { border-bottom-color: var(--led-on); }
+.pad.down.on::before  { border-top-color: var(--led-on); }
+.pad.left.on::before  { border-right-color: var(--led-on); }
+.pad.right.on::before { border-left-color: var(--led-on); }
 
 /* ---------- A / B ---------- */
 .ab {
@@ -203,13 +210,16 @@ button:focus-visible { outline: 2px solid var(--led-on); outline-offset: 2px; }
   grid-area: sys;
   display: flex;
   justify-content: center;
-  gap: 30px;
+  gap: 12px;
 }
+/* 細いボタンだけだと指が当たりにくいので、下の文字も含めた一回り大きい範囲をボタンにする */
 .sys-cell {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
+  padding: 10px 12px;
+  background: none;
   font-size: 11px;
   letter-spacing: .14em;
   color: var(--label);
@@ -222,7 +232,8 @@ button:focus-visible { outline: 2px solid var(--led-on); outline-offset: 2px; }
   background: var(--pill);
   box-shadow: 0 2px 0 rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .08);
 }
-.pill.on { transform: translateY(2px); box-shadow: inset 0 2px 3px rgba(0, 0, 0, .6); }
+.sys-cell.on .pill { transform: translateY(2px); background: var(--pad-down); box-shadow: inset 0 2px 3px rgba(0, 0, 0, .7); }
+.sys-cell.on { color: var(--led-on); }
 
 .keys {
   margin: 0;
@@ -250,7 +261,7 @@ button:focus-visible { outline: 2px solid var(--led-on); outline-offset: 2px; }
   }
   .bezel { padding: 6px 10px 8px; border-radius: 10px; }
   .dpad { --cell: clamp(38px, 13dvh, 52px); }
-  .sys { flex-direction: column; gap: 18px; align-items: center; }
+  .sys { flex-direction: column; gap: 2px; align-items: center; }
   .sys-cell { transform: none; }
   .keys { display: none; }
 }
