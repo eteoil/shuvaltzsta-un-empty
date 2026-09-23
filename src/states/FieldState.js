@@ -106,7 +106,7 @@ export class FieldState {
     }
     // プレイヤーが画面の中ほどに来るようにカメラを合わせる
     const ox = Math.round(W / 2 - (pi - pj) * tile[0] / 2);
-    const oy = Math.round(206 - tile[1] / 2 - (pi + pj) * tile[1] / 2);
+    const oy = Math.round(232 - tile[1] / 2 - (pi + pj) * tile[1] / 2);
 
     g.fillStyle = '#12142a';
     g.fillRect(0, 0, W, H);
@@ -143,7 +143,7 @@ export class FieldState {
       sprite(g, assets.get(c.sprite, c.frame, c.palette), def, pos.x, pos.y + c.bob);
     }
 
-    g.fillStyle = 'rgba(11,12,24,0.8)';
+    g.fillStyle = 'rgba(11,12,24,0.55)';
     g.fillRect(0, 0, W, 26);
     text(g, this.map.name, 8, 5);
     text(g, '十字：いどう　A：はなす', W - 8, 5, { align: 'right', color: COLORS.muted });
