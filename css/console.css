@@ -16,10 +16,18 @@
   --gap: 16px;
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
 
 html, body {
   margin: 0;
+  touch-action: none;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   min-height: 100%;
   background: var(--room);
   color: var(--ink);

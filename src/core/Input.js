@@ -22,6 +22,12 @@ export class Input {
     for (const el of root.querySelectorAll('[data-btn]')) this.buttons.set(el.dataset.btn, el);
     this.led = document.getElementById('led');
 
+    // iOS Safari は viewport の user-scalable=no を無視し、連打をダブルタップとみなして拡大する。
+    // ボタンは pointer イベントで受けているので、タッチの既定動作（拡大・スクロール・選択）はすべて止める
+    const stop = (e) => { if (e.cancelable) e.preventDefault(); };
+    for (const type of ['touchstart', 'touchmove', 'touchend']) document.addEventListener(type, stop, { passive: false });
+    for (const type of ['gesturestart', 'gesturechange', 'gestureend', 'dblclick']) document.addEventListener(type, stop);
+
     window.addEventListener('keydown', (e) => {
       const btn = KEYMAP[e.code];
       if (!btn) return;
