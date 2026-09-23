@@ -1,0 +1,246 @@
+:root {
+  --room: #0e1020;
+  --shell: #2a2f52;
+  --shell-hi: #3b4273;
+  --shell-lo: #1b1e33;
+  --bezel: #10122a;
+  --ink: #e6e5f0;
+  --label: #9294b4;
+  --pad: #16182c;
+  --pad-hi: #2b2f4f;
+  --ab: #de7392;
+  --ab-lo: #8f3d58;
+  --pill: #171a30;
+  --led-off: #2d3150;
+  --led-on: #7bd8c9;
+  --gap: 16px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--room);
+  color: var(--ink);
+  font-family: "DotGothic16", ui-monospace, monospace;
+}
+
+body {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: max(10px, env(safe-area-inset-top)) 8px max(10px, env(safe-area-inset-bottom));
+  overflow: hidden;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ---------- 本体 ---------- */
+.console {
+  --screen-w: min(calc(100vw - 64px), calc((100dvh - 410px) * 1.5), 720px);
+  display: grid;
+  grid-template-areas:
+    "screen screen"
+    "dpad   ab"
+    "sys    sys";
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: 22px 8px;
+  width: calc(var(--screen-w) + 48px);
+  min-width: 300px;
+  padding: 18px 16px 24px;
+  border-radius: 18px 18px 56px 18px;
+  background: linear-gradient(160deg, var(--shell-hi), var(--shell) 45%, var(--shell-lo));
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, .12),
+    inset 0 -4px 0 rgba(0, 0, 0, .35),
+    0 18px 40px rgba(0, 0, 0, .5);
+}
+
+.bezel {
+  grid-area: screen;
+  padding: 8px 14px 10px;
+  border-radius: 10px 10px 30px 10px;
+  background: var(--bezel);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, .6);
+}
+
+.bezel-top, .bezel-bottom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  letter-spacing: .24em;
+  color: var(--label);
+}
+.bezel-top { margin-bottom: 6px; }
+.bezel-bottom { justify-content: flex-end; margin-top: 6px; letter-spacing: .12em; }
+
+.led {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--led-off);
+  transition: background .08s;
+}
+.led.on { background: var(--led-on); box-shadow: 0 0 6px var(--led-on); }
+
+canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  background: #000;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+button:focus { outline: none; }
+button:focus-visible { outline: 2px solid var(--led-on); outline-offset: 2px; }
+
+/* ---------- 十字ボタン ---------- */
+.dpad {
+  grid-area: dpad;
+  --cell: clamp(40px, 12vw, 54px);
+  display: grid;
+  grid-template-columns: repeat(3, var(--cell));
+  grid-template-rows: repeat(3, var(--cell));
+  grid-template-areas:
+    ".    up    ."
+    "left hub   right"
+    ".    down  .";
+  justify-self: center;
+  filter: drop-shadow(0 4px 0 rgba(0, 0, 0, .45));
+}
+.pad { background: var(--pad); }
+.pad.up    { grid-area: up;    border-radius: 6px 6px 0 0; }
+.pad.down  { grid-area: down;  border-radius: 0 0 6px 6px; }
+.pad.left  { grid-area: left;  border-radius: 6px 0 0 6px; }
+.pad.right { grid-area: right; border-radius: 0 6px 6px 0; }
+.pad.hub   { grid-area: hub; position: relative; }
+.pad.hub::after {
+  content: "";
+  position: absolute;
+  inset: 30%;
+  border-radius: 50%;
+  background: var(--pad-hi);
+}
+.pad[data-btn]::before {
+  content: "";
+  display: block;
+  margin: auto;
+  width: 0;
+  height: 0;
+  border: 7px solid transparent;
+}
+.pad.up::before    { border-bottom-color: var(--pad-hi); margin-top: 8px; }
+.pad.down::before  { border-top-color: var(--pad-hi); margin-top: calc(var(--cell) - 22px); }
+.pad.left::before  { border-right-color: var(--pad-hi); margin-left: 6px; }
+.pad.right::before { border-left-color: var(--pad-hi); margin-right: 6px; margin-left: auto; }
+.pad.on { background: var(--pad-hi); transform: translateY(2px); }
+
+/* ---------- A / B ---------- */
+.ab {
+  grid-area: ab;
+  justify-self: center;
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 4px 14px;
+  transform: rotate(-22deg);
+}
+.ab-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--label);
+}
+.ab-cell.b { margin-top: 26px; }
+.round {
+  --size: clamp(52px, 15vw, 64px);
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f29ab3, var(--ab) 55%, var(--ab-lo));
+  color: rgba(255, 255, 255, .0);
+  font-size: 0;
+  box-shadow: 0 4px 0 #4d1f31, inset 0 -3px 0 rgba(0, 0, 0, .2);
+}
+.round.on { transform: translateY(3px); box-shadow: 0 1px 0 #4d1f31, inset 0 3px 6px rgba(0, 0, 0, .3); }
+
+/* ---------- PAUSE / START ---------- */
+.sys {
+  grid-area: sys;
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+}
+.sys-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  letter-spacing: .14em;
+  color: var(--label);
+  transform: rotate(-22deg);
+}
+.pill {
+  width: 54px;
+  height: 14px;
+  border-radius: 8px;
+  background: var(--pill);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .08);
+}
+.pill.on { transform: translateY(2px); box-shadow: inset 0 2px 3px rgba(0, 0, 0, .6); }
+
+.keys {
+  margin: 0;
+  max-width: 92vw;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #63668b;
+}
+
+/* 横持ちで高さが足りない時は、画面の左右に操作部を置く */
+@media (orientation: landscape) and (max-height: 620px) {
+  body { padding: 6px env(safe-area-inset-right) 6px env(safe-area-inset-left); }
+  .console {
+    --screen-w: min(calc((100dvh - 70px) * 1.5), calc(100vw - 460px));
+    grid-template-areas:
+      "dpad screen ab"
+      "sys  screen ab";
+    grid-template-columns: 1fr var(--screen-w) 1fr;
+    grid-template-rows: 1fr auto;
+    width: calc(var(--screen-w) + 430px);
+    padding: 12px 14px;
+    border-radius: 24px;
+    gap: 8px 14px;
+  }
+  .bezel { padding: 6px 10px 8px; border-radius: 10px; }
+  .dpad { --cell: clamp(38px, 13dvh, 52px); }
+  .sys { flex-direction: column; gap: 18px; align-items: center; }
+  .sys-cell { transform: none; }
+  .keys { display: none; }
+}
+
+@media (hover: none) {
+  .keys { display: none; }
+}

@@ -1,0 +1,28 @@
+{
+  "id": "slum_01",
+  "name": "スラム（仮）",
+  "floor": [
+    "..#####..",
+    ".#######.",
+    "#########",
+    "####.####",
+    "#########",
+    ".#######.",
+    "..#####.."
+  ],
+  "start": [4, 5, "ne"],
+  "encounters": [
+    {
+      "id": "ch01_chuck_zipper",
+      "enemy": "chuck_zipper",
+      "actors": [
+        { "id": "chuck", "at": [3, 1], "dir": "sw" },
+        { "id": "zipper", "at": [5, 1], "dir": "sw" }
+      ],
+      "dialogBefore": "ch01_encounter",
+      "dialogWin": "ch01_win",
+      "dialogLose": "ch01_lose",
+      "dialogRematch": "ch01_rematch"
+    }
+  ]
+}
