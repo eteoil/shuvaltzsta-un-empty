@@ -4,7 +4,7 @@
   "tagline": "リズムに合わせてコンボをキメろ！",
   "hp": 480,
   "opening": "cz_taunt",
-  "patterns": ["cz_taunt", "cz_approach", "cz_jab", "cz_one_two", "cz_heavy", "cz_feint", "cz_counter", "cz_rush"],
+  "patterns": ["cz_taunt", "cz_approach", "cz_jab", "cz_one_two", "cz_heavy", "cz_sweep", "cz_feint", "cz_counter", "cz_rush"],
   "actors": [
     {
       "id": "chuck",

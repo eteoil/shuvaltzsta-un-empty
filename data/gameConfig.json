@@ -32,6 +32,7 @@
     "comboBonus": 0.05,
     "comboBonusMax": 1.0,
     "openMultiplier": 2,
+    "backMultiplier": 2,
     "laneBeatsVisible": 8
   },
   "bgm": {

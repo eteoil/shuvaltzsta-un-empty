@@ -1,0 +1,11 @@
+{
+  "id": "cz_sweep",
+  "length": 8,
+  "tags": ["basic", "heavy"],
+  "events": [
+    {"offset": 0, "type": "enemy.telegraph", "payload": {"actor": "chuck", "anim": "windup_high"}},
+    {"offset": 2, "type": "enemy.telegraph", "payload": {"actor": "chuck", "anim": "windup_high"}},
+    {"offset": 4, "type": "enemy.attack", "payload": {"actor": "chuck", "area": "around2", "power": 14, "dodgeable": false}},
+    {"offset": 5, "type": "enemy.open", "payload": {"actor": "chuck", "length": 3}}
+  ]
+}

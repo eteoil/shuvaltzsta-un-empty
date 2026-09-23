@@ -18,10 +18,12 @@ export function stepToward(from, to) {
   return Math.abs(di) >= Math.abs(dj) ? { di: Math.sign(di), dj: 0 } : { di: 0, dj: Math.sign(dj) };
 }
 
-export function faceToward(from, to) {
-  const s = stepToward(from, to);
-  if (s.di > 0) return 'se';
-  if (s.di < 0) return 'nw';
-  if (s.dj > 0) return 'sw';
+// 4方向の1歩 → ドット絵の向き
+export function frameOf({ di, dj }) {
+  if (di > 0) return 'se';
+  if (di < 0) return 'nw';
+  if (dj > 0) return 'sw';
   return 'ne';
 }
+
+export const faceToward = (from, to) => frameOf(stepToward(from, to));

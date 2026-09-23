@@ -2,7 +2,7 @@ import { STATES } from '../core/constants.js';
 import { BeatManager } from '../core/BeatManager.js';
 import { WHITE } from '../core/Assets.js';
 import { COLORS, text, panel, gauge, sprite, diamond, isoTop, isoCenter } from '../core/draw.js';
-import { DIRS, distance, stepToward, faceToward } from '../core/grid.js';
+import { DIRS, distance, stepToward, faceToward, frameOf } from '../core/grid.js';
 import { EventTrack } from '../battle/EventTrack.js';
 import { Sequencer } from '../battle/Sequencer.js';
 import { Judge } from '../battle/Judge.js';
@@ -42,10 +42,12 @@ export class BattleState {
     const [ps, pj] = this.cfg.player.start;
     this.player = { hp: this.cfg.player.hp, maxHp: this.cfg.player.hp, i: ps, j: pj, dir: 'ne', move: null };
     // actors は今いるマス。plan は確定済み区間の先頭時点でいる予定のマス（範囲と移動先はこちらで決める）
+    // face は向いている方向の1歩。背中や横から殴ると2倍になる
     this.actors = {};
     this.plan = {};
     for (const a of this.def.actors) {
-      this.actors[a.id] = { i: a.stage[0], j: a.stage[1], from: null, movedBeat: -1e9 };
+      const at = { i: a.stage[0], j: a.stage[1] };
+      this.actors[a.id] = { ...at, face: stepToward(at, { i: ps, j: pj }), from: null, movedBeat: -1e9 };
       this.plan[a.id] = { i: a.stage[0], j: a.stage[1] };
     }
     this.moves = new Map();   // enemy.move の id → 移動先
@@ -170,7 +172,13 @@ export class BattleState {
         const dir = stepToward(from, this.tile);
         const tiles = areaTiles(p.area, from, dir.di || dir.dj ? dir : { di: 0, dj: 1 })
           .filter(([i, j]) => this.inArena(i, j));
-        this.zones.set(ev.id, { beat: ev.beat, feint: ev.type === 'enemy.feint', tiles, set: new Set(tiles.map(([i, j]) => key(i, j))) });
+        this.zones.set(ev.id, {
+          beat: ev.beat,
+          feint: ev.type === 'enemy.feint',
+          dodgeable: p.dodgeable !== false,
+          tiles,
+          set: new Set(tiles.map(([i, j]) => key(i, j))),
+        });
         break;
       }
       default:
@@ -214,6 +222,7 @@ export class BattleState {
         const blocked = (to.i === me.i && to.j === me.j)
           || (this.player.move && to.i === this.player.move.to[0] && to.j === this.player.move.to[1]);
         if (blocked) break;
+        a.face = stepToward(a, to);
         a.from = { i: a.i, j: a.j };
         a.i = to.i;
         a.j = to.j;
@@ -221,17 +230,22 @@ export class BattleState {
         break;
       }
       case 'enemy.telegraph':
-        if (!this.outcome) this.anim(p.actor, 'windup', ev.beat);
+        if (this.outcome) break;
+        this.turn(p.actor);
+        this.anim(p.actor, 'windup', ev.beat);
         break;
       case 'enemy.attack':
         if (this.outcome) { this.results.set(ev.id, 'void'); break; }
+        this.turn(p.actor);
         this.anim(p.actor, 'strike', ev.beat);
         if (this.results.has(ev.id)) break;
         if (this.zones.get(ev.id)?.set.has(key(this.tile.i, this.tile.j))) this.pending.push(ev);
         else this.results.set(ev.id, 'clear');
         break;
       case 'enemy.feint':
-        if (!this.outcome) this.anim(p.actor, 'feint', ev.beat);
+        if (this.outcome) break;
+        this.turn(p.actor);
+        this.anim(p.actor, 'feint', ev.beat);
         break;
       case 'fx.flash':
         this.flash = { color: p.color, at: performance.now() };
@@ -239,6 +253,20 @@ export class BattleState {
       default:
         break;
     }
+  }
+
+  // 行動するたびにプレイヤーへ向き直る。その合間が回り込むすき
+  turn(id) {
+    const a = this.actors[id];
+    const s = stepToward(a, this.tile);
+    if (s.di || s.dj) a.face = s;
+  }
+
+  // プレイヤーが敵の背中側か横にいるか
+  behind(id) {
+    const a = this.actors[id];
+    const me = this.tile;
+    return (me.i - a.i) * a.face.di + (me.j - a.j) * a.face.dj <= 0;
   }
 
   onPress({ btn, t }) {
@@ -273,7 +301,8 @@ export class BattleState {
     const grade = this.judge.grade(this.beats.deltaMs(t, slot));
     if (!grade) return this.fail(b, 'MISS');
     if (!target) return this.fail(b, 'とどかない');
-    if (this.spanAt('enemy.guard', slot, target)) {
+    const back = this.behind(target);
+    if (!back && this.spanAt('enemy.guard', slot, target)) {
       this.combo = 0;
       this.profile.record('attack', b);
       this.popup('BLOCK', COLORS.guard, target);
@@ -284,10 +313,11 @@ export class BattleState {
     const dmg = Math.round(c.player.attack
       * (grade === 'perfect' ? c.perfectMultiplier : 1)
       * (1 + Math.min(this.combo * c.comboBonus, c.comboBonusMax))
-      * (this.spanAt('enemy.open', slot, target) ? c.openMultiplier : 1));
+      * (this.spanAt('enemy.open', slot, target) ? c.openMultiplier : 1)
+      * (back ? c.backMultiplier : 1));
     this.enemy.hp = Math.max(0, this.enemy.hp - dmg);
     this.success(grade, 'attack', b);
-    this.popup(String(dmg), COLORS.ink, target);
+    this.popup(back ? `BACK! ${dmg}` : String(dmg), back ? COLORS.perfect : COLORS.ink, target);
     this.anim(target, 'hurt', b);
     if (this.enemy.down) {
       this.game.sfx.play('ko');
@@ -301,7 +331,8 @@ export class BattleState {
     this.anim('player', 'dodge', b);
     const here = key(this.tile.i, this.tile.j);
     const near = this.tracks.enemy.between(b - 2, b + 2)
-      .filter((e) => THREATS.has(e.type) && !this.results.has(e.id) && this.judge.grade(this.beats.deltaMs(t, e.beat)))
+      .filter((e) => THREATS.has(e.type) && !this.results.has(e.id) && this.zones.get(e.id)?.dodgeable
+        && this.judge.grade(this.beats.deltaMs(t, e.beat)))
       .sort((x, y) => Math.abs(this.beats.deltaMs(t, x.beat)) - Math.abs(this.beats.deltaMs(t, y.beat)));
     const target = near.find((e) => this.zones.get(e.id)?.set.has(here));
     if (!target) return this.fail(b, 'MISS');
@@ -514,7 +545,8 @@ export class BattleState {
           g.strokeStyle = `rgba(255,95,95,${0.35 + 0.5 * heat})`;
           g.stroke();
         } else {
-          g.fillStyle = left < 0 ? 'rgba(255,255,255,0.6)' : `rgba(255,70,70,${0.18 + 0.5 * heat})`;
+          const rgb = z.dodgeable ? '255,70,70' : '196,107,255';
+          g.fillStyle = left < 0 ? 'rgba(255,255,255,0.6)' : `rgba(${rgb},${0.18 + 0.5 * heat})`;
           g.fill();
         }
       }
@@ -526,7 +558,7 @@ export class BattleState {
     const people = [{ id: 'player', sprite: 'player', frame: this.player.dir, palette: null, i: pp.i, j: pp.j, bob: pp.bob, down: this.player.hp <= 0 }];
     for (const a of this.def.actors) {
       const pos = ap[a.id];
-      people.push({ id: a.id, sprite: a.sprite, frame: faceToward(this.actors[a.id], this.tile), palette: a.palette, i: pos.i, j: pos.j, bob: 0, down: this.enemy.down });
+      people.push({ id: a.id, sprite: a.sprite, frame: frameOf(this.actors[a.id].face), palette: a.palette, i: pos.i, j: pos.j, bob: 0, down: this.enemy.down });
     }
     const screen = (c) => isoCenter(c.i, c.j, ox, oy, tile);
     const me = screen(people[0]);
@@ -622,7 +654,10 @@ export class BattleState {
       if (e.type === 'enemy.feint') diamond(g, x, mid, 7, null, aimed ? COLORS.danger : COLORS.dim);
       else if (res === 'dodge') diamond(g, x, mid, 5, COLORS.good);
       else if (res === 'hit') diamond(g, x, mid, 5, COLORS.dim);
-      else diamond(g, x, mid, aimed ? 9 : 6, aimed ? COLORS.danger : COLORS.dim, COLORS.deep);
+      else {
+        const color = this.zones.get(e.id)?.dodgeable === false ? COLORS.unguard : COLORS.danger;
+        diamond(g, x, mid, aimed ? 9 : 6, aimed ? color : COLORS.dim, COLORS.deep);
+      }
     }
     const onBeat = Math.max(0, 1 - (beat - Math.floor(beat)) * 3);
     g.fillStyle = onBeat > 0 ? COLORS.ink : COLORS.muted;
@@ -637,11 +672,13 @@ export class BattleState {
       if (beat < 8) {
         text(g, `VS ${this.def.name}`, cx, 100, { size: 24, color: COLORS.rose, align: 'center' });
       } else if (beat < this.fightBeat - 2 * this.bpb) {
-        panel(g, 30, 62, W - 60, 128, { alpha: 0.92 });
-        text(g, this.def.tagline ?? '', cx, 76, { color: COLORS.brass, align: 'center' });
-        text(g, '十字：いどう　A：となりの敵をこうげき', cx, 104, { align: 'center' });
-        text(g, '赤いマスは攻撃の予告。拍に合わせて B で回避', cx, 130, { align: 'center' });
-        text(g, 'マスの外へ逃げてもよい', cx, 156, { color: COLORS.muted, align: 'center' });
+        panel(g, 24, 50, W - 48, 172, { alpha: 0.92 });
+        text(g, this.def.tagline ?? '', cx, 64, { color: COLORS.brass, align: 'center' });
+        text(g, '十字：いどう　A：となりの敵をこうげき', cx, 92, { align: 'center' });
+        text(g, '赤いマスは攻撃の予告。拍に合わせて B で回避', cx, 118, { align: 'center' });
+        text(g, '紫のマスは B でよけられない。歩いて逃げろ', cx, 144, { color: COLORS.unguard, align: 'center' });
+        text(g, '敵の背中や横から殴るとダメージ2倍', cx, 170, { color: COLORS.perfect, align: 'center' });
+        text(g, 'GUARD 中でも背中なら通る', cx, 194, { color: COLORS.muted, align: 'center' });
       }
     }
     if (this.banner) {
