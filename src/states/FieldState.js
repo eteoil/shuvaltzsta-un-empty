@@ -13,6 +13,7 @@ export class FieldState {
     this.session = game.session;
     this.map = game.session.map;
     this.move = null;
+    this.stride = 0;            // 歩いたマス数。歩きのコマ送りに使う（1マスで2コマ）
     this.enemyDefs = {};
   }
 
@@ -49,7 +50,9 @@ export class FieldState {
     }
 
     if (this.move) {
-      this.move.t += dt / this.game.config.field.moveSecPerTile;
+      const step = dt / this.game.config.field.moveSecPerTile;
+      this.move.t += step;
+      this.stride += step;
       if (this.move.t < 1) return;
       [this.p.i, this.p.j] = this.move.to;
       this.move = null;
@@ -83,12 +86,10 @@ export class FieldState {
 
     let pi = this.p.i;
     let pj = this.p.j;
-    let bob = 0;
     if (this.move) {
       const t = Math.min(1, this.move.t);
       pi = this.move.from[0] + (this.move.to[0] - this.move.from[0]) * t;
       pj = this.move.from[1] + (this.move.to[1] - this.move.from[1]) * t;
-      bob = -Math.round(Math.abs(Math.sin(t * Math.PI)) * 3);
     }
     // プレイヤーが画面の中ほどに来るようにカメラを合わせる
     const ox = Math.round(W / 2 - (pi - pj) * tile[0] / 2);
@@ -109,24 +110,24 @@ export class FieldState {
       }
     }
 
-    const people = [{ sprite: 'player', frame: this.p.dir, palette: null, i: pi, j: pj, bob }];
+    const people = [{ sprite: 'player', frame: this.p.dir, anim: this.move ? 'walk' : null, n: Math.floor(this.stride * 2), palette: null, i: pi, j: pj }];
     for (const enc of this.map.encounters) {
       const def = this.enemyDefs[enc.id];
       if (!def) continue;
       for (const a of enc.actors) {
         const actor = def.actors.find((x) => x.id === a.id);
-        people.push({ sprite: actor.sprite, frame: a.dir, palette: actor.palette, i: a.at[0], j: a.at[1], bob: 0 });
+        people.push({ sprite: actor.sprite, frame: a.dir, anim: null, n: 0, palette: actor.palette, i: a.at[0], j: a.at[1] });
       }
     }
     people.sort((a, b) => a.i + a.j - (b.i + b.j));
     for (const c of people) {
-      const def = assets.def(c.sprite);
       const pos = isoCenter(c.i, c.j, ox, oy, tile);
       g.fillStyle = 'rgba(11,12,24,0.45)';
       g.beginPath();
       g.ellipse(pos.x, pos.y, 22, 8, 0, 0, Math.PI * 2);
       g.fill();
-      sprite(g, assets.get(c.sprite, c.frame, c.palette), def, pos.x, pos.y + c.bob);
+      const { img, def } = assets.pose(c.sprite, c.frame, c.anim, c.n, c.palette);
+      sprite(g, img, def, pos.x, pos.y);
     }
 
     g.fillStyle = 'rgba(11,12,24,0.55)';

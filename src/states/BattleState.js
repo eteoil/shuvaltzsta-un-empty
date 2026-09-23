@@ -76,13 +76,20 @@ export class BattleState {
     this.flash = null;
     this.cam = null;
 
-    // 色替えは初回に画像を作るので、戦闘中に引っかからないよう先に済ませておく
+    // 色替えは初回に画像を作るので、戦闘中に引っかからないよう全コマ先に済ませておく
+    const { assets } = this.game;
     for (const a of [...this.def.actors, { sprite: 'player', palette: null }]) {
-      for (const frame of Object.keys(this.game.assets.def(a.sprite).frames)) {
-        this.game.assets.get(a.sprite, frame, a.palette);
-        this.game.assets.get(a.sprite, frame, WHITE);
+      const sd = assets.def(a.sprite);
+      for (const dir of Object.keys(sd.frames)) {
+        for (const anim of [null, ...Object.keys(sd.anims ?? {})]) {
+          for (let n = 0; n < (anim ? assets.frameCount(a.sprite, anim) : 1); n++) {
+            assets.pose(a.sprite, dir, anim, n, a.palette);
+            assets.pose(a.sprite, dir, anim, n, WHITE);
+          }
+        }
       }
     }
+    this.runPhase = 0;          // 走ったマス数。走りのコマ送りに使う（1マスで2コマ）
 
     this.fightBeat = (config.bgm.battle.loopFromBar - 1) * this.bpb;
     this.beats.start(bgm.play('battle', clock.now + 0.1));
@@ -116,7 +123,9 @@ export class BattleState {
     const p = this.player;
     if (p.hp <= 0) return;
     if (p.move) {
-      p.move.t += dt / this.cfg.moveSecPerTile;
+      const step = dt / this.cfg.moveSecPerTile;
+      p.move.t += step;
+      this.runPhase += step;
       if (p.move.t < 1) return;
       [p.i, p.j] = p.move.to;
       p.move = null;
@@ -453,25 +462,41 @@ export class BattleState {
     const age = beat - a.beat;
     const k = (dur) => Math.max(0, 1 - age / dur);
     switch (a.kind) {
-      case 'windup': return age < 1 ? { dx: -toward.x * 4 * k(1), dy: -3 * k(1), white: false } : none;
-      case 'strike': return age < 0.6 ? { dx: toward.x * 22 * k(0.6), dy: toward.y * 22 * k(0.6), white: false } : none;
-      case 'feint': return age < 0.5 ? { dx: toward.x * 8 * k(0.5), dy: toward.y * 8 * k(0.5), white: false } : none;
-      case 'attack': return age < 0.5 ? { dx: toward.x * 18 * k(0.5), dy: toward.y * 18 * k(0.5), white: false } : none;
-      case 'dodge': return age < 0.6 ? { dx: 0, dy: -16 * Math.sin(Math.min(1, age / 0.6) * Math.PI), white: false } : none;
+      // 構えや跳ぶ動きはコマで描く。ここは画面上の踏み込みと被弾ののけぞりだけ
+      case 'strike': return age < 0.6 ? { dx: toward.x * 12 * k(0.6), dy: toward.y * 12 * k(0.6), white: false } : none;
+      case 'attack': return age < 0.5 ? { dx: toward.x * 8 * k(0.5), dy: toward.y * 8 * k(0.5), white: false } : none;
       case 'hurt': return age < 0.4 ? { dx: -toward.x * 6 * k(0.4), dy: 0, white: age < 0.15 } : none;
       default: return none;
     }
   }
 
+  // いまのモーションとコマ番号。攻撃・回避・構えは拍で、走りは進んだ距離でコマを送る
+  poseOf(id, beat) {
+    const a = this.anims[id];
+    const age = a ? beat - a.beat : Infinity;
+    const at = (dur, count) => Math.min(count - 1, Math.floor((age / dur) * count));
+    if (id === 'player') {
+      if (a?.kind === 'attack' && age < 0.5) return { anim: 'attack', n: at(0.5, 3) };
+      if (a?.kind === 'dodge' && age < 0.6) return { anim: 'dodge', n: at(0.6, 3) };
+      if (this.player.move) return { anim: 'run', n: Math.floor(this.runPhase * 2) };
+      return { anim: null, n: 0 };
+    }
+    if ((a?.kind === 'windup' && age < 1) || (a?.kind === 'feint' && age < 0.5)) return { anim: 'attack', n: 0 };
+    if (a?.kind === 'strike' && age < 0.6) return { anim: 'attack', n: age < 0.25 ? 1 : 2 };
+    const actor = this.actors[id];
+    const moved = beat - actor.movedBeat;
+    if (actor.from && moved < 0.5) return { anim: 'run', n: Math.floor((moved / 0.5) * 4) };
+    return { anim: null, n: 0 };
+  }
+
   // 描画用の位置（歩きと敵の移動をなめらかにつなぐ）
   playerPos() {
     const p = this.player;
-    if (!p.move) return { i: p.i, j: p.j, bob: 0 };
+    if (!p.move) return { i: p.i, j: p.j };
     const t = Math.min(1, p.move.t);
     return {
       i: p.move.from[0] + (p.move.to[0] - p.move.from[0]) * t,
       j: p.move.from[1] + (p.move.to[1] - p.move.from[1]) * t,
-      bob: -Math.round(Math.abs(Math.sin(t * Math.PI)) * 3),
     };
   }
 
@@ -575,10 +600,10 @@ export class BattleState {
 
   drawPeople(g, beat, ox, oy, tile, pp, ap) {
     const { assets } = this.game;
-    const people = [{ id: 'player', sprite: 'player', frame: this.player.dir, palette: null, i: pp.i, j: pp.j, bob: pp.bob, down: this.player.hp <= 0 }];
+    const people = [{ id: 'player', sprite: 'player', frame: this.player.dir, palette: null, i: pp.i, j: pp.j, down: this.player.hp <= 0 }];
     for (const a of this.def.actors) {
       const pos = ap[a.id];
-      people.push({ id: a.id, sprite: a.sprite, frame: frameOf(this.actors[a.id].face), palette: a.palette, i: pos.i, j: pos.j, bob: 0, down: this.enemy.down });
+      people.push({ id: a.id, sprite: a.sprite, frame: frameOf(this.actors[a.id].face), palette: a.palette, i: pos.i, j: pos.j, down: this.enemy.down });
     }
     const screen = (c) => isoCenter(c.i, c.j, ox, oy, tile);
     const me = screen(people[0]);
@@ -596,8 +621,9 @@ export class BattleState {
       g.beginPath();
       g.ellipse(pos.x, pos.y, 22, 8, 0, 0, Math.PI * 2);
       g.fill();
-      const img = o.white ? assets.get(c.sprite, c.frame, WHITE) : assets.get(c.sprite, c.frame, c.palette);
-      sprite(g, img, def, pos.x + o.dx, pos.y + o.dy + c.bob + (c.down ? 6 : 0), alpha);
+      const { anim, n } = c.down ? { anim: null, n: 0 } : this.poseOf(c.id, beat);
+      const pose = assets.pose(c.sprite, c.frame, anim, n, o.white ? WHITE : c.palette);
+      sprite(g, pose.img, pose.def, pos.x + o.dx, pos.y + o.dy + (c.down ? 6 : 0), alpha);
       const top = pos.y - def.anchor[1] - 4;
       if (c.id !== 'player' && !c.down) {
         if (this.anims[c.id]?.kind === 'windup' && beat - this.anims[c.id].beat < 1) text(g, '!', pos.x, top - 14, { color: COLORS.brass, align: 'center' });

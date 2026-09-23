@@ -1,7 +1,7 @@
 {
   "id": "cz_sweep",
   "length": 8,
-  "tags": ["basic", "heavy"],
+  "tags": ["heavy"],
   "events": [
     {"offset": 0, "type": "enemy.telegraph", "payload": {"actor": "chuck", "anim": "windup_high"}},
     {"offset": 2, "type": "enemy.telegraph", "payload": {"actor": "chuck", "anim": "windup_high"}},

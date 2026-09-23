@@ -22,7 +22,9 @@ export class Enemy {
 
     const wants = [];
     if (distance === 2) wants.push('approach', 'rush');
-    if (distance <= 1) wants.push('heavy');                 // 張り付かれたら、避けられない大技で引きはがす
+    // 張り付かれたら、避けられない大技で引きはがす。ただし直前2回に大技があれば出さない
+    const recentHeavy = this.history.slice(-2).some((id) => this.find(id).tags.includes('heavy'));
+    if (distance <= 1 && !recentHeavy) wants.push('heavy');
     if (profile.total >= 4) {
       if (profile.dodgeRate > 0.5) wants.push('feint');     // 回避主体 → フェイント増加
       if (profile.attackRate > 0.5) wants.push('counter');  // 攻撃主体 → カウンター主体

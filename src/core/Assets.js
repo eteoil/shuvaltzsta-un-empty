@@ -27,8 +27,37 @@ export class Assets {
       for (const [frame, src] of Object.entries(def.frames)) {
         jobs.push(loadImage(src).then((img) => this.images.set(`${key}/${frame}`, img)));
       }
+      // モーションは向きごとに横並びのシート。1コマずつ切り出して「walk_se_2」のような名前で持つ
+      for (const [anim, a] of Object.entries(def.anims ?? {})) {
+        for (const dir of Object.keys(def.frames)) {
+          jobs.push(loadImage(a.src.replace('{dir}', dir)).then((sheet) => {
+            if (!sheet) return;
+            const [w, h] = a.size;
+            for (let n = 0; n < a.count; n++) {
+              const c = canvasOf(w, h);
+              c.getContext('2d').drawImage(sheet, n * w, 0, w, h, 0, 0, w, h);
+              this.images.set(`${key}/${anim}_${dir}_${n}`, c);
+            }
+          }));
+        }
+      }
     }
     await Promise.all(jobs);
+  }
+
+  // モーションの n コマ目と、その描き方（大きさ・足元の位置）。シートが無ければ静止画で代用する
+  pose(key, dir, anim = null, n = 0, palette = null) {
+    const def = this.defs[key];
+    const a = anim ? def.anims?.[anim] : null;
+    if (a) {
+      const frame = `${anim}_${dir}_${((n % a.count) + a.count) % a.count}`;
+      if (this.images.get(`${key}/${frame}`)) return { img: this.get(key, frame, palette), def: a };
+    }
+    return { img: this.get(key, dir, palette), def };
+  }
+
+  frameCount(key, anim) {
+    return this.defs[key].anims?.[anim]?.count ?? 1;
   }
 
   def(key) {
