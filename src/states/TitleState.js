@@ -14,7 +14,7 @@ export class TitleState {
 
   update(dt, presses) {
     if (this.starting) return;
-    if (presses.some((p) => p.btn === 'start' || p.btn === 'a')) {
+    if (presses.some((p) => p.btn === 'start')) {
       this.starting = true;
       this.game.sfx.play('confirm');
       this.game.newGame();
