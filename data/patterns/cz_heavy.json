@@ -1,0 +1,11 @@
+{
+  "id": "cz_heavy",
+  "length": 8,
+  "tags": ["basic", "heavy"],
+  "events": [
+    { "offset": 0, "type": "enemy.telegraph", "payload": { "actor": "zipper", "anim": "windup_high" } },
+    { "offset": 2, "type": "enemy.telegraph", "payload": { "actor": "zipper", "anim": "windup_high" } },
+    { "offset": 4, "type": "enemy.attack", "payload": { "actor": "zipper", "power": 16, "guardable": false } },
+    { "offset": 5, "type": "enemy.open", "payload": { "actor": "zipper", "length": 3 } }
+  ]
+}

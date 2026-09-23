@@ -1,0 +1,40 @@
+{
+  "id": "chuck_zipper",
+  "name": "チャック＆ジッパー",
+  "tagline": "リズムに合わせてコンボをキメろ！",
+  "hp": 480,
+  "opening": "cz_taunt",
+  "patterns": ["cz_taunt", "cz_jab", "cz_one_two", "cz_heavy", "cz_feint", "cz_counter", "cz_rush"],
+  "actors": [
+    {
+      "id": "chuck",
+      "name": "チャック",
+      "sprite": "player",
+      "stage": [2, 0],
+      "palette": {
+        "id": "chuck",
+        "map": {
+          "#394660": "#6b2a22",
+          "#187fc4": "#d0762a",
+          "#801e6b": "#3b4a2c",
+          "#f5c939": "#e6e5f0"
+        }
+      }
+    },
+    {
+      "id": "zipper",
+      "name": "ジッパー",
+      "sprite": "player",
+      "stage": [3, 0],
+      "palette": {
+        "id": "zipper",
+        "map": {
+          "#394660": "#c9a43a",
+          "#187fc4": "#3f8f5a",
+          "#801e6b": "#4a4f66",
+          "#f5c939": "#de7392"
+        }
+      }
+    }
+  ]
+}

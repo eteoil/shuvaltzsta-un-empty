@@ -1,0 +1,22 @@
+{
+  "player": {
+    "size": [64, 136],
+    "anchor": [32, 128],
+    "placeholder": "figure",
+    "frames": {
+      "ne": "assets/img/player_ne.png",
+      "nw": "assets/img/player_nw.png",
+      "se": "assets/img/player_se.png",
+      "sw": "assets/img/player_sw.png"
+    }
+  },
+  "floor": {
+    "size": [80, 80],
+    "anchor": [40, 0],
+    "tile": [80, 40],
+    "placeholder": "block",
+    "frames": {
+      "default": "assets/img/floor_block.png"
+    }
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "bpm": 210,
+  "beatsPerBar": 4,
+  "lookaheadBeats": 4,
+  "refillMarginBeats": 2,
+  "judgeWindowMs": {
+    "perfect": 45,
+    "good": 90
+  },
+  "profileWindow": 32,
+  "audioOffsetMs": 0,
+  "screen": {
+    "width": 480,
+    "height": 320
+  },
+  "startMap": "slum_01",
+  "field": {
+    "moveSecPerTile": 0.2
+  },
+  "battle": {
+    "player": {
+      "hp": 100,
+      "attack": 5,
+      "tile": [0, 3]
+    },
+    "perfectMultiplier": 1.5,
+    "comboBonus": 0.05,
+    "comboBonusMax": 1.0,
+    "openMultiplier": 2,
+    "laneBeatsVisible": 8
+  },
+  "bgm": {
+    "battle": {
+      "src": "assets/bgm/battle.mp3",
+      "startBar": 1,
+      "loopBars": [9, 25],
+      "outroBar": 26,
+      "offsetMs": 0
+    }
+  },
+  "volume": {
+    "bgm": 0.8,
+    "sfx": 0.3
+  }
+}
