@@ -1,5 +1,5 @@
 :root {
-  --room: #0e1020;
+  --room: #b75252;
   --shell: #2a2f52;
   --shell-hi: #3b4273;
   --shell-lo: #1b1e33;
@@ -216,7 +216,7 @@ button:focus-visible { outline: 2px solid var(--led-on); outline-offset: 2px; }
   text-align: center;
   font-size: 12px;
   line-height: 1.6;
-  color: #63668b;
+  color: rgba(255, 255, 255, .85);
 }
 
 /* 横持ちで高さが足りない時は、画面の左右に操作部を置く */

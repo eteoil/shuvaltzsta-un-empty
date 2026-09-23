@@ -1,0 +1,11 @@
+{
+  "id": "cz_approach",
+  "length": 4,
+  "tags": ["approach"],
+  "events": [
+    {"offset": 0, "type": "enemy.move", "payload": {"actor": "chuck"}},
+    {"offset": 1, "type": "enemy.move", "payload": {"actor": "zipper"}},
+    {"offset": 2, "type": "enemy.move", "payload": {"actor": "chuck"}},
+    {"offset": 3, "type": "enemy.move", "payload": {"actor": "zipper"}}
+  ]
+}

@@ -3,11 +3,11 @@
   "length": 8,
   "tags": ["rush"],
   "events": [
-    { "offset": 0, "type": "enemy.telegraph", "payload": { "actor": "chuck" } },
-    { "offset": 2, "type": "enemy.attack", "payload": { "actor": "chuck", "power": 6, "guardable": true } },
-    { "offset": 3, "type": "enemy.attack", "payload": { "actor": "zipper", "power": 6, "guardable": true } },
-    { "offset": 4, "type": "enemy.attack", "payload": { "actor": "chuck", "power": 6, "guardable": true } },
-    { "offset": 5, "type": "enemy.attack", "payload": { "actor": "zipper", "power": 6, "guardable": true } },
-    { "offset": 6, "type": "enemy.open", "payload": { "actor": "chuck", "length": 2 } }
+    {"offset": 0, "type": "enemy.telegraph", "payload": {"actor": "chuck"}},
+    {"offset": 2, "type": "enemy.attack", "payload": {"actor": "chuck", "area": "line3", "power": 8}},
+    {"offset": 3, "type": "enemy.move", "payload": {"actor": "chuck"}},
+    {"offset": 4, "type": "enemy.attack", "payload": {"actor": "zipper", "area": "line3", "power": 8}},
+    {"offset": 5, "type": "enemy.move", "payload": {"actor": "zipper"}},
+    {"offset": 6, "type": "enemy.open", "payload": {"actor": "chuck", "length": 2}}
   ]
 }

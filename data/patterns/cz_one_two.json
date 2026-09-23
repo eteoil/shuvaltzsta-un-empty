@@ -3,9 +3,10 @@
   "length": 8,
   "tags": ["basic", "rush"],
   "events": [
-    { "offset": 0, "type": "enemy.telegraph", "payload": { "actor": "chuck" } },
-    { "offset": 2, "type": "enemy.attack", "payload": { "actor": "chuck", "power": 8, "guardable": true } },
-    { "offset": 3, "type": "enemy.attack", "payload": { "actor": "zipper", "power": 8, "guardable": true } },
-    { "offset": 4, "type": "enemy.open", "payload": { "actor": "zipper", "length": 4 } }
+    {"offset": 0, "type": "enemy.telegraph", "payload": {"actor": "chuck"}},
+    {"offset": 2, "type": "enemy.attack", "payload": {"actor": "chuck", "area": "front3", "power": 8}},
+    {"offset": 3, "type": "enemy.attack", "payload": {"actor": "zipper", "area": "front3", "power": 8}},
+    {"offset": 4, "type": "enemy.open", "payload": {"actor": "zipper", "length": 3}},
+    {"offset": 7, "type": "enemy.move", "payload": {"actor": "zipper"}}
   ]
 }

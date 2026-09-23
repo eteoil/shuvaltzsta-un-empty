@@ -3,12 +3,12 @@
   "length": 8,
   "tags": ["feint"],
   "events": [
-    { "offset": 0, "type": "enemy.telegraph", "payload": { "actor": "chuck", "anim": "windup_high" } },
-    { "offset": 2, "type": "enemy.feint", "payload": { "actor": "chuck", "anim": "fake" } },
-    { "offset": 2.5, "type": "fx.flash", "payload": { "color": "#ff4444" } },
-    { "offset": 3, "type": "enemy.attack", "payload": { "actor": "chuck", "power": 10, "guardable": true } },
-    { "offset": 4, "type": "enemy.telegraph", "payload": { "actor": "zipper" } },
-    { "offset": 6, "type": "enemy.feint", "payload": { "actor": "zipper", "anim": "fake" } },
-    { "offset": 7, "type": "enemy.attack", "payload": { "actor": "zipper", "power": 10, "guardable": true } }
+    {"offset": 0, "type": "enemy.telegraph", "payload": {"actor": "chuck", "anim": "windup_high"}},
+    {"offset": 2, "type": "enemy.feint", "payload": {"actor": "chuck", "area": "front3", "anim": "fake"}},
+    {"offset": 2.5, "type": "fx.flash", "payload": {"color": "#ff4444"}},
+    {"offset": 3, "type": "enemy.attack", "payload": {"actor": "chuck", "area": "front3", "power": 10}},
+    {"offset": 4, "type": "enemy.telegraph", "payload": {"actor": "zipper"}},
+    {"offset": 6, "type": "enemy.feint", "payload": {"actor": "zipper", "area": "front3", "anim": "fake"}},
+    {"offset": 7, "type": "enemy.attack", "payload": {"actor": "zipper", "area": "front3", "power": 10}}
   ]
 }

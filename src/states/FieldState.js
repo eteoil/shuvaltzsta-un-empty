@@ -1,15 +1,7 @@
 import { STATES } from '../core/constants.js';
 import { loadEnemy } from '../core/Data.js';
 import { COLORS, text, sprite, isoTop, isoCenter } from '../core/draw.js';
-
-// 十字ボタンと等角グリッドの対応。上＝北東、右＝南東、下＝南西、左＝北西
-const DIRS = {
-  up: { di: 0, dj: -1, face: 'ne' },
-  right: { di: 1, dj: 0, face: 'se' },
-  down: { di: 0, dj: 1, face: 'sw' },
-  left: { di: -1, dj: 0, face: 'nw' },
-};
-const FACE_STEP = Object.fromEntries(Object.values(DIRS).map((d) => [d.face, d]));
+import { DIRS, FACE_STEP } from '../core/grid.js';
 
 // 探索。リズム入力は受け付けない（憲法③）
 export class FieldState {

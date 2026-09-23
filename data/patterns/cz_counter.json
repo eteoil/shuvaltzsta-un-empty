@@ -3,8 +3,9 @@
   "length": 8,
   "tags": ["counter"],
   "events": [
-    { "offset": 0, "type": "enemy.guard", "payload": { "actor": "chuck", "length": 4 } },
-    { "offset": 4, "type": "enemy.telegraph", "payload": { "actor": "zipper" } },
-    { "offset": 6, "type": "enemy.attack", "payload": { "actor": "zipper", "power": 12, "guardable": false } }
+    {"offset": 0, "type": "enemy.guard", "payload": {"actor": "chuck", "length": 4}},
+    {"offset": 0, "type": "enemy.move", "payload": {"actor": "zipper"}},
+    {"offset": 4, "type": "enemy.telegraph", "payload": {"actor": "zipper"}},
+    {"offset": 6, "type": "enemy.attack", "payload": {"actor": "zipper", "area": "around", "power": 12}}
   ]
 }

@@ -13,18 +13,21 @@ export class Enemy {
     return this.hp <= 0;
   }
 
-  // 見るのは HP・Beat・プレイヤーの戦闘傾向だけ。入力の先読みはしない（憲法⑤⑥）
-  choosePattern(profile, random = Math.random) {
+  // 見るのは HP・プレイヤーとの距離・プレイヤーの戦闘傾向だけ。入力の先読みはしない（憲法⑤⑥）
+  choosePattern(profile, { distance }, random = Math.random) {
     if (!this.history.length && this.def.opening) return this.pick(this.find(this.def.opening));
 
+    const tagged = (tags) => this.patterns.filter((p) => p.tags.some((t) => tags.includes(t)));
+    if (distance >= 3) return this.pick(this.random(tagged(['approach']), random));
+
     const wants = [];
+    if (distance === 2) wants.push('approach', 'rush');
     if (profile.total >= 4) {
       if (profile.dodgeRate > 0.5) wants.push('feint');     // 回避主体 → フェイント増加
       if (profile.attackRate > 0.5) wants.push('counter');  // 攻撃主体 → カウンター主体
     }
     if (this.hp / this.maxHp < 0.35) wants.push('rush');
 
-    const tagged = (tags) => this.patterns.filter((p) => p.tags.some((t) => tags.includes(t)));
     let pool = tagged(wants);
     if (!pool.length || random() < 0.35) pool = tagged(['basic']);
 
@@ -32,7 +35,11 @@ export class Enemy {
     const [a, b] = this.history.slice(-2);
     if (a && a === b && pool.length > 1) pool = pool.filter((p) => p.id !== a);
 
-    return this.pick(pool[Math.floor(random() * pool.length)]);
+    return this.pick(this.random(pool, random));
+  }
+
+  random(pool, random) {
+    return pool[Math.floor(random() * pool.length)];
   }
 
   find(id) {
