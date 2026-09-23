@@ -1,11 +1,12 @@
+// A・B はボタンと同じ名前のキーでも押せる。十字は矢印キーだけ（WASD の A と取り合わないように）
 const KEYMAP = {
-  ArrowUp: 'up', KeyW: 'up',
-  ArrowDown: 'down', KeyS: 'down',
-  ArrowLeft: 'left', KeyA: 'left',
-  ArrowRight: 'right', KeyD: 'right',
-  KeyX: 'a', KeyK: 'a', Space: 'a',
-  KeyZ: 'b', KeyJ: 'b',
-  Enter: 'start',
+  ArrowUp: 'up',
+  ArrowDown: 'down',
+  ArrowLeft: 'left',
+  ArrowRight: 'right',
+  KeyA: 'a', KeyX: 'a', Space: 'a',
+  KeyB: 'b', KeyZ: 'b',
+  Enter: 'start', NumpadEnter: 'start',
   KeyP: 'pause', Escape: 'pause',
 };
 

@@ -139,7 +139,7 @@ button:focus-visible { outline: 2px solid var(--led-on); outline-offset: 2px; }
   grid-template-areas:
     ".    up    ."
     "left hub   right"
-    ".    down  .";
+    ".    down  hint";
   justify-self: center;
   filter: drop-shadow(0 4px 0 rgba(0, 0, 0, .45));
 }
@@ -235,13 +235,24 @@ button:focus-visible { outline: 2px solid var(--led-on); outline-offset: 2px; }
 .sys-cell.on .pill { transform: translateY(2px); background: var(--pad-down); box-shadow: inset 0 2px 3px rgba(0, 0, 0, .7); }
 .sys-cell.on { color: var(--led-on); }
 
-.keys {
-  margin: 0;
-  max-width: 92vw;
-  text-align: center;
-  font-size: 12px;
-  line-height: 1.6;
-  color: rgba(255, 255, 255, .85);
+.hint {
+  display: none;
+  padding: 1px 5px;
+  border: 1px solid var(--label);
+  border-radius: 3px;
+  font: 10px/1.3 "DotGothic16", ui-monospace, monospace;
+  letter-spacing: .04em;
+  color: var(--label);
+}
+/* マウスで遊ぶ PC では、ボタンの横に対応するキーを出す */
+@media (hover: hover) and (pointer: fine) {
+  .hint { display: inline-block; }
+}
+.dpad-hint {
+  grid-area: hint;
+  align-self: end;
+  justify-self: center;
+  white-space: nowrap;
 }
 
 /* 横持ちで高さが足りない時は、画面の左右に操作部を置く */
@@ -263,9 +274,7 @@ button:focus-visible { outline: 2px solid var(--led-on); outline-offset: 2px; }
   .dpad { --cell: clamp(38px, 13dvh, 52px); }
   .sys { flex-direction: column; gap: 2px; align-items: center; }
   .sys-cell { transform: none; }
-  .keys { display: none; }
 }
 
 @media (hover: none) {
-  .keys { display: none; }
 }
