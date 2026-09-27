@@ -19,7 +19,7 @@
     "items": { "wild_berry": 2, "mushroom": 2, "antidote": 1 }
   },
   "status": {
-    "poison": { "tickBeats": 8, "heroDamage": 3, "enemyDamage": 8 }
+    "poison": { "tickBeats": 8, "heroDamage": 3, "enemyDamage": 8, "fieldTickSec": 2, "fieldDamage": 1 }
   },
   "field": {
     "moveSecPerTile": 0.2

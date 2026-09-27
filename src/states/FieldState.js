@@ -15,6 +15,8 @@ export class FieldState {
     this.map = game.session.map;
     this.move = null;
     this.stride = 0;            // 歩いたマス数。歩きのコマ送りに使う（1マスで2コマ）
+    this.poisonT = 0;           // 毒のダメージまでの経過秒（AudioContext の時刻から。憲法⑫）
+    this.hurtAt = -1e9;
     this.enemyDefs = {};
     this.npcDefs = {};
   }
@@ -65,6 +67,8 @@ export class FieldState {
       }
     }
 
+    this.poisonTick(dt);
+
     if (this.move) {
       const step = dt / this.game.config.field.moveSecPerTile;
       this.move.t += step;
@@ -84,6 +88,22 @@ export class FieldState {
     if (this.walkable(ni, nj)) {
       this.move = { from: [this.p.i, this.p.j], to: [ni, nj], t: 0 };
       this.game.sfx.play('step');
+    }
+  }
+
+  // 探索中も毒なら fieldTickSec 秒ごとに減る。毒では倒れない（HP は 1 残る）
+  poisonTick(dt) {
+    const hero = this.session.hero;
+    if (!hero.poisoned) { this.poisonT = 0; return; }
+    const { fieldTickSec, fieldDamage } = this.game.config.status.poison;
+    this.poisonT += dt;
+    while (this.poisonT >= fieldTickSec) {
+      this.poisonT -= fieldTickSec;
+      const n = Math.min(fieldDamage, hero.hp - 1);
+      if (!n) continue;
+      hero.hp -= n;
+      this.hurtAt = performance.now();
+      this.game.sfx.play('telegraph');
     }
   }
 
@@ -154,6 +174,13 @@ export class FieldState {
       if (!c.label) continue;
       const pos = isoCenter(c.i, c.j, ox, oy, tile);
       text(g, c.label, pos.x, pos.y - assets.def(c.sprite).anchor[1] - 16, { size: 12, align: 'center', color: COLORS.brass });
+    }
+
+    // 毒で減った瞬間は画面が紫に光る（演出）
+    const hurt = performance.now() - this.hurtAt;
+    if (hurt < 180) {
+      g.fillStyle = `rgba(196,107,255,${0.22 * (1 - hurt / 180)})`;
+      g.fillRect(0, 0, W, H);
     }
 
     g.fillStyle = 'rgba(11,12,24,0.55)';
