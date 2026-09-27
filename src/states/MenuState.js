@@ -177,9 +177,12 @@ export class MenuState {
     else this.renderMain(g, W);
     if (this.mode === 'wait') this.renderWait(g, W);
     this.renderStatus(g, W);
+    // 長い行は枠の幅で折り返し、行数に合わせて枠を高くする
     if (this.message) {
-      panel(g, 60, H - 96, W - 120, 84);
-      this.message.lines.slice(-3).forEach((l, i) => text(g, l, 76, H - 84 + i * 22));
+      const lines = this.message.lines.flatMap((l) => wrap(g, l, W - 152)).slice(-5);
+      const h = 20 + lines.length * 22;
+      panel(g, 60, H - 12 - h, W - 120, h);
+      lines.forEach((l, i) => text(g, l, 76, H - h + i * 22));
     }
   }
 

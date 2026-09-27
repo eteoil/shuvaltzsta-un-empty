@@ -667,10 +667,12 @@ export class BattleState {
     return this.beats.currentBeat >= this.resultBeat + this.bpb && this.game.clock.now >= this.game.bgm.outroEndsAt;
   }
 
+  // スコアはリザルトを出した時点で決める。あとで HP が変わっても（レベルアップなど）表示も渡す値も変わらない
   showResult(beat) {
     this.phase = 'result';
     this.resultBeat = beat;
     this.resultAt = performance.now();
+    this.finalScore = this.score;
   }
 
   // 係数は gameConfig の battle.score。勝ったときだけ勝利ボーナスと残りHPを足す
@@ -684,7 +686,7 @@ export class BattleState {
     if (this.leaving) return;
     this.leaving = true;
     this.game.bgm.stop(0.6);
-    this.onEnd(this.outcome, this.score, this);
+    this.onEnd(this.outcome, this.finalScore ?? this.score, this);
   }
 
   // ---------------------------------------------------------------- 演出
@@ -1031,7 +1033,7 @@ export class BattleState {
       g.fillStyle = COLORS.line;
       g.fillRect(134, 180, W - 268, 1);
       // 総スコアはカウントアップで出す（演出）
-      const shown = Math.round(this.score * Math.min(1, (now - this.resultAt) / 900));
+      const shown = Math.round(this.finalScore * Math.min(1, (now - this.resultAt) / 900));
       text(g, 'SCORE', 138, 192, { color: COLORS.brass });
       text(g, shown.toLocaleString('en-US'), W - 138, 186, { size: 24, color: COLORS.perfect, align: 'right' });
       if (this.resultReady && Math.floor(now / 400) % 2 === 0) {
