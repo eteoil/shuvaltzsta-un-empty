@@ -92,15 +92,18 @@ export class Game {
   }
 
   // マップへ入る。spawn（[i, j, 向き]）が無ければマップの start。
+  // onArrive：着いて明るくなりきったら呼ぶ（町だけ。ダンジョンは入った瞬間から戦闘なので無し）
   // 町は探索（TOWN）、ダンジョンは入った瞬間から戦闘（DUNGEON）
-  async enterMap(id, spawn = null) {
+  async enterMap(id, spawn = null, onArrive = null) {
     const map = await loadMap(id);
     const [i, j, dir] = spawn ?? map.start;
     const s = this.session;
     s.map = map;
     s.player = { i, j, dir };
     if (map.kind !== 'dungeon') {
-      this.states.change(new FieldState(this));
+      const field = new FieldState(this);
+      field.onArrive = onArrive;
+      this.states.change(field);
       return;
     }
     const ids = [...new Set(map.spawns.map((sp) => sp.enemy))];
@@ -116,14 +119,14 @@ export class Game {
   async afterDungeon(outcome, score, exit) {
     const s = this.session;
     const { from, to } = setTotalScore(this, s.totalScore + score);
+    const arrive = to > from ? () => this.levelUp(to) : null;
     if (outcome === 'lose') {
       s.hero.hp = s.hero.maxHp;
       cure(s.hero);
-      await this.enterMap(this.config.startMap);
+      await this.enterMap(this.config.startMap, null, arrive);
     } else {
-      await this.enterMap(exit.to, exit.spawn);
+      await this.enterMap(exit.to, exit.spawn, arrive);
     }
-    if (to > from) this.levelUp(to);
   }
 
   toTitle() {
@@ -164,8 +167,10 @@ export class Game {
       cure(s.hero);
     }
     const dialog = await loadDialog(outcome === 'win' ? enc.dialogWin : enc.dialogLose);
-    this.states.change(new FieldState(this));
-    this.states.push(new DialogState(this, dialog, () => { if (to > from) this.levelUp(to); }));
+    // 会話は町が明るくなりきってから
+    const field = new FieldState(this);
+    field.onArrive = () => this.states.push(new DialogState(this, dialog, () => { if (to > from) this.levelUp(to); }));
+    this.states.change(field);
   }
 
   levelUp(level) {

@@ -31,6 +31,7 @@ export class FieldState {
     // 暗転：着いたときは暗い画面から明るくなる（fadeIn）。出口を通るときは暗くなってから切り替える（leaving）
     this.fadeIn = game.config.field.fadeSec;
     this.leaving = null;
+    this.onArrive = null;       // 明るくなりきったら一度だけ呼ぶ（戦闘後の会話など。暗いうちに出さない）
     this.enemyDefs = {};
     this.npcDefs = {};
   }
@@ -149,6 +150,12 @@ export class FieldState {
   update(dt, presses) {
     if (this.leaving) { this.updateLeaving(dt); return; }   // 出口を通って暗くなっている間と、次のマップを読み込んでいる間
     this.fadeIn = Math.max(0, this.fadeIn - dt);
+    if (this.fadeIn === 0 && this.onArrive) {
+      const arrive = this.onArrive;
+      this.onArrive = null;
+      arrive();
+      return;
+    }
     passTime(this.session, dt * this.game.config.time.minutesPerSec);
     for (const { btn } of presses) {
       if (btn === 'pause' || btn === 'start') { this.game.pause(); return; }
