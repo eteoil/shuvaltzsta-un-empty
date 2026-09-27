@@ -22,6 +22,7 @@ export class DungeonState extends BattleState {
     this.map = map;
     this.enemyData = enemies;
     this.exitTaken = null;
+    this.fadeIn = game.config.field.fadeSec;   // 暗い画面から明るくなる
     this.itemDefs = null;
     loadItems().then((d) => { this.itemDefs = d; });
   }
@@ -66,6 +67,7 @@ export class DungeonState extends BattleState {
   }
 
   update(dt, presses) {
+    this.fadeIn = Math.max(0, this.fadeIn - dt);
     super.update(dt, presses);
     this.drops.tick(dt);
     // 倒れた敵は1拍のあいだ点滅してから消える
@@ -120,6 +122,14 @@ export class DungeonState extends BattleState {
     this.popup(this.itemDefs[p.item].name, COLORS.signal);
     this.game.sfx.play('confirm');
     return true;
+  }
+
+  render(g) {
+    super.render(g);
+    if (this.fadeIn <= 0) return;
+    const { width: W, height: H } = this.game.config.screen;
+    g.fillStyle = `rgba(0,0,0,${this.fadeIn / this.game.config.field.fadeSec})`;
+    g.fillRect(0, 0, W, H);
   }
 
   cameraTarget(pp) {

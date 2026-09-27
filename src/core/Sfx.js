@@ -50,8 +50,8 @@ export class Sfx {
     osc.stop(t + dur + 0.02);
   }
 
-  noise(dur, { vol = 0.5, when } = {}) {
-    const ctx = this.ready(when, () => this.noise(dur, { vol, when }));
+  noise(dur, { vol = 0.5, when, delay = 0 } = {}) {
+    const ctx = this.ready(when, () => this.noise(dur, { vol, when, delay }));
     if (!ctx) return;
     if (!this.noiseBuffers.has(ctx)) {
       const buf = ctx.createBuffer(1, ctx.sampleRate * 0.5, ctx.sampleRate);
@@ -59,7 +59,7 @@ export class Sfx {
       for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
       this.noiseBuffers.set(ctx, buf);
     }
-    const t = Math.max(when ?? ctx.currentTime, ctx.currentTime);
+    const t = Math.max(when ?? ctx.currentTime, ctx.currentTime) + delay;
     const src = ctx.createBufferSource();
     const env = ctx.createGain();
     src.buffer = this.noiseBuffers.get(ctx);
@@ -91,6 +91,13 @@ export class Sfx {
         }
         return undefined;
       }
+      // 出口を通るときの足音（ザッザッザッ）
+      case 'steps':
+        for (let k = 0; k < 3; k++) {
+          this.noise(0.08, { vol: 0.35, when, delay: k * 0.17 });
+          this.tone(110, 0.06, { type: 'triangle', vol: 0.25, when, delay: k * 0.17, slide: 70 });
+        }
+        return undefined;
       case 'levelup':
         [523, 659, 784, 1047, 784, 1047].forEach((f, i) => this.tone(f, i === 5 ? 0.3 : 0.08, { vol: 0.35, when, delay: i * 0.08 }));
         return undefined;

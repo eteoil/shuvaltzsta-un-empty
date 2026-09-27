@@ -28,6 +28,9 @@ export class FieldState {
     this.itemDefs = null;
     // マップに入った直後は、十字キーをいったん離すまで歩かない（押したまま出口を出て、すぐ入り直さないように）
     this.waitRelease = true;
+    // 暗転：着いたときは暗い画面から明るくなる（fadeIn）。出口を通るときは暗くなってから切り替える（leaving）
+    this.fadeIn = game.config.field.fadeSec;
+    this.leaving = null;
     this.enemyDefs = {};
     this.npcDefs = {};
   }
@@ -110,10 +113,25 @@ export class FieldState {
       this.game.sfx.play('miss');
       return false;
     }
-    this.game.sfx.play('confirm');
-    this.leaving = true;
-    this.game.enterMap(exit.to, exit.spawn);
+    this.game.sfx.play('steps');
+    this.leaving = { exit, t: 0, gone: false };
     return true;
+  }
+
+  // 暗くなりきったら次のマップへ
+  updateLeaving(dt) {
+    const l = this.leaving;
+    l.t += dt;
+    if (l.gone || l.t < this.game.config.field.fadeSec) return;
+    l.gone = true;
+    this.game.enterMap(l.exit.to, l.exit.spawn);
+  }
+
+  // 暗転の暗さ（0〜1）
+  get darkness() {
+    const fade = this.game.config.field.fadeSec;
+    if (this.leaving) return Math.min(1, this.leaving.t / fade);
+    return Math.max(0, this.fadeIn / fade);
   }
 
   isFloor(i, j) {
@@ -129,7 +147,8 @@ export class FieldState {
   }
 
   update(dt, presses) {
-    if (this.leaving) return;   // 出口から次のマップを読み込んでいる間
+    if (this.leaving) { this.updateLeaving(dt); return; }   // 出口を通って暗くなっている間と、次のマップを読み込んでいる間
+    this.fadeIn = Math.max(0, this.fadeIn - dt);
     passTime(this.session, dt * this.game.config.time.minutesPerSec);
     for (const { btn } of presses) {
       if (btn === 'pause' || btn === 'start') { this.game.pause(); return; }
@@ -318,6 +337,10 @@ export class FieldState {
       const w = [...this.toast.text].length * 16 + 32;
       panel(g, W / 2 - w / 2, 34, w, 32, { alpha: age > 1300 ? (1600 - age) / 300 : 1 });
       text(g, this.toast.text, W / 2, 42, { align: 'center', alpha: age > 1300 ? (1600 - age) / 300 : 1 });
+    }
+    if (this.darkness > 0) {
+      g.fillStyle = `rgba(0,0,0,${this.darkness})`;
+      g.fillRect(0, 0, W, H);
     }
   }
 }

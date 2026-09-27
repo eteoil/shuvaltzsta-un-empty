@@ -173,7 +173,7 @@ export class TalkState {
   // 「いいえ」と B は同じ。no があればそのセリフを言ってから終わる
   trade(t) {
     const no = () => (t.no ? this.say(t.no) : this.close());
-    this.choose(t.prompt, [
+    this.choose(t.prompt.replace('{price}', money(t.price)), [
       {
         label: 'はい',
         run: () => {

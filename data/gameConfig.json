@@ -55,7 +55,8 @@
   },
   "field": {
     "moveSecPerTile": 0.2,
-    "pickupRespawnSec": 60
+    "pickupRespawnSec": 60,
+    "fadeSec": 0.4
   },
   "battle": {
     "arena": {
