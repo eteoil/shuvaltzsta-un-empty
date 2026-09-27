@@ -1,3 +1,5 @@
+import { COLORS, text } from './draw.js';
+
 // 探索マップに落ちている物の仮のドット絵（本番の絵ができたら data/sprites.json の画像へ移す）。
 // 1文字＝1ドット、'.' は透明。表示は2倍
 const SCALE = 2;
@@ -68,4 +70,24 @@ export function drawPickup(g, item, x, y, ms) {
     g.fillRect(left + w - 2, top - 4, 2, 6);
     g.fillRect(left + w - 4, top - 2, 6, 2);
   }
+}
+
+// マップの出口。床の上で脈打つ菱形の枠と、行き先の名前。locked（まだ通れない）なら灰色
+export function drawExit(g, x, y, label, ms, locked = false) {
+  const pulse = 0.5 + 0.5 * Math.sin(ms / 260);
+  const color = locked ? `rgba(146,148,180,${0.35 + 0.25 * pulse})` : `rgba(123,216,201,${0.45 + 0.45 * pulse})`;
+  g.save();
+  g.lineWidth = 2;
+  g.strokeStyle = color;
+  for (const k of [0, 6]) {
+    g.beginPath();
+    g.moveTo(x, y - 16 + k);
+    g.lineTo(x + 34 - k * 2, y);
+    g.lineTo(x, y + 16 - k);
+    g.lineTo(x - 34 + k * 2, y);
+    g.closePath();
+    g.stroke();
+  }
+  g.restore();
+  if (label) text(g, label, x, y - 36, { size: 12, align: 'center', color: locked ? COLORS.muted : COLORS.signal });
 }

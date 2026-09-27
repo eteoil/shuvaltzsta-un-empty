@@ -10,6 +10,7 @@ import { TitleState } from './states/TitleState.js';
 import { FieldState } from './states/FieldState.js';
 import { DialogState } from './states/DialogState.js';
 import { BattleState } from './states/BattleState.js';
+import { DungeonState } from './states/DungeonState.js';
 import { MenuState } from './states/MenuState.js';
 import { TalkState } from './states/TalkState.js';
 import { loadOptions } from './core/Options.js';
@@ -82,6 +83,41 @@ export class Game {
       totalScore: 0,
     };
     this.states.change(new FieldState(this));
+  }
+
+  // マップへ入る。spawn（[i, j, 向き]）が無ければマップの start。
+  // 町は探索（TOWN）、ダンジョンは入った瞬間から戦闘（DUNGEON）
+  async enterMap(id, spawn = null) {
+    const map = await loadMap(id);
+    const [i, j, dir] = spawn ?? map.start;
+    const s = this.session;
+    s.map = map;
+    s.player = { i, j, dir };
+    if (map.kind !== 'dungeon') {
+      this.states.change(new FieldState(this));
+      return;
+    }
+    const ids = [...new Set(map.spawns.map((sp) => sp.enemy))];
+    const enemies = Object.fromEntries(await Promise.all(ids.map(async (e) => [e, await loadEnemy(e)])));
+    this.states.change(new DungeonState(this, {
+      map,
+      enemies,
+      onEnd: (outcome, score, state) => this.afterDungeon(outcome, score, state.exitTaken),
+    }));
+  }
+
+  // 出口から出たら行き先の町へ。倒れたら最初の町の開始地点から、HP を満タンにしてやり直し（仮）
+  async afterDungeon(outcome, score, exit) {
+    const s = this.session;
+    const { from, to } = setTotalScore(this, s.totalScore + score);
+    if (outcome === 'lose') {
+      s.hero.hp = s.hero.maxHp;
+      cure(s.hero);
+      await this.enterMap(this.config.startMap);
+    } else {
+      await this.enterMap(exit.to, exit.spawn);
+    }
+    if (to > from) this.levelUp(to);
   }
 
   toTitle() {

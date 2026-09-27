@@ -27,6 +27,10 @@
     "hpPerLevel": 5,
     "badEndAvoidLevel": 50
   },
+  "dungeon": {
+    "killScore": 300,
+    "focusRange": 4
+  },
   "cheat": {
     "poisonTicks": 3,
     "fieldRegenSec": 1,

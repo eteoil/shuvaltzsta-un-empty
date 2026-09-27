@@ -18,8 +18,10 @@ export class Enemy {
     if (!this.history.length && this.def.opening) return this.pick(this.find(this.def.opening));
 
     const tagged = (tags) => this.patterns.filter((p) => p.tags.some((t) => tags.includes(t)));
-    // 毒状態 → 距離を取る（憲法⑥）
-    if (poisoned && distance <= 2 && random() < 0.5) return this.pick(this.random(tagged(['retreat']), random));
+    // ザコ（aggro のある敵）は、プレイヤーが aggro マスより遠ければうろつくだけ
+    if (this.def.aggro && distance > this.def.aggro) return this.pick(this.random(tagged(['wander']), random));
+    // 毒状態 → 距離を取る（憲法⑥）。ボス（boss: true）は逃げない
+    if (poisoned && !this.def.boss && distance <= 2 && random() < 0.5) return this.pick(this.random(tagged(['retreat']), random));
     if (distance >= 3) return this.pick(this.random(tagged(['approach']), random));
 
     const wants = [];

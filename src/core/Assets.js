@@ -25,6 +25,7 @@ export class Assets {
     const jobs = [];
     for (const [key, def] of Object.entries(this.defs)) {
       for (const [frame, src] of Object.entries(def.frames)) {
+        if (!src) continue;   // 絵がまだ無い（仮の絵を描く）
         jobs.push(loadImage(src).then((img) => this.images.set(`${key}/${frame}`, img)));
       }
       // モーションは向きごとに横並びのシート。1コマずつ切り出して「walk_se_2」のような名前で持つ
@@ -104,6 +105,7 @@ function recolor(src, palette) {
 const BASE = {
   hair: '#394660', skin: '#feebc8', line: '#231815', top: '#187fc4', bottom: '#801e6b',
   floorTop: '#97b8c0', floorL: '#858ba7', floorR: '#866b92', floorLine: '#440e36',
+  slime: '#5fbf5a', slimeDark: '#2f7a3a', slimeShine: '#d8f5c8',
 };
 
 function placeholder(def, frame) {
@@ -112,6 +114,7 @@ function placeholder(def, frame) {
   const g = c.getContext('2d');
   if (def.placeholder === 'block') drawBlock(g, w, h);
   else if (def.placeholder === 'figure') drawFigure(g, w, h, frame);
+  else if (def.placeholder === 'slime') drawSlime(g, w, h, frame);
   return c;
 }
 
@@ -159,4 +162,36 @@ function drawFigure(g, w, h, frame) {
   g.textAlign = 'center';
   g.fillText(frame.toUpperCase(), cx, 78);
   g.fillRect(cx + dx * 6, 46 + dy * 4, 3, 3);
+}
+
+// ぷるんとした半円。正面（南東・南西）だけ目を描き、向いている側へ寄せる
+function drawSlime(g, w, h, frame) {
+  const cx = w / 2;
+  const base = h - 8;
+  const r = 22;
+  g.fillStyle = BASE.line;
+  g.beginPath();
+  g.ellipse(cx, base, r + 2, r + 2, 0, Math.PI, 0);
+  g.lineTo(cx + r + 2, base + 4);
+  g.lineTo(cx - r - 2, base + 4);
+  g.closePath();
+  g.fill();
+  g.fillStyle = BASE.slime;
+  g.beginPath();
+  g.ellipse(cx, base, r, r, 0, Math.PI, 0);
+  g.lineTo(cx + r, base + 2);
+  g.lineTo(cx - r, base + 2);
+  g.closePath();
+  g.fill();
+  g.fillStyle = BASE.slimeDark;
+  g.fillRect(cx - r, base - 2, r * 2, 4);
+  g.fillStyle = BASE.slimeShine;
+  g.fillRect(cx - 12, base - 16, 6, 4);
+  g.fillRect(cx - 14, base - 12, 3, 3);
+  if (frame.startsWith('s')) {
+    const dx = frame.endsWith('e') ? 5 : -5;
+    g.fillStyle = BASE.line;
+    g.fillRect(cx + dx - 8, base - 12, 4, 6);
+    g.fillRect(cx + dx + 4, base - 12, 4, 6);
+  }
 }

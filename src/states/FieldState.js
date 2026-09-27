@@ -3,10 +3,12 @@ import { loadEnemy, loadJSON } from '../core/Data.js';
 import { COLORS, text, panel, sprite, gauge, isoTop, isoCenter } from '../core/draw.js';
 import { loadItems, money, addItem } from '../core/Items.js';
 import { poisonTick, regen } from '../core/Hero.js';
-import { drawPickup } from '../core/icons.js';
+import { drawPickup, drawExit } from '../core/icons.js';
+import { Pickups } from '../core/Pickups.js';
 import { DIRS, FACE_STEP } from '../core/grid.js';
 
-// 探索。リズム入力は受け付けない（憲法③）
+// 探索。リズム入力は受け付けない（憲法③）。町のマップ（kind: town）では TOWN として動く。
+// 町に落ちている物は無い（特別なイベントのときだけ、マップに pickups を書く）
 export class FieldState {
   name = STATES.FIELD;
   pausable = true;
@@ -15,6 +17,7 @@ export class FieldState {
     this.game = game;
     this.session = game.session;
     this.map = game.session.map;
+    if (this.map.kind === 'town') this.name = STATES.TOWN;
     this.move = null;
     this.stride = 0;            // 歩いたマス数。歩きのコマ送りに使う（1マスで2コマ）
     this.poisonT = 0;           // 毒のダメージまでの経過秒（AudioContext の時刻から。憲法⑫）
@@ -32,7 +35,8 @@ export class FieldState {
 
   enter() {
     loadItems().then((d) => { this.itemDefs = d; });
-    this.fillPickups();
+    this.drops = new Pickups(this.game, this.map, (i, j) => this.nearCharacter(i, j));
+    this.drops.fill();
     for (const enc of this.map.encounters) {
       loadEnemy(enc.enemy).then(({ def }) => { this.enemyDefs[enc.id] = def; });
     }
@@ -45,37 +49,6 @@ export class FieldState {
     return (this.map.npcs ?? []).find((n) => n.at[0] === i && n.at[1] === j);
   }
 
-  // 落ちている物はマップごとに session.pickups[マップid] = { spots: [{ item, at }], waits: [秒] } で持つ。
-  // 置き方はマップの pickups（count 個を、table の重みで選んで空いている床へランダムに）。
-  // 拾うと waits に pickupRespawnSec を積み、0 になったら別の場所に1つ置き直す
-  get pickups() {
-    const all = this.session.pickups;
-    all[this.map.id] ??= { spots: [], waits: [] };
-    return all[this.map.id];
-  }
-
-  fillPickups() {
-    const def = this.map.pickups;
-    if (!def) return;
-    const state = this.pickups;
-    while (state.spots.length + state.waits.length < def.count && this.spawnPickup()) { /* 置けるだけ置く */ }
-  }
-
-  spawnPickup() {
-    const def = this.map.pickups;
-    const free = [];
-    this.map.floor.forEach((row, j) => [...row].forEach((c, i) => {
-      if (c !== '#' || this.pickupAt(i, j) || this.nearCharacter(i, j)) return;
-      free.push([i, j]);
-    }));
-    if (!free.length) return false;
-    const total = def.table.reduce((sum, [, w]) => sum + w, 0);
-    let r = Math.random() * total;
-    const [item] = def.table.find(([, w]) => (r -= w) < 0) ?? def.table[0];
-    this.pickups.spots.push({ item, at: free[Math.floor(Math.random() * free.length)] });
-    return true;
-  }
-
   // 主人公・NPC・敵のいるマスと、その周り8マス。拾い物は取りにくいので置かない
   nearCharacter(i, j) {
     const people = [
@@ -86,20 +59,33 @@ export class FieldState {
     return people.some(([pi, pj]) => Math.abs(pi - i) <= 1 && Math.abs(pj - j) <= 1);
   }
 
-  pickupAt(i, j) {
-    return this.pickups.spots.find((p) => p.at[0] === i && p.at[1] === j);
-  }
-
   // A で拾う。乗っているマスか、向いている1歩先のマスにある物
   pickUp(fi, fj) {
-    const p = this.pickupAt(this.p.i, this.p.j) ?? this.pickupAt(fi, fj);
+    const p = this.drops.at(this.p.i, this.p.j) ?? this.drops.at(fi, fj);
     if (!p || !this.itemDefs) return false;
     addItem(this.session, p.item);
-    const state = this.pickups;
-    state.spots.splice(state.spots.indexOf(p), 1);
-    state.waits.push(this.game.config.field.pickupRespawnSec);
+    this.drops.take(p);
     this.toast = { text: `${this.itemDefs[p.item].name}を拾った`, at: performance.now() };
     this.game.sfx.play('confirm');
+    return true;
+  }
+
+  exitAt(i, j) {
+    return (this.map.exits ?? []).find((e) => e.at[0] === i && e.at[1] === j) ?? null;
+  }
+
+  // 出口に乗ったら行き先へ。requires のフラグ（勝った戦闘など）が無ければ通れない
+  takeExit() {
+    const exit = this.exitAt(this.p.i, this.p.j);
+    if (!exit) return false;
+    if (exit.requires && !this.session.flags[exit.requires]) {
+      this.toast = { text: exit.locked, at: performance.now() };
+      this.game.sfx.play('miss');
+      return false;
+    }
+    this.game.sfx.play('confirm');
+    this.leaving = true;
+    this.game.enterMap(exit.to, exit.spawn);
     return true;
   }
 
@@ -116,6 +102,7 @@ export class FieldState {
   }
 
   update(dt, presses) {
+    if (this.leaving) return;   // 出口から次のマップを読み込んでいる間
     for (const { btn } of presses) {
       if (btn === 'pause' || btn === 'start') { this.game.pause(); return; }
       if (btn === 'a' && !this.move) {
@@ -135,7 +122,7 @@ export class FieldState {
 
     this.poisonTick(dt);
     this.regenTick(dt);
-    this.respawnTick(dt);
+    this.drops.tick(dt);
 
     if (this.move) {
       const step = dt / this.game.config.field.moveSecPerTile;
@@ -144,6 +131,7 @@ export class FieldState {
       if (this.move.t < 1) return;
       [this.p.i, this.p.j] = this.move.to;
       this.move = null;
+      if (this.takeExit()) return;
     }
 
     const btn = Object.keys(DIRS).find((b) => this.game.input.isDown(b));
@@ -173,14 +161,6 @@ export class FieldState {
       this.hurtAt = performance.now();
       this.game.sfx.play('telegraph');
     }
-  }
-
-  respawnTick(dt) {
-    const state = this.pickups;
-    state.waits = state.waits.map((w) => w - dt);
-    const due = state.waits.filter((w) => w <= 0).length;
-    state.waits = state.waits.filter((w) => w > 0);
-    for (let k = 0; k < due; k++) this.spawnPickup();
   }
 
   // チートモードでは fieldRegenSec 秒ごとに HP が戻る
@@ -233,8 +213,12 @@ export class FieldState {
       }
     }
 
-    // 拾い物は床の上なので、人より先に描く
-    for (const p of this.pickups.spots) {
+    // 出口と拾い物は床の上なので、人より先に描く
+    for (const e of this.map.exits ?? []) {
+      const pos = isoCenter(e.at[0], e.at[1], ox, oy, tile);
+      drawExit(g, pos.x, pos.y, e.label, performance.now(), e.requires && !this.session.flags[e.requires]);
+    }
+    for (const p of this.drops.spots) {
       const pos = isoCenter(p.at[0], p.at[1], ox, oy, tile);
       drawPickup(g, p.item, pos.x, pos.y, performance.now());
     }

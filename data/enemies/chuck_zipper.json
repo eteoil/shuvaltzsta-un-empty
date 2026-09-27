@@ -1,6 +1,7 @@
 {
   "id": "chuck_zipper",
   "name": "チャック＆ジッパー",
+  "boss": true,
   "tagline": "リズムに合わせてコンボをキメろ！",
   "hp": 480,
   "opening": "cz_taunt",

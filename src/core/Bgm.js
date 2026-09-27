@@ -44,13 +44,13 @@ export class Bgm {
     return this.voices.length > 0 || !!this.click;
   }
 
-  // at に startBar から鳴らし始め、loopFromBar の頭から loopToBar の頭までを繰り返す。
+  // at に startBar（省略時はデータの startBar）から鳴らし始め、loopFromBar の頭から loopToBar の頭までを繰り返す。
   // 戻り値は「1小節目の頭」が鳴る AudioContext 時刻。Beat 0 はここになる
-  play(key, at) {
+  play(key, at, startBar = null) {
     this.stop(0);
     const def = this.config.bgm[key];
     const offset = (def.offsetMs || 0) / 1000;
-    const startSec = this.barTime(def.startBar ?? 1);
+    const startSec = this.barTime(startBar ?? def.startBar ?? 1);
     const buffer = this.buffers[key];
     if (buffer) {
       this.voice(buffer, at, startSec + offset, {

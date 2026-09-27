@@ -18,10 +18,13 @@ const key = (i, j) => `${i},${j}`;
 const ceilTo = (v, step) => Math.ceil(v / step - 1e-9) * step;
 
 // 戦場を十字キーで自由に歩き、隣の敵を A で殴り、予告されたマスへの攻撃を B で避ける。
-// 歩くのは自由、A と B だけが拍で判定される（憲法③：リズム入力はこの State だけ）
+// 歩くのは自由、A と B だけが拍で判定される（憲法③：リズム入力は戦闘の State だけ。DungeonState はこれを土台にする）。
+// 敵は「一団（unit）」ごとに HP と AI（Enemy）と EventTrack を1つずつ持つ。
+// 1対1の戦闘は一団が1つ（チャック＆ジッパーは2人で1つ）、ダンジョンはスライム1匹ごとに1つ
 export class BattleState {
   name = STATES.RHYTHM_BATTLE;
   pausable = true;
+  rhythm = true;              // 戦闘中にだけ効くアイテムが使える State
 
   // giveUp：勝ったとき、リザルトの前に流す会話（無ければすぐリザルト）
   constructor(game, { def, patterns, giveUp = null, onEnd }) {
@@ -33,39 +36,33 @@ export class BattleState {
   }
 
   enter() {
-    const { config, clock, bgm } = this.game;
+    const { config, clock } = this.game;
     this.cfg = config.battle;
     this.bpb = config.beatsPerBar;
     this.beats = new BeatManager(clock, config);
-    this.tracks = { enemy: new EventTrack('enemy'), system: new EventTrack('system') };
+    this.tracks = { system: new EventTrack('system') };
     this.seq = new Sequencer(this.tracks, config);
     this.judge = new Judge(config);
     this.profile = new PlayerProfile(config.profileWindow);
-    this.enemy = new Enemy(this.def, this.patternData);
 
-    const [ps, pj] = this.cfg.player.start;
-    this.player = { i: ps, j: pj, dir: 'ne', move: null };
     // HP と毒は探索と戦闘をまたいで持ち越す（session.hero）
     this.hero = this.game.session.hero;
     // buffs：アイテムの一時効果（名前 → { until, def }）。終わりは EventTrack の system.status で知らせる
     this.buffs = {};
-    this.enemyPoisonUntil = -Infinity;
-    this.ticking = { hero: false, enemy: false, regen: false };
+    this.ticking = { hero: false, regen: false };   // 毒・自動回復の次の1回を載せてあるか（一団の毒は unit:id）
     // actors は今いるマス。plan は確定済み区間の先頭時点でいる予定のマス（範囲と移動先はこちらで決める）
     // face は向いている方向の1歩。背中や横から殴ると2倍になる
+    this.units = [];
+    this.unitMap = {};
     this.actors = {};
+    this.actorDefs = {};
     this.plan = {};
-    for (const a of this.def.actors) {
-      const at = { i: a.stage[0], j: a.stage[1] };
-      this.actors[a.id] = { ...at, face: stepToward(at, { i: ps, j: pj }), from: null, movedBeat: -1e9 };
-      this.plan[a.id] = { i: a.stage[0], j: a.stage[1] };
-    }
     this.moves = new Map();   // enemy.move の id → 移動先
     this.zones = new Map();   // enemy.attack / enemy.feint の id → 攻撃範囲
 
     this.combo = 0;
     this.maxCombo = 0;
-    this.stats = { perfect: 0, good: 0, miss: 0, damage: 0 };
+    this.stats = { perfect: 0, good: 0, miss: 0, damage: 0, kills: 0 };
     this.results = new Map();   // enemy イベントの id → 'dodge' | 'hit' | 'clear' | 'baited' | 'void'
     this.pending = [];          // 範囲内にいるまま拍を迎えた enemy.attack
     this.lastSlot = null;
@@ -82,10 +79,71 @@ export class BattleState {
     this.shakeAt = -1e9;
     this.flash = null;
     this.cam = null;
+    this.runPhase = 0;          // 走ったマス数。走りのコマ送りに使う（1マスで2コマ）
 
-    // 色替えは初回に画像を作るので、戦闘中に引っかからないよう全コマ先に済ませておく
+    this.fightBeat = (config.bgm.battle.loopFromBar - 1) * this.bpb;
+    this.setupStage();
+    this.warmPoses();
+    this.startMusic();
+    if (this.hero.poisoned) this.startHeroPoison();
+  }
+
+  // 1対1：cfg.arena の広さの床に、相手の一団を1つ置く
+  setupStage() {
+    const { cols, rows } = this.cfg.arena;
+    this.floor = Array.from({ length: rows }, () => '#'.repeat(cols));
+    const [pi, pj] = this.cfg.player.start;
+    this.player = { i: pi, j: pj, dir: 'ne', move: null };
+    this.addUnit('main', this.def, this.patternData, this.def.actors.map((a) => ({ ...a, at: a.stage })));
+  }
+
+  // 曲を予約して Beat 0 を決める。1対1は前奏から（READY → FIGHT）
+  startMusic() {
+    const { clock, bgm } = this.game;
+    this.beats.start(bgm.play('battle', clock.now + 0.1));
+    this.tracks.system.add({ beat: this.fightBeat - 2 * this.bpb, type: 'system.phase', payload: { phase: 'ready' } });
+    this.tracks.system.add({ beat: this.fightBeat, type: 'system.phase', payload: { phase: 'fight' } });
+  }
+
+  // actors：[{ id, name, sprite, palette, at: [i, j] }]。id は戦闘の中で重ならない名前にする
+  addUnit(id, def, patterns, actors) {
+    const track = new EventTrack(`enemy:${id}`);
+    const unit = { id, def, enemy: new Enemy(def, patterns), track, actorIds: [], poisonUntil: -Infinity, dead: false };
+    const me = { i: this.player.i, j: this.player.j };
+    for (const a of actors) {
+      const at = { i: a.at[0], j: a.at[1] };
+      this.actorDefs[a.id] = a;
+      this.actors[a.id] = { ...at, face: stepToward(at, me), from: null, movedBeat: -1e9, unit };
+      this.plan[a.id] = { ...at };
+      unit.actorIds.push(a.id);
+    }
+    this.units.push(unit);
+    this.unitMap[id] = unit;
+    this.tracks[track.name] = track;
+    return unit;
+  }
+
+  unitOf(actorId) {
+    return this.actors[actorId]?.unit ?? null;
+  }
+
+  get liveTracks() {
+    return this.units.filter((u) => !u.dead).map((u) => u.track);
+  }
+
+  // 敵のイベントのうち from〜to 拍のもの（生きている一団すべて）
+  enemyEvents(from, to) {
+    return this.liveTracks.flatMap((t) => t.between(from, to));
+  }
+
+  // 色替えは初回に画像を作るので、戦闘中に引っかからないよう全コマ先に済ませておく
+  warmPoses() {
     const { assets } = this.game;
-    for (const a of [...this.def.actors, { sprite: 'player', palette: null }]) {
+    const seen = new Set();
+    for (const a of [...Object.values(this.actorDefs), { sprite: 'player', palette: null }]) {
+      const k = `${a.sprite}/${a.palette?.id ?? ''}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
       const sd = assets.def(a.sprite);
       for (const dir of Object.keys(sd.frames)) {
         for (const anim of [null, ...Object.keys(sd.anims ?? {})]) {
@@ -96,20 +154,12 @@ export class BattleState {
         }
       }
     }
-    this.runPhase = 0;          // 走ったマス数。走りのコマ送りに使う（1マスで2コマ）
-
-    this.fightBeat = (config.bgm.battle.loopFromBar - 1) * this.bpb;
-    this.beats.start(bgm.play('battle', clock.now + 0.1));
-    this.tracks.system.add({ beat: this.fightBeat - 2 * this.bpb, type: 'system.phase', payload: { phase: 'ready' } });
-    this.tracks.system.add({ beat: this.fightBeat, type: 'system.phase', payload: { phase: 'fight' } });
-    if (this.hero.poisoned) this.startHeroPoison();
   }
 
   // ---------------------------------------------------------------- 盤面
 
   inArena(i, j) {
-    const { cols, rows } = this.cfg.arena;
-    return i >= 0 && j >= 0 && i < cols && j < rows;
+    return this.floor[j]?.[i] === '#';
   }
 
   // 歩いている途中は、半分を過ぎたら次のマスにいることにする
@@ -123,8 +173,9 @@ export class BattleState {
     return Object.keys(this.actors).find((id) => this.actors[id].i === i && this.actors[id].j === j) ?? null;
   }
 
-  nearestDistance() {
-    return Math.min(...Object.values(this.plan).map((p) => distance(p, this.tile)));
+  // 一団のうち、プレイヤーにいちばん近い者までの距離（確定済み区間の先頭時点の位置で）
+  unitDistance(unit) {
+    return Math.min(...unit.actorIds.map((id) => distance(this.plan[id], this.tile)));
   }
 
   walk(dt) {
@@ -137,6 +188,7 @@ export class BattleState {
       if (p.move.t < 1) return;
       [p.i, p.j] = p.move.to;
       p.move = null;
+      this.onStep();
     }
     const btn = Object.keys(DIRS).find((b) => this.game.input.isDown(b));
     if (!btn) return;
@@ -146,6 +198,9 @@ export class BattleState {
     const nj = p.j + d.dj;
     if (this.inArena(ni, nj) && !this.actorAt(ni, nj)) p.move = { from: [p.i, p.j], to: [ni, nj], t: 0 };
   }
+
+  // 1マス歩き終えたとき（ダンジョンの出口など）
+  onStep() {}
 
   // ---------------------------------------------------------------- 進行
 
@@ -162,18 +217,33 @@ export class BattleState {
   }
 
   refill(beat) {
-    const track = this.tracks.enemy;
-    while (this.seq.needsRefill(track, beat)) {
-      let start = Math.max(track.endBeat, this.fightBeat);
-      if (start < track.lockedUntil) start = ceilTo(track.lockedUntil, this.bpb);
-      const poisoned = this.enemyPoisonUntil > beat;
-      track.addPattern(this.enemy.choosePattern(this.profile, { distance: this.nearestDistance(), poisoned }), start);
+    for (const unit of this.units) {
+      if (unit.dead) continue;
+      const { track } = unit;
+      while (this.seq.needsRefill(track, beat)) {
+        let start = Math.max(track.endBeat, this.fightBeat);
+        if (start < track.lockedUntil) start = ceilTo(track.lockedUntil, this.bpb);
+        const poisoned = unit.poisonUntil > beat;
+        const pattern = unit.enemy.choosePattern(this.profile, { distance: this.unitDistance(unit), poisoned });
+        track.addPattern(this.bindPattern(pattern, unit), start);
+      }
     }
+  }
+
+  // Pattern の actor をこの一団の役者に直し、一団の id を添える。
+  // actor を省くか "self" と書くと一団の1人目（スライムのように1匹で1団の敵は、これで同じ Pattern を使い回せる）
+  bindPattern(pattern, unit) {
+    const actorOf = (name) => (unit.actorIds.includes(name) ? name : unit.actorIds[0]);
+    return {
+      ...pattern,
+      events: pattern.events.map((e) => ({ ...e, payload: { ...e.payload, actor: actorOf(e.payload?.actor), unit: unit.id } })),
+    };
   }
 
   // 確定済み区間に入った時点で、移動先と攻撃範囲を決める。以後は変えない（憲法⑮）
   prepare(ev) {
     const p = ev.payload;
+    if (p.unit && this.unitMap[p.unit].dead) return;
     const at = this.beats.beatToTime(ev.beat);
     switch (ev.type) {
       case 'bgm.outro':
@@ -184,7 +254,7 @@ export class BattleState {
         break;
       case 'enemy.move': {
         const from = this.plan[p.actor];
-        const to = this.planStep(p.actor, from, p.away);
+        const to = p.wander ? this.wanderStep(p.actor, from) : this.planStep(p.actor, from, p.away);
         this.moves.set(ev.id, to);
         this.plan[p.actor] = to;
         break;
@@ -227,8 +297,27 @@ export class BattleState {
     return { ...from };
   }
 
+  // 行き先の決まっていない1歩（うろつき）。塞がっていればその場
+  wanderStep(id, from) {
+    const me = this.tile;
+    const dirs = Object.values(DIRS).filter(({ di, dj }) => {
+      const i = from.i + di;
+      const j = from.j + dj;
+      return this.inArena(i, j) && !(i === me.i && j === me.j)
+        && !Object.entries(this.plan).some(([other, q]) => other !== id && q.i === i && q.j === j);
+    });
+    if (!dirs.length) return { ...from };
+    const d = dirs[Math.floor(Math.random() * dirs.length)];
+    return { i: from.i + d.di, j: from.j + d.dj };
+  }
+
   fire(ev) {
     const p = ev.payload;
+    // 倒れた一団のイベントは何も起こさない
+    if (p.unit && this.unitMap[p.unit].dead) {
+      this.results.set(ev.id, 'void');
+      return;
+    }
     switch (ev.type) {
       case 'system.phase':
         if (p.phase === 'fight') this.phase = 'fight';
@@ -243,7 +332,6 @@ export class BattleState {
         }
         break;
       case 'enemy.move': {
-        if (this.enemy.down) break;
         const to = this.moves.get(ev.id);
         const a = this.actors[p.actor];
         const me = this.tile;
@@ -321,7 +409,7 @@ export class BattleState {
     const me = this.tile;
     const reach = this.buffs.needle?.def.reach ?? 1;
     const ids = Object.keys(this.actors)
-      .filter((id) => distance(this.actors[id], me) <= reach)
+      .filter((id) => !this.actors[id].unit.dead && distance(this.actors[id], me) <= reach)
       .sort((x, y) => distance(this.actors[x], me) - distance(this.actors[y], me));
     const facing = ids.find((id) => faceToward(me, this.actors[id]) === this.player.dir);
     return facing ?? ids[0] ?? null;
@@ -350,23 +438,29 @@ export class BattleState {
       * (this.spanAt('enemy.open', slot, target) ? c.openMultiplier : 1)
       * (back ? c.backMultiplier : 1)
       * attackMultiplier(this.game));
-    this.enemy.hp = Math.max(0, this.enemy.hp - dmg);
+    const unit = this.unitOf(target);
+    unit.enemy.hp = Math.max(0, unit.enemy.hp - dmg);
     this.success(grade, 'attack', b);
     this.popup(back ? `BACK! ${dmg}` : String(dmg), back ? COLORS.perfect : COLORS.ink, target);
     this.anim(target, 'hurt', b);
-    if (this.buffs.needle) this.poisonEnemy(b, this.buffs.needle.def.poisonBeats);
-    if (this.enemy.down) {
-      this.game.sfx.play('ko');
-      this.decide('win');
-    }
+    if (this.buffs.needle) this.poisonEnemy(unit, b, this.buffs.needle.def.poisonBeats);
+    if (unit.enemy.down) this.unitDown(unit, b);
     return undefined;
+  }
+
+  // 一団を倒した。全部倒したら勝ち
+  unitDown(unit) {
+    unit.dead = true;
+    this.stats.kills++;
+    this.game.sfx.play('ko');
+    if (this.units.every((u) => u.dead)) this.decide('win');
   }
 
   // 拍の近くにある攻撃のうち、自分が範囲に入っているものを避ける
   dodge(t, b) {
     this.anim('player', 'dodge', b);
     const here = key(this.tile.i, this.tile.j);
-    const near = this.tracks.enemy.between(b - 2, b + 2)
+    const near = this.enemyEvents(b - 2, b + 2)
       .filter((e) => THREATS.has(e.type) && !this.results.has(e.id) && this.zones.get(e.id)?.dodgeable
         && this.judge.grade(this.beats.deltaMs(t, e.beat)))
       .sort((x, y) => Math.abs(this.beats.deltaMs(t, x.beat)) - Math.abs(this.beats.deltaMs(t, y.beat)));
@@ -384,9 +478,10 @@ export class BattleState {
 
   // enemy.guard / enemy.open のように長さを持つイベントの区間内か
   spanAt(type, slot, actor) {
-    return this.tracks.enemy.between(slot - 16, slot + 1)
-      .some((e) => e.type === type && (!actor || !e.payload.actor || e.payload.actor === actor)
-        && e.beat <= slot && slot < e.beat + (e.payload.length ?? 1));
+    const tracks = actor ? [this.unitOf(actor)?.track].filter(Boolean) : this.liveTracks;
+    return tracks.some((t) => t.between(slot - 16, slot + 1)
+      .some((e) => e.type === type && (!actor || e.payload.actor === actor)
+        && e.beat <= slot && slot < e.beat + (e.payload.length ?? 1)));
   }
 
   success(grade, kind, b) {
@@ -464,11 +559,11 @@ export class BattleState {
     this.scheduleTick('hero');
   }
 
-  poisonEnemy(beat, beats) {
-    const first = this.enemyPoisonUntil <= beat;
-    this.enemyPoisonUntil = Math.max(this.enemyPoisonUntil, beat + beats);
-    if (first) this.popup('毒！', COLORS.unguard, this.def.actors[0].id);
-    this.scheduleTick('enemy');
+  poisonEnemy(unit, beat, beats) {
+    const first = unit.poisonUntil <= beat;
+    unit.poisonUntil = Math.max(unit.poisonUntil, beat + beats);
+    if (first) this.popup('毒！', COLORS.unguard, unit.actorIds[0]);
+    this.scheduleTick(`unit:${unit.id}`);
   }
 
   // 毒のダメージ（とチートモードの自動回復）は一定拍ごとの小節頭。次の1回だけを載せ、発火したらまた次を載せる
@@ -500,11 +595,12 @@ export class BattleState {
       regen(this.game, cheat.battleRegen);
       this.scheduleTick('regen', ev.beat + cheat.battleRegenBeats);
     }
-    if (p.target === 'enemy' && this.enemyPoisonUntil > ev.beat) {
-      const n = Math.min(Math.round(poison.enemyDamage * attackMultiplier(this.game)), this.enemy.hp - 1);
-      this.enemy.hp -= n;
-      if (n) this.popup(`毒 ${n}`, COLORS.unguard, this.def.actors[0].id);
-      this.scheduleTick('enemy', next);
+    const unit = p.target.startsWith('unit:') ? this.unitMap[p.target.slice(5)] : null;
+    if (unit && !unit.dead && unit.poisonUntil > ev.beat) {
+      const n = Math.min(Math.round(poison.enemyDamage * attackMultiplier(this.game)), unit.enemy.hp - 1);
+      unit.enemy.hp -= n;
+      if (n) this.popup(`毒 ${n}`, COLORS.unguard, unit.actorIds[0]);
+      this.scheduleTick(p.target, next);
     }
   }
 
@@ -530,13 +626,13 @@ export class BattleState {
     if (this.leaving) return;
     this.leaving = true;
     this.game.bgm.stop(0.6);
-    this.onEnd(this.outcome, this.score);
+    this.onEnd(this.outcome, this.score, this);
   }
 
   // ---------------------------------------------------------------- 演出
 
   anim(id, kind, beat) {
-    this.anims[id ?? this.def.actors[0].id] = { kind, beat };
+    this.anims[id ?? this.units[0].actorIds[0]] = { kind, beat };
   }
 
   popup(label, color, at = 'player') {
@@ -604,13 +700,10 @@ export class BattleState {
     const floorDef = assets.def('floor');
     const tile = floorDef.tile;
 
-    // カメラはプレイヤー寄りに、敵との間を見る
     const pp = this.playerPos();
     const ids = Object.keys(this.actors);
     const ap = Object.fromEntries(ids.map((id) => [id, this.actorPos(this.actors[id], beat)]));
-    const ci = ids.reduce((s, id) => s + ap[id].i, 0) / ids.length;
-    const cj = ids.reduce((s, id) => s + ap[id].j, 0) / ids.length;
-    const target = { i: pp.i * 0.65 + ci * 0.35, j: pp.j * 0.65 + cj * 0.35 };
+    const target = this.cameraTarget(pp, ap);
     this.cam = this.cam ? { i: this.cam.i + (target.i - this.cam.i) * 0.12, j: this.cam.j + (target.j - this.cam.j) * 0.12 } : target;
     const ox = Math.round(W / 2 - (this.cam.i - this.cam.j) * tile[0] / 2);
     const oy = Math.round(196 - tile[1] / 2 - (this.cam.i + this.cam.j) * tile[1] / 2);
@@ -641,15 +734,25 @@ export class BattleState {
     this.drawOverlay(g, beat, now);
   }
 
+  // カメラはプレイヤー寄りに、敵との間を見る
+  cameraTarget(pp, ap) {
+    const ids = Object.keys(ap);
+    if (!ids.length) return pp;
+    const ci = ids.reduce((s, id) => s + ap[id].i, 0) / ids.length;
+    const cj = ids.reduce((s, id) => s + ap[id].j, 0) / ids.length;
+    return { i: pp.i * 0.65 + ci * 0.35, j: pp.j * 0.65 + cj * 0.35 };
+  }
+
   drawArena(g, ox, oy, tile, floorDef) {
     const W = this.game.config.screen.width;
     const H = this.game.config.screen.height;
     const img = this.game.assets.get('floor', 'default');
-    const { cols, rows } = this.cfg.arena;
+    const rows = this.floor.length;
+    const cols = this.floor[0].length;
     for (let s = 0; s <= cols + rows - 2; s++) {
       for (let i = 0; i < cols; i++) {
         const j = s - i;
-        if (j < 0 || j >= rows) continue;
+        if (j < 0 || j >= rows || !this.inArena(i, j)) continue;
         const p = isoTop(i, j, ox, oy, tile);
         if (p.x < -tile[0] || p.x > W + tile[0] || p.y > H || p.y < -floorDef.size[1]) continue;
         sprite(g, img, floorDef, p.x, p.y);
@@ -690,18 +793,20 @@ export class BattleState {
   drawPeople(g, beat, ox, oy, tile, pp, ap) {
     const { assets } = this.game;
     const people = [{ id: 'player', sprite: 'player', frame: this.player.dir, palette: null, i: pp.i, j: pp.j, down: this.hero.hp <= 0 }];
-    for (const a of this.def.actors) {
-      const pos = ap[a.id];
-      people.push({ id: a.id, sprite: a.sprite, frame: frameOf(this.actors[a.id].face), palette: a.palette, i: pos.i, j: pos.j, down: this.enemy.down });
+    for (const [id, a] of Object.entries(this.actors)) {
+      const d = this.actorDefs[id];
+      const pos = ap[id];
+      people.push({ id, sprite: d.sprite, frame: frameOf(a.face), palette: d.palette, i: pos.i, j: pos.j, down: a.unit.dead, unit: a.unit });
     }
     const screen = (c) => isoCenter(c.i, c.j, ox, oy, tile);
     const me = screen(people[0]);
+    // プレイヤーは一番近い敵のほうへ身を乗り出す
+    const nearest = people.slice(1).sort((x, y) => Math.hypot(x.i - pp.i, x.j - pp.j) - Math.hypot(y.i - pp.i, y.j - pp.j))[0];
     people.sort((a, b) => a.i + a.j - (b.i + b.j));
-    const slot = Math.floor(beat);
     for (const c of people) {
       const def = assets.def(c.sprite);
       const pos = screen(c);
-      const other = c.id === 'player' ? screen(people.find((x) => x.id !== 'player')) : me;
+      const other = c.id === 'player' ? (nearest ? screen(nearest) : pos) : me;
       const len = Math.hypot(other.x - pos.x, other.y - pos.y) || 1;
       const toward = { x: (other.x - pos.x) / len, y: (other.y - pos.y) / len };
       const o = this.offsetOf(c.id, beat, toward);
@@ -714,14 +819,18 @@ export class BattleState {
       const pose = assets.pose(c.sprite, c.frame, anim, n, o.white ? WHITE : c.palette);
       sprite(g, pose.img, pose.def, pos.x + o.dx, pos.y + o.dy + (c.down ? 6 : 0), alpha);
       const top = pos.y - def.anchor[1] - 4;
-      if (c.id !== 'player' && !c.down) {
-        if (this.anims[c.id]?.kind === 'windup' && beat - this.anims[c.id].beat < 1) text(g, '!', pos.x, top - 14, { color: COLORS.brass, align: 'center' });
-        if (this.spanAt('enemy.guard', slot, c.id)) text(g, 'GUARD', pos.x, top, { size: 12, color: COLORS.guard, align: 'center' });
-        if (this.spanAt('enemy.open', slot, c.id)) text(g, 'CHANCE', pos.x, top, { size: 12, color: COLORS.open, align: 'center' });
-      }
+      if (c.id !== 'player' && !c.down) this.drawActorMarks(g, c, pos, top, beat);
       c.screen = { x: pos.x, y: pos.y - def.anchor[1] };
     }
     this.lastPeople = people;
+  }
+
+  // 敵の頭上の「!」「GUARD」「CHANCE」
+  drawActorMarks(g, c, pos, top, beat) {
+    const slot = Math.floor(beat);
+    if (this.anims[c.id]?.kind === 'windup' && beat - this.anims[c.id].beat < 1) text(g, '!', pos.x, top - 14, { color: COLORS.brass, align: 'center' });
+    if (this.spanAt('enemy.guard', slot, c.id)) text(g, 'GUARD', pos.x, top, { size: 12, color: COLORS.guard, align: 'center' });
+    if (this.spanAt('enemy.open', slot, c.id)) text(g, 'CHANCE', pos.x, top, { size: 12, color: COLORS.open, align: 'center' });
   }
 
   drawPopups(g, now) {
@@ -739,13 +848,25 @@ export class BattleState {
     }
   }
 
+  // 上の帯に HP を出す一団（1対1は相手、ダンジョンは一番近い敵）
+  focusUnit() {
+    return this.units[0];
+  }
+
+  hudTitle(unit) {
+    return unit.def.name;
+  }
+
   drawHud(g, beat) {
     const W = this.game.config.screen.width;
     g.fillStyle = 'rgba(11,12,24,0.8)';
     g.fillRect(0, 0, W, 26);
-    text(g, this.def.name, 8, 5);
-    gauge(g, 150, 9, 110, 9, this.enemy.hp / this.enemy.maxHp, COLORS.rose);
-    if (this.enemyPoisonUntil > beat) text(g, '毒', 150, 26, { size: 12, color: COLORS.unguard });
+    const unit = this.focusUnit();
+    text(g, this.hudTitle(unit), 8, 5);
+    if (unit) {
+      gauge(g, 150, 9, 110, 9, unit.enemy.hp / unit.enemy.maxHp, COLORS.rose);
+      if (unit.poisonUntil > beat) text(g, '毒', 150, 26, { size: 12, color: COLORS.unguard });
+    }
     if (this.hero.poisoned) text(g, '毒', 344, 26, { size: 12, color: COLORS.unguard });
     const names = { perfect: 'コーヒー', needle: '毒針' };
     Object.entries(this.buffs).forEach(([k, v], i) => {
@@ -785,7 +906,7 @@ export class BattleState {
       g.fillRect(x, y + (head ? 3 : 12), 1, head ? h - 6 : h - 24);
     }
     const here = key(this.tile.i, this.tile.j);
-    for (const e of this.tracks.enemy.between(beat - 1, beat + vis + 1)) {
+    for (const e of this.enemyEvents(beat - 1, beat + vis + 1)) {
       if (!THREATS.has(e.type)) continue;
       const x = xOf(e.beat);
       if (x < judgeX - 16 || x > W + 10) continue;
@@ -806,6 +927,14 @@ export class BattleState {
     diamond(g, judgeX, mid, 10 + onBeat * 2, null, onBeat > 0.3 ? COLORS.ink : COLORS.muted);
   }
 
+  resultTitle() {
+    return this.outcome === 'win' ? { text: 'WIN!', color: COLORS.perfect } : { text: 'LOSE…', color: COLORS.rose };
+  }
+
+  resultRows() {
+    return [['PERFECT', this.stats.perfect], ['GOOD', this.stats.good], ['MISS', this.stats.miss], ['MAX COMBO', this.maxCombo]];
+  }
+
   drawOverlay(g, beat, now) {
     const W = this.game.config.screen.width;
     const cx = W / 2;
@@ -824,19 +953,20 @@ export class BattleState {
     }
     if (this.banner) {
       const age = beat - this.banner.beat;
-      const fight = this.banner.text === 'FIGHT!';
+      const fight = this.banner.text === 'FIGHT!' || this.banner.steady;
       if (age >= 0 && age < (fight ? 3 : 8) && (fight || Math.floor(age * 2) % 2 === 0)) {
         text(g, this.banner.text, cx, 104, { size: 32, color: fight ? COLORS.perfect : COLORS.ink, align: 'center' });
       }
     }
     if (this.phase === 'result') {
-      const win = this.outcome === 'win';
+      const title = this.resultTitle();
       panel(g, 110, 34, W - 220, 232, { alpha: 0.95 });
-      text(g, win ? 'WIN!' : 'LOSE…', cx, 44, { size: 32, color: win ? COLORS.perfect : COLORS.rose, align: 'center' });
-      const rows = [['PERFECT', this.stats.perfect], ['GOOD', this.stats.good], ['MISS', this.stats.miss], ['MAX COMBO', this.maxCombo]];
+      text(g, title.text, cx, 44, { size: 32, color: title.color, align: 'center' });
+      const rows = this.resultRows();
+      const step = Math.min(22, 88 / rows.length);
       rows.forEach(([k, v], i) => {
-        text(g, k, 138, 88 + i * 22, { color: COLORS.muted });
-        text(g, String(v), W - 138, 88 + i * 22, { align: 'right' });
+        text(g, k, 138, 88 + i * step, { color: COLORS.muted });
+        text(g, String(v), W - 138, 88 + i * step, { align: 'right' });
       });
       g.fillStyle = COLORS.line;
       g.fillRect(134, 180, W - 268, 1);

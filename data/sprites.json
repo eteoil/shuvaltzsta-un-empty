@@ -52,5 +52,11 @@
     "frames": {
       "default": "assets/img/title.png"
     }
+  },
+  "slime": {
+    "size": [64, 64],
+    "anchor": [32, 56],
+    "placeholder": "slime",
+    "frames": { "ne": null, "nw": null, "se": null, "sw": null }
   }
 }

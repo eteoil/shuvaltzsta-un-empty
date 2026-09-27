@@ -1,5 +1,6 @@
 {
   "id": "slum_01",
+  "kind": "town",
   "name": "スラム（仮）",
   "floor": [
     "....####....",
@@ -13,15 +14,14 @@
     "...######..."
   ],
   "start": [6, 7, "ne"],
+  "exits": [
+    { "at": [11, 5], "to": "forest_01", "spawn": [3, 11, "ne"], "label": "森", "requires": "ch01_chuck_zipper", "locked": "この先は森だ。今はまだ通れない（仮）" }
+  ],
   "npcs": [
     { "id": "kou", "at": [1, 5], "dir": "se" },
     { "id": "shalvis", "at": [10, 3], "dir": "sw" },
     { "id": "jacuzzi", "at": [9, 7], "dir": "sw" }
   ],
-  "pickups": {
-    "count": 5,
-    "table": [["wild_berry", 5], ["mushroom", 3], ["antidote", 2]]
-  },
   "encounters": [
     {
       "id": "ch01_chuck_zipper",

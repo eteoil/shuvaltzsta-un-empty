@@ -67,7 +67,7 @@ export class MenuState {
   }
 
   get battle() {
-    return this.game.states.stack.find((s) => s.name === STATES.RHYTHM_BATTLE) ?? null;
+    return this.game.states.stack.find((s) => s.rhythm) ?? null;
   }
 
   owned() {

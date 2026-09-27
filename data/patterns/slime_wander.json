@@ -1,0 +1,8 @@
+{
+  "id": "slime_wander",
+  "length": 4,
+  "tags": ["wander"],
+  "events": [
+    {"offset": 0, "type": "enemy.move", "payload": {"wander": true}}
+  ]
+}
