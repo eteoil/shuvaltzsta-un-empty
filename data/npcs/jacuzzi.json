@@ -10,7 +10,7 @@
       "label": "買い物",
       "shop": {
         "prompt": "なにが欲しいんだイ？",
-        "items": [["ether_s", 1000], ["ether_l", 3000], ["poison_needle", 2000]],
+        "items": [["ether_s", 1000], ["ether_l", 3000], ["poison_needle", 2000], ["antidote", 500]],
         "thanks": "まいどあリ〜",
         "poor": "お金が足りないヨ（仮）"
       }
