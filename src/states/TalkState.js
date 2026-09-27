@@ -149,7 +149,7 @@ export class TalkState {
     cure(s.hero);
     s.day += 1;
     this.game.sfx.play('heal');
-    this.say(r.say.replace('{date}', dateText(s.day)));
+    this.say(r.say.replace('{date}', dateText(this.game.calendar, s.day)));
   }
 
   // バイトは1日1回（ベッドで休むと次の日）

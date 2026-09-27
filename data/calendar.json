@@ -1,0 +1,15 @@
+{
+  "seasons": [
+    { "name": "風剣季", "reading": "ふうけんき", "common": "春" },
+    { "name": "火錫季", "reading": "かしゃくき", "common": "夏" },
+    { "name": "地符季", "reading": "じふき", "common": "秋" },
+    { "name": "水杯季", "reading": "すいはいき", "common": "冬" }
+  ],
+  "months": [
+    { "name": "風竜", "days": 23 }, { "name": "風虎", "days": 23 }, { "name": "風鳥", "days": 23 }, { "name": "風亀", "days": 23 },
+    { "name": "火竜", "days": 23 }, { "name": "火虎", "days": 23 }, { "name": "火鳥", "days": 23 }, { "name": "火亀", "days": 23 },
+    { "name": "地竜", "days": 23 }, { "name": "地虎", "days": 23 }, { "name": "地鳥", "days": 23 }, { "name": "地亀", "days": 23 },
+    { "name": "水竜", "days": 23 }, { "name": "水虎", "days": 23 }, { "name": "水鳥", "days": 23 }, { "name": "水亀", "days": 20 }
+  ],
+  "start": { "month": 1, "day": 1 }
+}

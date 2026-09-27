@@ -16,6 +16,7 @@ import { TalkState } from './states/TalkState.js';
 import { loadOptions } from './core/Options.js';
 import { cure } from './core/Hero.js';
 import { maxHpOf, setTotalScore } from './core/Level.js';
+import { loadCalendar } from './core/Calendar.js';
 
 const wait = (ms) => new Promise((ok) => { setTimeout(ok, ms); });
 
@@ -41,7 +42,8 @@ export class Game {
 
   async load() {
     const font = document.fonts ? Promise.race([document.fonts.load(`16px ${FONT}`), wait(3000)]) : null;
-    await Promise.all([font, this.assets.loadSprites('data/sprites.json'), this.bgm.load('battle')]);
+    const calendar = loadCalendar().then((c) => { this.calendar = c; });
+    await Promise.all([font, calendar, this.assets.loadSprites('data/sprites.json'), this.bgm.load('battle')]);
   }
 
   start() {

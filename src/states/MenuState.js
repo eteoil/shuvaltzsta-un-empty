@@ -136,7 +136,7 @@ export class MenuState {
     if (!s) return;
     const tags = [this.game.options.cheat && 'CHEAT', this.game.dev && 'DEV'].filter(Boolean);
     panel(g, W - 176, 8, 168, 80);
-    text(g, dateText(s.day), W - 164, 64, { size: 12, color: COLORS.muted });
+    text(g, dateText(this.game.calendar, s.day), W - 164, 64, { size: 12, color: COLORS.muted });
     if (tags.length) text(g, tags.join(' '), W - 18, 64, { size: 12, align: 'right', color: COLORS.brass });
     text(g, `Lv ${this.level}`, W - 164, 48, { color: COLORS.ink });
     text(g, 'HP', W - 164, 18, { color: COLORS.signal });
