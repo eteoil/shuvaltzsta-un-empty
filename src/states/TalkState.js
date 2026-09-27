@@ -2,6 +2,7 @@ import { STATES } from '../core/constants.js';
 import { COLORS, text, panel, wrap } from '../core/draw.js';
 import { loadItems, money, count, addItem, takeItem } from '../core/Items.js';
 import { cure } from '../core/Hero.js';
+import { dateText } from '../core/Calendar.js';
 import { CafeJobState } from './CafeJobState.js';
 import { ShopState } from './ShopState.js';
 
@@ -148,7 +149,7 @@ export class TalkState {
     cure(s.hero);
     s.day += 1;
     this.game.sfx.play('heal');
-    this.say(r.say.replace('{day}', s.day));
+    this.say(r.say.replace('{date}', dateText(s.day)));
   }
 
   // バイトは1日1回（ベッドで休むと次の日）
