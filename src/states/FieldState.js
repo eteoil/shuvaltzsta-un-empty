@@ -65,8 +65,7 @@ export class FieldState {
     const def = this.map.pickups;
     const free = [];
     this.map.floor.forEach((row, j) => [...row].forEach((c, i) => {
-      if (c !== '#' || this.npcAt(i, j) || this.encounterAt(i, j) || this.pickupAt(i, j)) return;
-      if (i === this.p.i && j === this.p.j) return;
+      if (c !== '#' || this.pickupAt(i, j) || this.nearCharacter(i, j)) return;
       free.push([i, j]);
     }));
     if (!free.length) return false;
@@ -75,6 +74,16 @@ export class FieldState {
     const [item] = def.table.find(([, w]) => (r -= w) < 0) ?? def.table[0];
     this.pickups.spots.push({ item, at: free[Math.floor(Math.random() * free.length)] });
     return true;
+  }
+
+  // 主人公・NPC・敵のいるマスと、その周り8マス。拾い物は取りにくいので置かない
+  nearCharacter(i, j) {
+    const people = [
+      [this.p.i, this.p.j],
+      ...(this.map.npcs ?? []).map((n) => n.at),
+      ...this.map.encounters.flatMap((e) => e.actors.map((x) => x.at)),
+    ];
+    return people.some(([pi, pj]) => Math.abs(pi - i) <= 1 && Math.abs(pj - j) <= 1);
   }
 
   pickupAt(i, j) {

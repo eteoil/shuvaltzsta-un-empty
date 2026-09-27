@@ -14,6 +14,7 @@ import { MenuState } from './states/MenuState.js';
 import { TalkState } from './states/TalkState.js';
 import { loadOptions } from './core/Options.js';
 import { cure } from './core/Hero.js';
+import { maxHpOf, setTotalScore } from './core/Level.js';
 
 const wait = (ms) => new Promise((ok) => { setTimeout(ok, ms); });
 
@@ -31,6 +32,8 @@ export class Game {
     this.states = new StateMachine();
     this.session = null;
     this.options = loadOptions();
+    // 開発モード：URL に ?dev を付けたときだけ。ポーズメニューでレベルを変えられる
+    this.dev = new URLSearchParams(location.search).has('dev');
     this.lastT = 0;
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.pause(); });
   }
@@ -64,9 +67,9 @@ export class Game {
   async newGame() {
     const map = await loadMap(this.config.startMap);
     const [i, j, dir] = map.start;
-    // totalScore はプロットの「総スコア」（エンディングの分岐に使う）。戦闘ごとのスコアを足していく。
+    // totalScore はプロットの「総スコア」。戦闘ごとのスコアを足していき、ここからレベルが決まる（core/Level.js）。
     // hero の HP と毒は探索と戦闘をまたいで持ち越す
-    const maxHp = this.config.battle.player.hp;
+    const maxHp = maxHpOf(this.config, 1);
     const start = this.config.start;
     this.session = {
       map,
@@ -109,7 +112,7 @@ export class Game {
   // 負けたらマップの開始地点から、HP を満タンにしてやり直し（仮。セーブポイントができたらそこへ）
   async afterBattle(enc, outcome, score) {
     const s = this.session;
-    s.totalScore += score;
+    const { from, to } = setTotalScore(this, s.totalScore + score);
     if (outcome === 'win') {
       s.flags[enc.id] = true;
     } else {
@@ -120,6 +123,13 @@ export class Game {
     }
     const dialog = await loadDialog(outcome === 'win' ? enc.dialogWin : enc.dialogLose);
     this.states.change(new FieldState(this));
-    this.states.push(new DialogState(this, dialog));
+    this.states.push(new DialogState(this, dialog, () => { if (to > from) this.levelUp(to); }));
+  }
+
+  levelUp(level) {
+    this.sfx.play('levelup');
+    this.states.push(new DialogState(this, {
+      lines: [{ text: `レベルが ${level} に上がった！` }, { text: `最大HPが ${this.session.hero.maxHp} になった` }],
+    }));
   }
 }

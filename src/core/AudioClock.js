@@ -28,9 +28,16 @@ export class AudioClock {
   }
 
   // ブラウザは操作の中でしか音を鳴らせないので、入力のたびに呼ぶ
+  // iOS では resume だけでは足りないことがあるので、操作の中で無音を一瞬鳴らしておく
   unlock() {
     if (!this.paused && this.ctx.state !== 'running') this.ctx.resume();
-    if (this.ui.state !== 'running') this.ui.resume();
+    if (this.ui.state !== 'running') {
+      this.ui.resume();
+      const src = this.ui.createBufferSource();
+      src.buffer = this.ui.createBuffer(1, 1, this.ui.sampleRate);
+      src.connect(this.ui.destination);
+      src.start(0);
+    }
   }
 
   suspend() {

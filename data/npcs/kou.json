@@ -14,6 +14,7 @@
         "results": { "edible_mushroom": "これは食用キノコだね", "poison_mushroom": "これは毒キノコだね" },
         "none": "鑑定するものがないみたいだね（仮）"
       }
-    }
+    },
+    { "label": "なんでもない", "say": "話しかけてみただけ～ってやつ？", "cancel": true }
   ]
 }

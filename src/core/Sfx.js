@@ -80,6 +80,9 @@ export class Sfx {
       case 'heal':
         [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.09, { type: 'triangle', vol: 0.4, when, delay: i * 0.06 }));
         return undefined;
+      case 'levelup':
+        [523, 659, 784, 1047, 784, 1047].forEach((f, i) => this.tone(f, i === 5 ? 0.3 : 0.08, { vol: 0.35, when, delay: i * 0.08 }));
+        return undefined;
       case 'poison':
         this.tone(330, 0.3, { type: 'sawtooth', vol: 0.25, when, slide: 110 });
         return this.tone(349, 0.3, { type: 'square', vol: 0.15, when, delay: 0.08, slide: 98 });

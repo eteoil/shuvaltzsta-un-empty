@@ -21,6 +21,12 @@
   "status": {
     "poison": { "tickBeats": 8, "heroDamage": 3, "enemyDamage": 8, "fieldTickSec": 2, "fieldDamage": 1 }
   },
+  "level": {
+    "max": 100,
+    "scorePerLevel": 1000,
+    "hpPerLevel": 5,
+    "badEndAvoidLevel": 50
+  },
   "cheat": {
     "poisonTicks": 3,
     "fieldRegenSec": 1,

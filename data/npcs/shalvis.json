@@ -17,11 +17,11 @@
     },
     {
       "label": "野イチゴ",
-      "if": { "has": "wild_berry", "count": 6 },
+      "if": { "has": "wild_berry", "count": 10 },
       "trade": {
-        "prompt": "野イチゴが6個あるなら、ジャムにしてやろうか？",
+        "prompt": "野イチゴが10個あるなら、ジャムにしてやろうか？",
         "give": "wild_berry",
-        "giveCount": 6,
+        "giveCount": 10,
         "price": 0,
         "get": "wild_berry_jam",
         "yes": "ほら、野イチゴジャムだ",

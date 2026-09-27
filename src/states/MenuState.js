@@ -2,6 +2,7 @@ import { STATES } from '../core/constants.js';
 import { COLORS, text, panel, gauge, wrap } from '../core/draw.js';
 import { loadItems, money, useItem } from '../core/Items.js';
 import { saveOptions } from '../core/Options.js';
+import { levelOf, scoreFor, setTotalScore } from '../core/Level.js';
 
 const ROWS = 7;
 const MESSAGE_MS = 1800;
@@ -25,6 +26,24 @@ export class MenuState {
       { label: () => `チート：${this.game.options.cheat ? 'ON' : 'OFF'}`, run: () => this.toggleCheat() },
       { label: 'タイトルへ', run: () => this.game.toTitle() },
     ];
+    // 開発モード（URL に ?dev）のときだけ、レベルを変える項目。◀▶ で1ずつ、A で10ずつ（100の次は1）
+    if (game.dev && game.session) {
+      this.items.splice(3, 0, {
+        label: () => `レベル ◀ ${this.level} ▶`,
+        adjust: (d) => this.setLevel(this.level + d),
+        run: () => this.setLevel(this.level >= this.game.config.level.max ? 1 : this.level + 10),
+      });
+    }
+  }
+
+  get level() {
+    return levelOf(this.game.config, this.session.totalScore);
+  }
+
+  // レベルは総スコアから決まるので、そのレベルになる総スコアに書き換える
+  setLevel(level) {
+    const { config } = this.game;
+    setTotalScore(this.game, scoreFor(config, Math.max(1, Math.min(config.level.max, level))));
   }
 
   // タイトルの OPTION と同じ設定。切り替えたらすぐ効き、このブラウザに覚える
@@ -68,6 +87,10 @@ export class MenuState {
         this.sel = (this.sel + this.items.length + (btn === 'up' ? -1 : 1)) % this.items.length;
         this.game.sfx.play('select');
       }
+      if ((btn === 'left' || btn === 'right') && this.items[this.sel].adjust) {
+        this.items[this.sel].adjust(btn === 'left' ? -1 : 1);
+        this.game.sfx.play('select');
+      }
       if (btn === 'a') {
         this.game.sfx.play('select');
         this.items[this.sel].run();
@@ -107,17 +130,13 @@ export class MenuState {
     }
   }
 
-  // 総スコアはチートモードのときだけ見せる
   renderStatus(g, W) {
     const s = this.session;
     if (!s) return;
-    const cheat = this.game.options.cheat;
-    panel(g, W - 176, 8, 168, cheat ? 104 : 64);
-    if (cheat) {
-      text(g, 'CHEAT', W - 164, 62, { size: 12, color: COLORS.brass });
-      text(g, '総スコア', W - 164, 80, { size: 12, color: COLORS.muted });
-      text(g, s.totalScore.toLocaleString('en-US'), W - 18, 78, { align: 'right', color: COLORS.ink });
-    }
+    const tags = [this.game.options.cheat && 'CHEAT', this.game.dev && 'DEV'].filter(Boolean);
+    panel(g, W - 176, 8, 168, tags.length ? 80 : 64);
+    if (tags.length) text(g, tags.join(' '), W - 164, 64, { size: 12, color: COLORS.brass });
+    text(g, `Lv ${this.level}`, W - 164, 48, { color: COLORS.ink });
     text(g, 'HP', W - 164, 18, { color: COLORS.signal });
     gauge(g, W - 136, 23, 90, 8, s.hero.hp / s.hero.maxHp, COLORS.signal);
     if (s.hero.poisoned) text(g, '毒', W - 40, 18, { color: COLORS.unguard });
@@ -126,13 +145,13 @@ export class MenuState {
   }
 
   renderMain(g, W) {
-    panel(g, W / 2 - 90, 84, 180, 178);
+    panel(g, W / 2 - 110, 84, 220, 64 + this.items.length * 28);
     text(g, 'PAUSE', W / 2, 98, { size: 24, color: COLORS.brass, align: 'center' });
     this.items.forEach((it, i) => {
       const y = 140 + i * 28;
-      if (i === this.sel) text(g, '▶', W / 2 - 62, y, { color: COLORS.signal });
+      if (i === this.sel) text(g, '▶', W / 2 - 82, y, { color: COLORS.signal });
       const label = typeof it.label === 'function' ? it.label() : it.label;
-      text(g, label, W / 2 - 40, y, { color: i === this.sel ? COLORS.ink : COLORS.muted });
+      text(g, label, W / 2 - 60, y, { color: i === this.sel ? COLORS.ink : COLORS.muted });
     });
   }
 

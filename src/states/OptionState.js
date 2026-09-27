@@ -64,7 +64,7 @@ export class OptionState {
     });
     g.fillStyle = COLORS.line;
     g.fillRect(56, 150, W - 112, 1);
-    const desc = `チートモード：毒が${cheat.poisonTicks}回で治り、HPが自動で回復し、敵へのダメージが${cheat.attackMultiplier}倍になる。ポーズ画面で総スコアが見られる。`;
+    const desc = `チートモード：毒が${cheat.poisonTicks}回で治り、HPが自動で回復し、敵へのダメージが${cheat.attackMultiplier}倍になる。`;
     wrap(g, desc, W - 124, 14).slice(0, 5).forEach((l, i) => text(g, l, 62, 162 + i * 22, { size: 14, color: COLORS.muted }));
   }
 }

@@ -52,6 +52,9 @@ export class Input {
     for (const type of ['gesturestart', 'gesturechange', 'gestureend', 'dblclick']) document.addEventListener(type, stop);
     undoZoom();
 
+    // iOS Safari は指を離したとき（touchend）にしか音を許可しないことがあるので、離すときにも許可を取りにいく
+    for (const type of ['touchend', 'pointerup', 'keyup']) window.addEventListener(type, () => this.clock.unlock(), true);
+
     window.addEventListener('keydown', (e) => {
       const btn = KEYMAP[e.code];
       if (!btn) return;

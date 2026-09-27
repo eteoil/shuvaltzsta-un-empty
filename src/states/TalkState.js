@@ -47,11 +47,12 @@ export class TalkState {
   }
 
   // if.has の持ち物が if.count 個（省略時 1 個）以上あるときだけ出す選択肢がある。
-  // 選べるものが1つしか残らなければ、あいさつも選択肢も出さずにそれを始める。
-  // B で抜けたときは cancel の付いた選択肢（「なんでもない」）を選んだのと同じ。無ければそのまま終わる
+  // cancel の付いた選択肢（「なんでもない」）を除いて1つしか残らなければ、あいさつも選択肢も出さずにそれを始める。
+  // B で抜けたときは cancel の付いた選択肢を選んだのと同じ。無ければそのまま終わる
   menu() {
     const shown = this.npc.options.filter((o) => !o.if?.has || count(this.session, o.if.has) >= (o.if.count ?? 1));
-    if (shown.length === 1) { this.act(shown[0]); return; }
+    const main = shown.filter((o) => !o.cancel);
+    if (main.length === 1) { this.act(main[0]); return; }
     const cancel = shown.find((o) => o.cancel);
     this.choose(this.npc.greet, shown.map((o) => ({ label: o.label, run: () => this.act(o) })), cancel ? () => this.act(cancel) : undefined);
   }
