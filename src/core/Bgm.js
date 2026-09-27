@@ -5,6 +5,7 @@ export class Bgm {
     this.clock = clock;
     this.config = config;
     this.buffers = {};
+    this.leads = {};            // 曲の頭の無音（秒）。デコードしたものから測る
     this.bus = clock.ctx.createGain();
     this.bus.gain.value = config.volume?.bgm ?? 0.8;
     this.bus.connect(clock.master);
@@ -30,6 +31,7 @@ export class Bgm {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.arrayBuffer();
       this.buffers[key] = await new Promise((ok, ng) => this.clock.ctx.decodeAudioData(data, ok, ng));
+      this.leads[key] = leadingSilence(this.buffers[key]);
     } catch (e) {
       this.buffers[key] = null;
       console.info(`[bgm] ${def.src} を読めないので、クリック音で代用します（${e.message ?? e}）`);
@@ -49,7 +51,9 @@ export class Bgm {
   play(key, at, startBar = null) {
     this.stop(0);
     const def = this.config.bgm[key];
-    const offset = (def.offsetMs || 0) / 1000;
+    // MP3 の頭の無音（エンコーダ遅延）は、ブラウザによって残ったり取り除かれたりする。
+    // 測れたらその値、測れなければ offsetMs を使う
+    const offset = this.leads[key] ?? (def.offsetMs || 0) / 1000;
     const startSec = this.barTime(startBar ?? def.startBar ?? 1);
     const buffer = this.buffers[key];
     if (buffer) {
@@ -171,4 +175,14 @@ export class Bgm {
       c.next++;
     }
   }
+}
+
+// 頭の無音の長さ（秒）。最初に振幅が 0.005 を超えるところまで。100ms を超えたら曲の作りと見て測らない
+function leadingSilence(buffer) {
+  const d = buffer.getChannelData(0);
+  const limit = Math.min(d.length, Math.floor(buffer.sampleRate * 0.1));
+  for (let i = 0; i < limit; i++) {
+    if (Math.abs(d[i]) >= 0.005) return i / buffer.sampleRate;
+  }
+  return null;
 }

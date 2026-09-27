@@ -1,11 +1,13 @@
 import { STATES } from '../core/constants.js';
 import { COLORS, text, panel, gauge, wrap } from '../core/draw.js';
-import { loadItems, money, useItem } from '../core/Items.js';
+import { loadItems, money, useItem, count } from '../core/Items.js';
+import { loadJSON } from '../core/Data.js';
 import { saveOptions } from '../core/Options.js';
 import { dateText, dateNumber, timeText, clockText, eventsOf, passTime } from '../core/Calendar.js';
 import { levelOf, scoreFor, setTotalScore } from '../core/Level.js';
 
 const ROWS = 7;
+const QUEST_ROWS = 4;
 const MESSAGE_MS = 1800;
 
 // ポーズ。開いている間は AudioContext ごと止めるので、戦闘の Beat も曲も止まる。
@@ -24,6 +26,7 @@ export class MenuState {
     this.items = [
       { label: 'さいかい', run: () => this.game.states.pop() },
       { label: 'アイテム', run: () => { this.mode = 'items'; this.itemSel = 0; } },
+      { label: 'クエスト', run: () => this.openQuests() },
       { label: '時間を進める', run: () => this.openWait() },
       { label: () => `チート：${this.game.options.cheat ? 'ON' : 'OFF'}`, run: () => this.toggleCheat() },
       { label: 'タイトルへ', run: () => this.game.toTitle() },
@@ -35,6 +38,25 @@ export class MenuState {
         adjust: (d) => this.setLevel(this.level + d),
         run: () => this.setLevel(this.level >= this.game.config.level.max ? 1 : this.level + 10),
       });
+    }
+  }
+
+  // クエストの一覧。受けたもの（受注中・完了）を受けた順に。中身は data/quests/*.json
+  openQuests() {
+    this.mode = 'quests';
+    this.questSel = 0;
+    const ids = Object.keys(this.session.quests);
+    this.questDefs = null;
+    Promise.all(ids.map((id) => loadJSON(`data/quests/${id}.json`).catch(() => null)))
+      .then((defs) => { this.questDefs = defs.filter(Boolean); });
+  }
+
+  updateQuests(btn) {
+    if (btn === 'b' || btn === 'pause' || btn === 'start') { this.mode = 'main'; return; }
+    const n = this.questDefs?.length ?? 0;
+    if (n && (btn === 'up' || btn === 'down')) {
+      this.questSel = (this.questSel + n + (btn === 'up' ? -1 : 1)) % n;
+      this.game.sfx.play('select');
     }
   }
 
@@ -111,6 +133,7 @@ export class MenuState {
       }
       if (this.mode === 'items') { this.updateItems(btn); continue; }
       if (this.mode === 'wait') { this.updateWait(btn); continue; }
+      if (this.mode === 'quests') { this.updateQuests(btn); continue; }
       if (btn === 'up' || btn === 'down') {
         this.sel = (this.sel + this.items.length + (btn === 'up' ? -1 : 1)) % this.items.length;
         this.game.sfx.play('select');
@@ -150,6 +173,7 @@ export class MenuState {
     g.fillStyle = 'rgba(11,12,24,0.6)';
     g.fillRect(0, 0, W, H);
     if (this.mode === 'items') this.renderItems(g, W, H);
+    else if (this.mode === 'quests') this.renderQuests(g, W, H);
     else this.renderMain(g, W);
     if (this.mode === 'wait') this.renderWait(g, W);
     this.renderStatus(g, W);
@@ -168,9 +192,9 @@ export class MenuState {
     const lines = [...eventsOf(cal, s.day).labels, ...(tags.length ? [tags.join(' ')] : [])];
     panel(g, W - 176, 8, 168, 96 + lines.length * 16);
     text(g, dateText(cal, s.day), W - 164, 64, { size: 12, color: COLORS.muted });
-    text(g, `(${dateNumber(cal, s.day)})`, W - 18, 64, { size: 12, align: 'right', color: COLORS.muted });
+    text(g, `(${dateNumber(cal, s.day)})`, W - 66, 64, { size: 12, color: COLORS.muted });
     text(g, timeText(cal, s.minute), W - 164, 80, { size: 12, color: COLORS.muted });
-    text(g, `(${clockText(s.minute)})`, W - 18, 80, { size: 12, align: 'right', color: COLORS.muted });
+    text(g, `(${clockText(s.minute)})`, W - 66, 80, { size: 12, color: COLORS.muted });
     lines.forEach((l, i) => text(g, l, W - 164, 96 + i * 16, { size: 12, color: COLORS.brass }));
     text(g, `Lv ${this.level}`, W - 164, 48, { color: COLORS.ink });
     text(g, 'HP', W - 164, 18, { color: COLORS.signal });
@@ -181,14 +205,48 @@ export class MenuState {
   }
 
   renderMain(g, W) {
-    panel(g, W / 2 - 110, 84, 220, 64 + this.items.length * 28);
+    // 項目が多い（開発モード）ときは、画面の下にはみ出さないよう行を詰める
+    const H = this.game.config.screen.height;
+    const step = Math.min(28, (H - 84 - 64 - 8) / this.items.length);
+    panel(g, W / 2 - 110, 84, 220, 64 + this.items.length * step);
     text(g, 'PAUSE', W / 2, 98, { size: 24, color: COLORS.brass, align: 'center' });
     this.items.forEach((it, i) => {
-      const y = 140 + i * 28;
+      const y = 140 + i * step;
       if (i === this.sel) text(g, '▶', W / 2 - 82, y, { color: COLORS.signal });
       const label = typeof it.label === 'function' ? it.label() : it.label;
       text(g, label, W / 2 - 60, y, { color: i === this.sel ? COLORS.ink : COLORS.muted });
     });
+  }
+
+  // 1件を2行で：名前と、受注中／完了・進み具合
+  renderQuests(g, W, H) {
+    panel(g, 12, 8, W - 196, H - 16);
+    text(g, 'クエスト', 28, 20, { color: COLORS.brass });
+    const list = this.questDefs ?? [];
+    if (!list.length) {
+      text(g, this.questDefs ? '受けているクエストはない' : '…', 28, 56, { color: COLORS.muted });
+      return;
+    }
+    const first = Math.max(0, Math.min(this.questSel - QUEST_ROWS + 1, list.length - QUEST_ROWS));
+    list.slice(first, first + QUEST_ROWS).forEach((q, k) => {
+      const i = first + k;
+      const y = 48 + k * 42;
+      const active = i === this.questSel;
+      if (active) text(g, '▶', 26, y, { color: COLORS.signal });
+      text(g, q.name, 44, y, { color: active ? COLORS.ink : COLORS.muted });
+      text(g, this.questProgress(q), 44, y + 20, { size: 12, color: this.session.quests[q.id] === 'done' ? COLORS.dim : COLORS.perfect });
+    });
+    const q = list[this.questSel];
+    g.fillStyle = COLORS.line;
+    g.fillRect(24, 226, W - 220, 1);
+    wrap(g, q.summary, W - 236).slice(0, 2).forEach((l, i) => text(g, l, 28, 236 + i * 22));
+  }
+
+  questProgress(q) {
+    if (this.session.quests[q.id] === 'done') return '完了';
+    if (!q.need) return '受注中';
+    const have = Math.min(count(this.session, q.need.item), q.need.count);
+    return `受注中　${this.defs?.[q.need.item]?.name ?? q.need.item} ${have}/${q.need.count}`;
   }
 
   // 何時間進めるか。進めたあとの時刻も見せる

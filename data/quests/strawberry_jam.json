@@ -1,0 +1,22 @@
+{
+  "id": "strawberry_jam",
+  "name": "シャルヴィスのイチゴジャム",
+  "summary": "野イチゴを10個集めて、バーのエレナに渡す",
+  "need": { "item": "wild_berry", "count": 10 },
+  "offer": {
+    "lines": [
+      { "speaker": "エレナ", "text": "シャルの作ったイチゴジャムが食べたいわ" },
+      { "speaker": "シャルヴィス", "text": "材料があれば作れるんだが……" }
+    ],
+    "accept": { "label": "取ってくる", "lines": [{ "speaker": "エレナ", "text": "ありがとう、待ってるわね" }] },
+    "decline": { "label": "黙ってる", "lines": [{ "speaker": "エレナ", "text": "しかたがないわね" }] }
+  },
+  "waiting": [{ "speaker": "エレナ", "text": "シャルの作るイチゴジャム、本当に美味しいのよ？" }],
+  "deliver": {
+    "prompt": { "speaker": "エレナ", "text": "野イチゴ、くれるの？" },
+    "yes": [{ "speaker": "エレナ", "text": "ありがとう！" }],
+    "no": [{ "speaker": "エレナ", "text": "ひとりじめしたくなっちゃったのね？" }],
+    "reward": { "money": 1000, "score": 3000 }
+  },
+  "done": [{ "speaker": "エレナ", "text": "やっぱりシャルのイチゴジャムは最高ね！" }]
+}

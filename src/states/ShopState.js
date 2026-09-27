@@ -94,8 +94,8 @@ export class ShopState {
     const descY = 46 + Math.min(ROWS, list.length) * 22 + 10;
     g.fillStyle = COLORS.line;
     g.fillRect(24, descY - 6, W - 48, 1);
-    wrap(g, d.desc, W - 64).slice(0, 2).forEach((l, i) => text(g, l, 28, descY + i * 22));
-    if (d.battleOnly) text(g, '戦闘中のみ', W - 28, descY + 22, { size: 12, align: 'right', color: COLORS.brass });
+    wrap(g, d.desc, W - (d.battleOnly ? 150 : 64)).slice(0, 2).forEach((l, i) => text(g, l, 28, descY + i * 22));
+    if (d.battleOnly) text(g, '戦闘中のみ', W - 28, descY + 2, { size: 12, align: 'right', color: COLORS.brass });
 
     // 店の人のセリフ
     const top = H - 92;

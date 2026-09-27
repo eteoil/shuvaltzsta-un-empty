@@ -126,9 +126,12 @@ export class DungeonState extends BattleState {
     return pp;
   }
 
-  // 上の帯に出すのは、focusRange マス以内で一番近い敵
+  // 上の帯に出すのは、最後に殴った敵（生きていて focusRange マス以内なら）。いなければ一番近い敵
   focusUnit() {
     const me = this.tile;
+    const range = this.game.config.dungeon.focusRange;
+    const last = this.lastHit;
+    if (last && !last.dead && Math.min(...last.actorIds.map((id) => distance(this.actors[id], me))) <= range) return last;
     let best = null;
     let bestD = this.game.config.dungeon.focusRange + 1;
     for (const unit of this.units) {

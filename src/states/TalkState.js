@@ -1,6 +1,8 @@
 import { STATES } from '../core/constants.js';
 import { COLORS, text, panel, wrap } from '../core/draw.js';
 import { loadItems, money, count, addItem, takeItem } from '../core/Items.js';
+import { loadJSON } from '../core/Data.js';
+import { setTotalScore } from '../core/Level.js';
 import { cure } from '../core/Hero.js';
 import { dateText, eventsOf, isNight, isOpen, passTime, sleep } from '../core/Calendar.js';
 import { CafeJobState } from './CafeJobState.js';
@@ -11,7 +13,8 @@ const CHAR_MS = 32;
 const SLEEP = { out: 0.8, hold: 2.2, in: 0.8 };
 
 // NPC との会話。あいさつ → 選択肢 → 世間話・買い物（SHOP）・鑑定・交換・買い取り・バイト（MINIGAME）・休む。
-// 中身は data/npcs/*.json（憲法⑨）。ベッドのような家具も、選択肢を持つ NPC として同じ仕組みで話しかける
+// 中身は data/npcs/*.json（憲法⑨）。ベッドのような家具も、選択肢を持つ NPC として同じ仕組みで話しかける。
+// quest を持つ NPC（エレナ）は、選択肢の代わりにクエストの進み具合で会話が変わる（data/quests/*.json）
 export class TalkState {
   name = STATES.DIALOG;
 
@@ -23,10 +26,16 @@ export class TalkState {
     this.shownAt = 0;
     this.choices = null;     // { options: [{ label, run }], sel, cancel }
     this.next = null;        // セリフを読み終えて A を押したら呼ぶ
+    this.speaker = null;     // 名前札に出す名前（null なら話しかけた相手、'' なら名前札なし）
   }
 
   async enter() {
     this.items = await loadItems();
+    if (this.npc.quest) {
+      this.quest = await loadJSON(`data/quests/${this.npc.quest}.json`);
+      this.questTalk();
+      return;
+    }
     this.menu();
   }
 
@@ -34,16 +43,66 @@ export class TalkState {
     return this.game.session;
   }
 
-  say(line, next = () => this.close()) {
+  say(line, next = () => this.close(), speaker = null) {
     this.line = line;
     this.shownAt = performance.now();
     this.choices = null;
     this.next = next;
+    this.speaker = speaker;
   }
 
-  choose(line, options, cancel = () => this.close()) {
-    this.say(line, null);
+  choose(line, options, cancel = () => this.close(), speaker = null) {
+    this.say(line, null, speaker);
     this.choices = { options, sel: 0, cancel };
+  }
+
+  // { speaker, text } の並びを順に言い、最後に then（省略時は会話を終える）
+  sayLines(lines, then = () => this.close(), k = 0) {
+    if (k >= lines.length) { then(); return; }
+    this.say(lines[k].text, () => this.sayLines(lines, then, k + 1), lines[k].speaker ?? null);
+  }
+
+  // ---------------------------------------------------------------- クエスト
+  // session.quests[id] が 無い → 頼まれる／'active' → 受注中／'done' → 完了
+
+  questTalk() {
+    const q = this.quest;
+    const state = this.session.quests[q.id];
+    if (state === 'done') { this.sayLines(q.done); return; }
+    if (state === 'active') {
+      if (count(this.session, q.need.item) < q.need.count) { this.sayLines(q.waiting); return; }
+      const d = q.deliver;
+      const no = () => this.sayLines(d.no);
+      this.choose(d.prompt.text, [
+        { label: 'はい', run: () => this.completeQuest() },
+        { label: 'いいえ', run: no },
+      ], no, d.prompt.speaker);
+      return;
+    }
+    const { lines, accept, decline } = q.offer;
+    const last = lines[lines.length - 1];
+    const no = () => this.sayLines(decline.lines);
+    this.sayLines(lines.slice(0, -1), () => this.choose(last.text, [
+      { label: accept.label, run: () => { this.session.quests[q.id] = 'active'; this.game.sfx.play('confirm'); this.sayLines(accept.lines); } },
+      { label: decline.label, run: no },
+    ], no, last.speaker));
+  }
+
+  // 渡して報酬（お金と総スコア）。レベルが上がったら会話のあとに知らせる
+  completeQuest() {
+    const q = this.quest;
+    const s = this.session;
+    for (let k = 0; k < q.need.count; k++) takeItem(s, q.need.item);
+    const { money: gain = 0, score = 0 } = q.deliver.reward;
+    s.money += gain;
+    const { from, to } = setTotalScore(this.game, s.totalScore + score);
+    s.quests[q.id] = 'done';
+    this.game.sfx.play('levelup');
+    const got = { speaker: '', text: `${money(gain)}と${score.toLocaleString('en-US')}スコアを手に入れた` };
+    this.sayLines([...q.deliver.yes, got], () => {
+      this.close();
+      if (to > from) this.game.levelUp(to);
+    });
   }
 
   close() {
@@ -251,8 +310,11 @@ export class TalkState {
     }
     const top = H - 108;
     panel(g, 8, top, W - 16, 100);
-    panel(g, 16, top - 26, Math.max(80, [...this.npc.name].length * 16 + 24), 30);
-    text(g, this.npc.name, 28, top - 21, { color: COLORS.brass });
+    const name = this.speaker ?? this.npc.name;
+    if (name) {
+      panel(g, 16, top - 26, Math.max(80, [...name].length * 16 + 24), 30);
+      text(g, name, 28, top - 21, { color: COLORS.brass });
+    }
     const shown = [...this.line].slice(0, this.visible()).join('');
     wrap(g, shown, W - 48).slice(0, 3).forEach((l, i) => text(g, l, 24, top + 16 + i * 24));
     text(g, money(this.session.money), W - 20, top + 8, { size: 12, align: 'right', color: COLORS.perfect });

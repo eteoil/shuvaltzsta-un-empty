@@ -2,7 +2,7 @@ import { STATES } from '../core/constants.js';
 import { BeatManager } from '../core/BeatManager.js';
 import { WHITE } from '../core/Assets.js';
 import { COLORS, text, panel, gauge, sprite, diamond, isoTop, isoCenter } from '../core/draw.js';
-import { DIRS, distance, stepToward, faceToward, frameOf } from '../core/grid.js';
+import { DIRS, FACE_STEP, distance, stepToward, faceToward, frameOf } from '../core/grid.js';
 import { EventTrack } from '../battle/EventTrack.js';
 import { Sequencer } from '../battle/Sequencer.js';
 import { Judge } from '../battle/Judge.js';
@@ -447,12 +447,19 @@ export class BattleState {
   }
 
   // 隣（斜めを含む8マス）にいる敵。毒針・パニックドロップの間は reach マス先まで。向いている方を優先する
+  // 隣に何匹かいるときは、目の前のマス（届くなら2マス先も）の敵を最優先にする。
+  // 斜めの敵を先に選ぶと、殴ったつもりのない敵に当たってしまう
   adjacentActor() {
     const me = this.tile;
     const reach = Math.max(1, ...Object.values(this.buffs).map((v) => v.def.reach ?? 1));
     const ids = Object.keys(this.actors)
       .filter((id) => !this.actors[id].unit.dead && distance(this.actors[id], me) <= reach)
       .sort((x, y) => distance(this.actors[x], me) - distance(this.actors[y], me));
+    const step = FACE_STEP[this.player.dir];
+    for (let k = 1; k <= reach; k++) {
+      const front = ids.find((id) => this.actors[id].i === me.i + step.di * k && this.actors[id].j === me.j + step.dj * k);
+      if (front) return front;
+    }
     const facing = ids.find((id) => faceToward(me, this.actors[id]) === this.player.dir);
     return facing ?? ids[0] ?? null;
   }
@@ -481,6 +488,7 @@ export class BattleState {
       * (back ? c.backMultiplier : 1)
       * attackMultiplier(this.game));
     const unit = this.unitOf(target);
+    this.lastHit = unit;
     unit.enemy.hp = Math.max(0, unit.enemy.hp - dmg);
     this.success(grade, 'attack', b);
     this.popup(back ? `BACK! ${dmg}` : String(dmg), back ? COLORS.perfect : COLORS.ink, target);

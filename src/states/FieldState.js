@@ -93,9 +93,9 @@ export class FieldState {
     return isOpen(this.destMaps[exit.to]?.hours, this.session.minute);
   }
 
-  // 営業時間のある場所の店の人（map の npcs で staff: true）は、時間外はいない
+  // 営業時間のある場所の店の人（map の npcs で staff: true）は、時間外はいない。night: true の人は夜だけ（バーのエレナ）
   presentNpcs() {
-    return (this.map.npcs ?? []).filter((n) => !n.staff || this.open);
+    return (this.map.npcs ?? []).filter((n) => (!n.staff || this.open) && (!n.night || this.night));
   }
 
   // 出口に乗ったら行き先へ。requires のフラグ（勝った戦闘など）が無ければ通れない。

@@ -4,7 +4,7 @@
   "sprite": "player",
   "palette": { "id": "shalvis", "map": { "#394660": "#c9c9d6", "#187fc4": "#2a2a33", "#801e6b": "#5a3a2a", "#f5c939": "#d8ac5a" } },
   "greet": "どうした？",
-  "nightGreet": "いらっしゃい。今夜は何にする？（仮）",
+  "nightGreet": "今夜は何にする？",
   "restDayText": "今日は天赦日だから店は休みだ",
   "options": [
     { "label": "世間話", "say": "明日の豆は何にしようか……" },

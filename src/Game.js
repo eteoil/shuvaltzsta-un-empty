@@ -83,7 +83,8 @@ export class Game {
       flags: {},
       day: 1,             // 何日目か。ベッドで休むか、0時を過ぎると進む（core/Calendar.js）
       minute: this.config.time.startMinute,   // その日の0時から何分
-      worked: {},         // バイトの id → 最後にした日（1日1回）
+      worked: {},
+      quests: {},         // クエストの id → 'active'（受注中）か 'done'（完了）         // バイトの id → 最後にした日（1日1回）
       pickups: {},        // マップの id → 落ちている物と、次に現れるまでの秒（FieldState）
       totalScore: 0,
     };
