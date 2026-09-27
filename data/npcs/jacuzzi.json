@@ -6,7 +6,7 @@
   "greet": "いらっしゃいまセｪ！",
   "closedText": "もう店じまいだヨ。また明日来てネ",
   "options": [
-    { "label": "世間話", "say": "色々揃えてるヨ" },
+    { "label": "世間話", "say": "色々揃えてるヨ", "sayOnFestival": "今日はお祭りだから特売だヨ！" },
     {
       "label": "買い物",
       "shop": {
