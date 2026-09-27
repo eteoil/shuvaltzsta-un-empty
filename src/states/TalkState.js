@@ -318,7 +318,6 @@ export class TalkState {
     }
     const shown = [...this.line].slice(0, this.visible()).join('');
     wrap(g, shown, W - 48).slice(0, 3).forEach((l, i) => text(g, l, 24, top + 16 + i * 24));
-    text(g, money(this.session.money), W - 20, top + 8, { size: 12, align: 'right', color: COLORS.perfect });
 
     const c = this.choices;
     if (c && this.visible() >= [...this.line].length) {

@@ -493,11 +493,14 @@ export class BattleState {
     this.success(grade, 'attack', b);
     this.popup(back ? `BACK! ${dmg}` : String(dmg), back ? COLORS.perfect : COLORS.ink, target);
     this.anim(target, 'hurt', b);
-    if (this.buffs.needle) this.poisonEnemy(unit, b, this.buffs.needle.def.poisonBeats);
-    // パニックドロップ：1回使うごとに、それぞれの敵を1回だけ混乱させる（殴り続けても延びない）
-    const panic = this.buffs.panic;
-    if (panic && !panic.confused.has(unit.id)) {
-      panic.confused.add(unit.id);
+    // 毒針・パニックドロップ：1回使うごとに、それぞれの敵を1回だけ毒・混乱にする（殴り続けても延びない）
+    const { needle, panic } = this.buffs;
+    if (needle && !needle.struck.has(unit.id)) {
+      needle.struck.add(unit.id);
+      this.poisonEnemy(unit, b, needle.def.poisonBeats);
+    }
+    if (panic && !panic.struck.has(unit.id)) {
+      panic.struck.add(unit.id);
       this.confuse(unit, b, panic.def.confuseBeats);
     }
     if (unit.enemy.down) this.unitDown(unit, b);
@@ -616,8 +619,8 @@ export class BattleState {
 
   addBuff(def) {
     const until = this.beats.currentBeat + def.beats;
-    // confused：この効き目のあいだに混乱させた一団（パニックドロップは1回の使用で1体1回まで）
-    this.buffs[def.buff] = { until, def, confused: new Set() };
+    // struck：この効き目のあいだに毒・混乱にした一団（毒針・パニックドロップは1回の使用で1体1回まで）
+    this.buffs[def.buff] = { until, def, struck: new Set() };
     this.tracks.system.add({ beat: Math.max(until, this.tracks.system.lockedUntil), type: 'system.status', payload: { action: 'end', buff: def.buff } });
   }
 
