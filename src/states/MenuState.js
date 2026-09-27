@@ -190,14 +190,12 @@ export class MenuState {
     const s = this.session;
     if (!s) return;
     const tags = [this.game.options.cheat && 'CHEAT', this.game.dev && 'DEV'].filter(Boolean);
-    // 日付と時刻（右に数字）。その下に、その日の行事（祭り・天赦日・忌み月）を1行ずつ、最後に CHEAT / DEV
+    // 日付と時刻（すぐ後ろに括弧で数字）。その下に、その日の行事（祭り・天赦日・忌み月）を1行ずつ、最後に CHEAT / DEV
     const cal = this.game.calendar;
     const lines = [...eventsOf(cal, s.day).labels, ...(tags.length ? [tags.join(' ')] : [])];
     panel(g, W - 176, 8, 168, 96 + lines.length * 16);
-    text(g, dateText(cal, s.day), W - 164, 64, { size: 12, color: COLORS.muted });
-    text(g, `(${dateNumber(cal, s.day)})`, W - 66, 64, { size: 12, color: COLORS.muted });
-    text(g, timeText(cal, s.minute), W - 164, 80, { size: 12, color: COLORS.muted });
-    text(g, `(${clockText(s.minute)})`, W - 66, 80, { size: 12, color: COLORS.muted });
+    text(g, `${dateText(cal, s.day)}(${dateNumber(cal, s.day)})`, W - 164, 64, { size: 12, color: COLORS.muted });
+    text(g, `${timeText(cal, s.minute)}(${clockText(s.minute)})`, W - 164, 80, { size: 12, color: COLORS.muted });
     lines.forEach((l, i) => text(g, l, W - 164, 96 + i * 16, { size: 12, color: COLORS.brass }));
     text(g, `Lv ${this.level}`, W - 164, 48, { color: COLORS.ink });
     text(g, 'HP', W - 164, 18, { color: COLORS.signal });
