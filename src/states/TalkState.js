@@ -203,7 +203,7 @@ export class TalkState {
   job(j) {
     if (this.session.worked[j.game] === this.session.day) { this.say(j.tired); return; }
     this.session.worked[j.game] = this.session.day;
-    passTime(this.session, this.game.config, this.game.config.time.jobMinutes);
+    passTime(this.session, this.game.config.time.jobMinutes);
     this.game.states.push(new CafeJobState(this.game, j.game, (reward) => {
       this.session.money += reward;
       this.say(`${j.done}（${money(reward)}もらった）`);

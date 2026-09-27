@@ -70,24 +70,18 @@ export function isOpen(hours, minute) {
   return !hours || within(minute, hours);
 }
 
-// 時間を進める。session.minute は時計の時刻（0時から何分）で、日付は dayStart（朝8時）をまたぐと進む
-export function passTime(session, config, minutes) {
-  const start = config.time.dayStart;
-  let left = minutes;
-  while (left > 0) {
-    const toStart = ((start - session.minute) % DAY + DAY) % DAY || DAY;
-    if (left < toStart) {
-      session.minute = (session.minute + left) % DAY;
-      return;
-    }
-    left -= toStart;
-    session.minute = start;
+// 時間を進める。session.minute は時計の時刻（0時から何分）で、0時を過ぎたら日付も進む
+export function passTime(session, minutes) {
+  session.minute += minutes;
+  while (session.minute >= DAY) {
+    session.minute -= DAY;
     session.day += 1;
   }
 }
 
-// ベッドで眠る。起きるのは dayStart（朝8時）で、そこで日付が変わるので、何時に寝ても起きたら次の日
+// ベッドで眠る。起きるのは wakeMinute（朝8時）。0時より前に寝たら次の日の朝、0時を過ぎてから寝たらその日の朝
 export function sleep(session, config) {
-  session.day += 1;
-  session.minute = config.time.dayStart;
+  const wake = config.time.wakeMinute;
+  if (session.minute >= wake) session.day += 1;
+  session.minute = wake;
 }

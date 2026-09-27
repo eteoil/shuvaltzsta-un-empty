@@ -128,7 +128,7 @@ export class FieldState {
 
   update(dt, presses) {
     if (this.leaving) return;   // 出口から次のマップを読み込んでいる間
-    passTime(this.session, this.game.config, dt * this.game.config.time.minutesPerSec);
+    passTime(this.session, dt * this.game.config.time.minutesPerSec);
     for (const { btn } of presses) {
       if (btn === 'pause' || btn === 'start') { this.game.pause(); return; }
       if (btn === 'a' && !this.move) {
