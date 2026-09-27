@@ -1,5 +1,7 @@
+import { eventsOf } from './Calendar.js';
+
 // マップに落ちている物。町（FieldState）とダンジョン（DungeonState）で共通。
-// 置き方はマップの pickups：count 個を、table（[アイテム, 重み]）の重みで選んで空いている床へランダムに。
+// 置き方はマップの pickups：count 個（天赦日は gameConfig の restDay.pickupRate 倍）を、table（[アイテム, 重み]）の重みで選んで空いている床へランダムに。
 // 状態は session.pickups[マップid] = { spots: [{ item, at }], waits: [秒] }。
 // 拾うと waits に pickupRespawnSec を積み、0 になったら別の場所に1つ置き直す。
 // 町のマップには pickups を書かない（特別なイベントのときだけ書く）。
@@ -24,7 +26,9 @@ export class Pickups {
     if (!this.def) return;
     const s = this.state;
     const placed = () => s.spots.filter((p) => !p.drop).length + s.waits.length;
-    while (placed() < this.def.count && this.spawn()) { /* 置けるだけ置く */ }
+    const rest = eventsOf(this.game.calendar, this.game.session.day).rest;
+    const count = this.def.count * (rest ? this.game.config.restDay.pickupRate : 1);
+    while (placed() < count && this.spawn()) { /* 置けるだけ置く */ }
   }
 
   // 敵が倒れたマスに落とす

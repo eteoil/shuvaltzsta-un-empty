@@ -1,0 +1,34 @@
+{
+  "id": "wolf_maul",
+  "length": 8,
+  "tags": [
+    "heavy"
+  ],
+  "events": [
+    {
+      "offset": 0,
+      "type": "enemy.telegraph",
+      "payload": {}
+    },
+    {
+      "offset": 2,
+      "type": "enemy.telegraph",
+      "payload": {}
+    },
+    {
+      "offset": 4,
+      "type": "enemy.attack",
+      "payload": {
+        "area": "around",
+        "power": 14
+      }
+    },
+    {
+      "offset": 5,
+      "type": "enemy.open",
+      "payload": {
+        "length": 2
+      }
+    }
+  ]
+}

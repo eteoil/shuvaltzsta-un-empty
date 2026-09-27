@@ -132,10 +132,12 @@ export class TalkState {
     return Object.keys(this.session.items).filter((id) => this.items[id]?.sell && count(this.session, id) > 0);
   }
 
-  // 出す選択肢。if.has の持ち物が if.count 個（省略時 1 個）以上、if.sellable なら売れる物を持っているときだけ
+  // 出す選択肢。if.has の持ち物が if.count 個（省略時 1 個）以上、if.sellable なら売れる物を持っているときだけ。
+  // closedOnRestDay の選択肢（カフェのお弁当とバイト）は、天赦日には出さない
   visibleOptions() {
     return this.npc.options.filter((o) => (!o.if?.has || count(this.session, o.if.has) >= (o.if.count ?? 1))
-      && (!o.if?.sellable || this.sellables().length > 0));
+      && (!o.if?.sellable || this.sellables().length > 0)
+      && !(o.closedOnRestDay && this.today.rest));
   }
 
   // if.has の持ち物が if.count 個（省略時 1 個）以上あるときだけ出す選択肢がある。
@@ -162,12 +164,10 @@ export class TalkState {
     this.choose(greet, shown.map((o) => ({ label: o.label, run: () => this.act(o) })), cancel ? () => this.act(cancel) : undefined);
   }
 
-  // closedOnRestDay の選択肢は、天赦日には restDayText だけ言って終わる（カフェの休み）。
   // sayOnFestival があれば祭りの日は、sayBeforeRest があれば翌日が天赦日の日は、say の代わりにそちらを言う
   // （ジャグジーとシャルヴィスの世間話）
   act(o) {
-    if (o.closedOnRestDay && this.today.rest) this.say(this.npc.restDayText);
-    else if (o.say) this.say(this.smallTalk(o));
+    if (o.say) this.say(this.smallTalk(o));
     else if (o.shop) this.shop(o.shop);
     else if (o.appraise) this.appraise(o.appraise);
     else if (o.trade) this.trade(o.trade);

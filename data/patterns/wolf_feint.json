@@ -1,0 +1,29 @@
+{
+  "id": "wolf_feint",
+  "length": 8,
+  "tags": [
+    "feint"
+  ],
+  "events": [
+    {
+      "offset": 0,
+      "type": "enemy.telegraph",
+      "payload": {}
+    },
+    {
+      "offset": 2,
+      "type": "enemy.feint",
+      "payload": {
+        "area": "front3"
+      }
+    },
+    {
+      "offset": 3,
+      "type": "enemy.attack",
+      "payload": {
+        "area": "front3",
+        "power": 10
+      }
+    }
+  ]
+}

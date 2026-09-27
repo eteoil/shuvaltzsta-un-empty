@@ -1,0 +1,22 @@
+{
+  "id": "wolf_bite",
+  "length": 4,
+  "tags": [
+    "basic"
+  ],
+  "events": [
+    {
+      "offset": 0,
+      "type": "enemy.telegraph",
+      "payload": {}
+    },
+    {
+      "offset": 1,
+      "type": "enemy.attack",
+      "payload": {
+        "area": "front1",
+        "power": 9
+      }
+    }
+  ]
+}

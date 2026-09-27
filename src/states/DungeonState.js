@@ -31,12 +31,11 @@ export class DungeonState extends BattleState {
     this.floor = this.map.floor;
     const { i, j, dir } = this.game.session.player;
     this.player = { i, j, dir, move: null };
-    // 忌み月は敵が強く（HP と攻撃力が taboo の倍率）、落とす物も増える
-    this.taboo = eventsOf(this.game.calendar, this.game.session.day).taboo ? this.game.config.taboo : null;
-    this.enemyPowerRate = this.taboo?.enemyPower ?? 1;
+    this.dayRates = this.dayEffects();
+    this.enemyPowerRate = this.dayRates.enemyPower;
     this.map.spawns.forEach((sp, k) => {
       const data = this.enemyData[sp.enemy];
-      const def = this.taboo ? { ...data.def, hp: Math.round(data.def.hp * this.taboo.enemyHp) } : data.def;
+      const def = { ...data.def, hp: Math.max(1, Math.round(data.def.hp * this.dayRates.enemyHp)) };
       const { patterns } = data;
       const id = `${sp.enemy}${k + 1}`;
       const one = def.actors.length === 1;
@@ -52,6 +51,19 @@ export class DungeonState extends BattleState {
     this.beats.start(bgm.play('battle', clock.now + 0.1, config.bgm.battle.loopFromBar));
     this.phase = 'fight';
     this.banner = { text: this.map.name, beat: this.fightBeat, steady: true };
+  }
+
+  // 行事による敵の強さと落とす物の数。
+  // 忌み月は敵が強く（HP と攻撃力が taboo の倍率）落とす物も増える。天赦日は敵が弱い（restDay の倍率）。
+  // 忌み月と天赦日が重なったら、強さはふだんどおりで落とす物が restDay.withTaboo.dropCount 倍
+  // （いまの暦では、忌み月の水亀節は20区までなので天赦日と重ならない）
+  dayEffects() {
+    const { taboo, restDay } = this.game.config;
+    const ev = eventsOf(this.game.calendar, this.game.session.day);
+    if (ev.taboo && ev.rest) return { ...restDay.withTaboo };
+    if (ev.taboo) return { enemyHp: taboo.enemyHp, enemyPower: taboo.enemyPower, dropCount: taboo.dropCount };
+    if (ev.rest) return { enemyHp: restDay.enemyHp, enemyPower: restDay.enemyPower, dropCount: 1 };
+    return { enemyHp: 1, enemyPower: 1, dropCount: 1 };
   }
 
   // 主人公・生きている敵・出口のそばには物を置かない
@@ -102,7 +114,7 @@ export class DungeonState extends BattleState {
     const spots = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]]
       .map(([di, dj]) => [a.i + di, a.j + dj])
       .filter(([i, j]) => this.inArena(i, j) && !this.drops.at(i, j));
-    const n = this.taboo?.dropCount ?? 1;
+    const n = this.dayRates.dropCount;
     for (let k = 0; k < n; k++) this.drops.drop(unit.def.drop, spots[k] ?? [a.i, a.j]);
   }
 

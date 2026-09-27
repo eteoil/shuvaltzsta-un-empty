@@ -1,0 +1,24 @@
+{
+  "id": "wolf",
+  "name": "オオカミ",
+  "hp": 80,
+  "aggro": 5,
+  "patterns": [
+    "wolf_idle",
+    "wolf_wander",
+    "wolf_approach",
+    "wolf_bite",
+    "wolf_lunge",
+    "wolf_maul",
+    "wolf_feint",
+    "wolf_retreat"
+  ],
+  "actors": [
+    {
+      "id": "wolf",
+      "name": "オオカミ",
+      "sprite": "wolf",
+      "palette": null
+    }
+  ]
+}

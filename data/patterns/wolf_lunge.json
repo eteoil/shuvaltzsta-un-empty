@@ -1,0 +1,39 @@
+{
+  "id": "wolf_lunge",
+  "length": 8,
+  "tags": [
+    "rush"
+  ],
+  "events": [
+    {
+      "offset": 0,
+      "type": "enemy.telegraph",
+      "payload": {}
+    },
+    {
+      "offset": 1,
+      "type": "enemy.telegraph",
+      "payload": {}
+    },
+    {
+      "offset": 2,
+      "type": "enemy.attack",
+      "payload": {
+        "area": "line3",
+        "power": 12
+      }
+    },
+    {
+      "offset": 3,
+      "type": "enemy.move",
+      "payload": {}
+    },
+    {
+      "offset": 4,
+      "type": "enemy.open",
+      "payload": {
+        "length": 2
+      }
+    }
+  ]
+}

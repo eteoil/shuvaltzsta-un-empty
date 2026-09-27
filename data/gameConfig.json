@@ -36,6 +36,12 @@
     "enemyPower": 1.5,
     "dropCount": 2
   },
+  "restDay": {
+    "enemyHp": 0.7,
+    "enemyPower": 0.7,
+    "pickupRate": 2,
+    "withTaboo": { "enemyHp": 1, "enemyPower": 1, "dropCount": 3 }
+  },
   "level": {
     "max": 100,
     "scorePerLevel": 5000,
