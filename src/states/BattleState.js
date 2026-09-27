@@ -518,7 +518,7 @@ export class BattleState {
     const here = key(this.tile.i, this.tile.j);
     const near = this.enemyEvents(b - 2, b + 2)
       .filter((e) => THREATS.has(e.type) && !this.results.has(e.id) && this.zones.get(e.id)?.dodgeable && !this.zones.get(e.id).confused
-        && this.judge.grade(this.beats.deltaMs(t, e.beat)))
+        && this.dodgeGrade(this.beats.deltaMs(t, e.beat)))
       .sort((x, y) => Math.abs(this.beats.deltaMs(t, x.beat)) - Math.abs(this.beats.deltaMs(t, y.beat)));
     const target = near.find((e) => this.zones.get(e.id)?.set.has(here));
     if (!target) return this.fail(b, 'MISS');
@@ -527,10 +527,16 @@ export class BattleState {
       return this.fail(b, 'FEINT!');
     }
     this.results.set(target.id, 'dodge');
-    // ローリングスター：避けられた回避はすべて PERFECT（拍を外した回避は MISS のまま）
-    this.success(this.buffs.sway ? 'perfect' : this.judge.grade(this.beats.deltaMs(t, target.beat)), 'dodge', b);
+    this.success(this.dodgeGrade(this.beats.deltaMs(t, target.beat)), 'dodge', b);
     this.game.sfx.play('dodge');
     return undefined;
+  }
+
+  // 回避の判定。ローリングスター（酔拳）の間は、拍から dodgeWindowMs 以内ならすべて PERFECT
+  dodgeGrade(deltaMs) {
+    const sway = this.buffs.sway;
+    if (!sway) return this.judge.grade(deltaMs);
+    return Math.abs(deltaMs) <= sway.def.dodgeWindowMs ? 'perfect' : null;
   }
 
   // enemy.guard / enemy.open のように長さを持つイベントの区間内か
@@ -572,10 +578,11 @@ export class BattleState {
     if (this.hero.hp <= 0) this.decide('lose');
   }
 
-  // 範囲内で拍を迎え、判定ウィンドウのうちに避けも逃げもしなかったら被弾
+  // 範囲内で拍を迎え、判定ウィンドウのうちに避けも逃げもしなかったら被弾。
+  // ローリングスターの間は回避の幅が広いので、そのぶん待ってから被弾にする
   expire() {
     const now = this.beats.perceivedNow;
-    const good = this.judge.goodSec;
+    const good = Math.max(this.judge.goodSec, (this.buffs.sway?.def.dodgeWindowMs ?? 0) / 1000);
     this.pending = this.pending.filter((ev) => {
       if (this.results.has(ev.id)) return false;
       if (now <= this.beats.beatToTime(ev.beat) + good) return true;

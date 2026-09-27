@@ -97,7 +97,11 @@ export function wrap(g, str, maxW, size = 16) {
   let line = '';
   for (const ch of str) {
     if (ch === '\n') { lines.push(line); line = ''; continue; }
-    if (g.measureText(line + ch).width > maxW && line) { lines.push(line); line = ''; }
+    if (g.measureText(line + ch).width > maxW && line) {
+      lines.push(line);
+      line = '';
+      if (ch === ' ') continue;   // 折り返した行の頭に空白を残さない
+    }
     line += ch;
   }
   if (line) lines.push(line);
