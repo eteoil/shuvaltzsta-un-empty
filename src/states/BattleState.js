@@ -302,8 +302,7 @@ export class BattleState {
 
   onPress({ btn, t }) {
     if (this.phase === 'result') {
-      const ready = this.beats.currentBeat >= this.resultBeat + this.bpb;
-      if (ready && (btn === 'a' || btn === 'start')) this.leave();
+      if (this.resultReady && (btn === 'a' || btn === 'start')) this.leave();
       return;
     }
     if (btn === 'pause' || btn === 'start') { this.game.pause(); return; }
@@ -507,6 +506,11 @@ export class BattleState {
       if (n) this.popup(`毒 ${n}`, COLORS.unguard, this.def.actors[0].id);
       this.scheduleTick('enemy', next);
     }
+  }
+
+  // リザルトは、アウトロが鳴り終わるまで閉じられない
+  get resultReady() {
+    return this.beats.currentBeat >= this.resultBeat + this.bpb && this.game.clock.now >= this.game.bgm.outroEndsAt;
   }
 
   showResult(beat) {
@@ -840,7 +844,7 @@ export class BattleState {
       const shown = Math.round(this.score * Math.min(1, (now - this.resultAt) / 900));
       text(g, 'SCORE', 138, 192, { color: COLORS.brass });
       text(g, shown.toLocaleString('en-US'), W - 138, 186, { size: 24, color: COLORS.perfect, align: 'right' });
-      if (beat >= this.resultBeat + this.bpb && Math.floor(now / 400) % 2 === 0) {
+      if (this.resultReady && Math.floor(now / 400) % 2 === 0) {
         text(g, 'A：つぎへ', cx, 232, { color: COLORS.signal, align: 'center' });
       }
     }

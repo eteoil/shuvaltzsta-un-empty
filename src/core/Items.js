@@ -7,7 +7,8 @@ export const loadItems = () => loadJSON('data/items.json');
 
 export const money = (n) => `${n.toLocaleString('en-US')}$`;
 
-const part = ([num, den], max) => Math.max(1, Math.round((max * num) / den));
+// 数字ならその量、[分子, 分母] なら最大HPに対する割合
+const part = (v, max) => (Array.isArray(v) ? Math.max(1, Math.round((max * v[0]) / v[1])) : v);
 
 export function count(session, id) {
   return session.items[id] ?? 0;
@@ -25,12 +26,12 @@ export function takeItem(session, id) {
 }
 
 // アイテムを使う。battle は戦闘中なら BattleState、探索中なら null。
-// 戻り値の lines は画面に出すメッセージ
+// 戻り値の lines は画面に出すメッセージ、sound は鳴らす効果音（使えなかったときは miss）
 export function useItem(items, session, id, battle = null) {
   const def = items[id];
-  if (def.battleOnly && !battle) return { used: false, lines: ['戦闘中にしか使えない'] };
-  if (def.heal && session.hero.hp >= session.hero.maxHp) return { used: false, lines: ['HPはまんたんだ'] };
-  if (!takeItem(session, id)) return { used: false, lines: [] };
+  if (def.battleOnly && !battle) return { used: false, lines: ['戦闘中にしか使えない'], sound: 'miss' };
+  if (def.heal && session.hero.hp >= session.hero.maxHp) return { used: false, lines: ['HPはまんたんだ'], sound: 'miss' };
+  if (!takeItem(session, id)) return { used: false, lines: [], sound: 'miss' };
   const lines = [`${def.name}を使った`];
   let effect = def;
   if (def.outcomes) {
@@ -63,5 +64,5 @@ export function useItem(items, session, id, battle = null) {
     battle.addBuff(effect);
     lines.push(effect.buff === 'needle' ? 'しばらく攻撃が2マス先まで届き、毒を与える' : 'しばらく攻撃がすべて PERFECT になる');
   }
-  return { used: true, lines };
+  return { used: true, lines, sound: effect.damage || effect.poison ? 'poison' : 'heal' };
 }

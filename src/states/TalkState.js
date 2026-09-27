@@ -46,11 +46,12 @@ export class TalkState {
     this.game.states.pop();
   }
 
+  // if.has の持ち物が if.count 個（省略時 1 個）以上あるときだけ出す選択肢がある。
+  // 選べるものが1つしか残らなければ、あいさつも選択肢も出さずにそれを始める
   menu() {
-    const options = this.npc.options
-      .filter((o) => !o.if?.has || count(this.session, o.if.has) > 0)
-      .map((o) => ({ label: o.label, run: () => this.act(o) }));
-    this.choose(this.npc.greet, options);
+    const shown = this.npc.options.filter((o) => !o.if?.has || count(this.session, o.if.has) >= (o.if.count ?? 1));
+    if (shown.length === 1) { this.act(shown[0]); return; }
+    this.choose(this.npc.greet, shown.map((o) => ({ label: o.label, run: () => this.act(o) })));
   }
 
   act(o) {
@@ -79,8 +80,10 @@ export class TalkState {
       {
         label: 'はい',
         run: () => {
+          const n = t.giveCount ?? 1;
           if (this.session.money < t.price) { this.say(t.poor); return; }
-          if (!takeItem(this.session, t.give)) { this.close(); return; }
+          if (count(this.session, t.give) < n) { this.close(); return; }
+          for (let k = 0; k < n; k++) takeItem(this.session, t.give);
           this.session.money -= t.price;
           addItem(this.session, t.get);
           this.game.sfx.play('confirm');
@@ -135,7 +138,7 @@ export class TalkState {
     const top = H - 108;
     panel(g, 8, top, W - 16, 100);
     panel(g, 16, top - 26, Math.max(80, [...this.npc.name].length * 16 + 24), 30);
-    text(g, this.npc.name, 28, top - 19, { color: COLORS.brass });
+    text(g, this.npc.name, 28, top - 21, { color: COLORS.brass });
     const shown = [...this.line].slice(0, this.visible()).join('');
     wrap(g, shown, W - 48).slice(0, 3).forEach((l, i) => text(g, l, 24, top + 16 + i * 24));
     text(g, money(this.session.money), W - 20, top + 8, { size: 12, align: 'right', color: COLORS.perfect });

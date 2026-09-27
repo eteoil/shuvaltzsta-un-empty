@@ -19,12 +19,17 @@ export const COLORS = {
   open: '#8fe07a',
 };
 
-export function text(g, str, x, y, { size = 16, color = COLORS.ink, align = 'left', baseline = 'top', shadow = COLORS.deep, alpha = 1 } = {}) {
+// 文字の上端を y に置く。textBaseline の 'top' はブラウザによって基準が違い、
+// Safari ではフォントの行の高さぶん下にずれて枠からはみ出す。どこでも同じ位置になる 'alphabetic' で描く
+const ASCENT = 0.9;
+
+export function text(g, str, x, y, { size = 16, color = COLORS.ink, align = 'left', shadow = COLORS.deep, alpha = 1 } = {}) {
   g.save();
   g.globalAlpha = alpha;
   g.font = `${size}px ${FONT}`;
   g.textAlign = align;
-  g.textBaseline = baseline;
+  g.textBaseline = 'alphabetic';
+  y += size * ASCENT;
   if (shadow) {
     g.fillStyle = shadow;
     g.fillText(str, Math.round(x) + 1, Math.round(y) + 1);

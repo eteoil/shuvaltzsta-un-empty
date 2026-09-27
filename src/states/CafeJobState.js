@@ -102,17 +102,18 @@ export class CafeJobState {
 
     if (this.phase === 'ready') {
       panel(g, 40, 70, W - 80, 120);
-      text(g, this.def.rule, cx, 88, { align: 'center' });
-      text(g, `体力を${this.hpUsed}使った`, cx, 118, { align: 'center', color: COLORS.muted });
-      if (Math.floor(ms / 500) % 2 === 0) text(g, 'A：はじめる', cx, 152, { align: 'center', color: COLORS.signal });
+      text(g, this.def.rule, cx, 96, { align: 'center' });
+      if (Math.floor(ms / 500) % 2 === 0) text(g, 'A：はじめる', cx, 144, { align: 'center', color: COLORS.signal });
       return;
     }
     if (this.phase === 'result') {
       panel(g, 80, 60, W - 160, 150);
       text(g, 'おしまい', cx, 74, { size: 24, color: COLORS.brass, align: 'center' });
-      text(g, `正解 ${this.correct} / ${this.def.rounds.length}`, cx, 112, { align: 'center' });
-      text(g, `報酬 ${money(this.reward)}`, cx, 140, { size: 24, color: COLORS.perfect, align: 'center' });
-      if (Math.floor(ms / 400) % 2 === 0) text(g, 'A：つぎへ', cx, 180, { align: 'center', color: COLORS.signal });
+      text(g, `正解 ${this.correct} / ${this.def.rounds.length}`, cx, 106, { align: 'center' });
+      text(g, `報酬 ${money(this.reward)}`, cx, 128, { size: 24, color: COLORS.perfect, align: 'center' });
+      // 体力はバイトを始めたときに減らしているが、知らせるのは終わってから
+      text(g, `体力を${this.hpUsed}使った`, cx, 160, { size: 14, align: 'center', color: COLORS.muted });
+      if (Math.floor(ms / 400) % 2 === 0) text(g, 'A：つぎへ', cx, 184, { align: 'center', color: COLORS.signal });
       return;
     }
 

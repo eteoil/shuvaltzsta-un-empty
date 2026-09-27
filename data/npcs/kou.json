@@ -7,7 +7,8 @@
   "options": [
     { "label": "世間話", "say": "スライムって食べれんのかな？" },
     {
-      "label": "鑑定",
+      "label": "キノコ",
+      "if": { "has": "mushroom" },
       "appraise": {
         "item": "mushroom",
         "results": { "edible_mushroom": "これは食用キノコだね", "poison_mushroom": "これは毒キノコだね" },

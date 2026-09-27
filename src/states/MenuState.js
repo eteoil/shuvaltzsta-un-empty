@@ -64,7 +64,10 @@ export class MenuState {
         if (fresh || btn === 'a' || btn === 'b') continue;
       }
       if (this.mode === 'items') { this.updateItems(btn); continue; }
-      if (btn === 'up' || btn === 'down') this.sel = (this.sel + this.items.length + (btn === 'up' ? -1 : 1)) % this.items.length;
+      if (btn === 'up' || btn === 'down') {
+        this.sel = (this.sel + this.items.length + (btn === 'up' ? -1 : 1)) % this.items.length;
+        this.game.sfx.play('select');
+      }
       if (btn === 'a') { this.items[this.sel].run(); return; }
       if (btn === 'b' || btn === 'pause' || btn === 'start') { this.game.states.pop(); return; }
     }
@@ -80,6 +83,7 @@ export class MenuState {
     }
     if (btn === 'a') {
       const r = useItem(this.defs, this.session, list[this.itemSel], this.battle);
+      this.game.sfx.play(r.sound);
       this.message = { lines: r.lines, at: performance.now() };
       this.itemSel = Math.min(this.itemSel, Math.max(0, this.owned().length - 1));
     }

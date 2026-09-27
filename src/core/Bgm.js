@@ -11,6 +11,7 @@ export class Bgm {
     this.voices = [];
     this.click = null;
     this.current = null;
+    this.outroEndsAt = 0;       // アウトロが鳴り終わる AudioContext 時刻
   }
 
   get spb() {
@@ -60,6 +61,7 @@ export class Bgm {
       this.click = { zero: at - startSec, next: Math.round(startSec / this.spb), until: Infinity };
     }
     this.current = { key, def, offset };
+    this.outroEndsAt = Infinity;
     return at - startSec;
   }
 
@@ -89,10 +91,13 @@ export class Bgm {
     for (const v of this.voices) this.fade(v, at, 0.004);
     const buffer = this.buffers[cur.key];
     if (buffer) {
-      this.voice(buffer, at, this.barTime(cur.def.outroFromBar) + cur.offset, null);
+      const from = this.barTime(cur.def.outroFromBar) + cur.offset;
+      this.voice(buffer, at, from, null);
+      this.outroEndsAt = at + buffer.duration - from;
     } else if (this.click) {
       this.click.until = at;
       [523, 659, 784, 1047].forEach((f, i) => this.blip(f, 0.16, 0.35, at + i * this.spb / 2));
+      this.outroEndsAt = at + 2 * this.spb + 0.2;
     }
     this.current = null;
   }
@@ -119,16 +124,17 @@ export class Bgm {
     gain.gain.linearRampToValueAtTime(1, when + 0.004);
     src.connect(gain).connect(this.bus);
     src.start(when, offset);
-    const v = { src, gain, stopped: false };
+    const v = { src, gain, stopAt: Infinity };
     src.onended = () => { this.voices = this.voices.filter((x) => x !== v); };
     this.voices.push(v);
     return v;
   }
 
+  // 止める予定がもっと先に入っていても、早いほうへ付け替える（アウトロ待ちの間に戦闘を抜けたときなど）
   fade(v, at, dur) {
-    if (v.stopped) return;
-    v.stopped = true;
     const t = Math.max(at, this.clock.now);
+    if (v.stopAt <= t + dur) return;
+    v.stopAt = t + dur;
     v.gain.gain.cancelScheduledValues(t);
     v.gain.gain.setValueAtTime(v.gain.gain.value, t);
     v.gain.gain.linearRampToValueAtTime(0, t + dur);

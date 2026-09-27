@@ -69,7 +69,7 @@ export class ShopState {
     text(g, '買い物', 28, 18, { color: COLORS.brass });
     text(g, money(this.session.money), W - 28, 18, { align: 'right', color: COLORS.perfect });
     this.shop.items.forEach(([id, price], i) => {
-      const y = 48 + i * 24;
+      const y = 46 + i * 22;
       const active = i === this.sel;
       const poor = this.session.money < price;
       if (active) text(g, '▶', 26, y, { color: COLORS.signal });
@@ -78,7 +78,7 @@ export class ShopState {
       text(g, money(price), W - 28, y, { align: 'right', color: poor ? COLORS.miss : COLORS.perfect });
     });
     const d = this.defs[this.shop.items[this.sel][0]];
-    const descY = 8 + listH - 58;
+    const descY = 46 + this.shop.items.length * 22 + 10;
     g.fillStyle = COLORS.line;
     g.fillRect(24, descY - 6, W - 48, 1);
     wrap(g, d.desc, W - 64).slice(0, 2).forEach((l, i) => text(g, l, 28, descY + i * 22));
@@ -88,7 +88,7 @@ export class ShopState {
     const top = H - 92;
     panel(g, 8, top, W - 16, 84);
     panel(g, 16, top - 26, Math.max(80, [...this.npc.name].length * 16 + 24), 30);
-    text(g, this.npc.name, 28, top - 19, { color: COLORS.brass });
+    text(g, this.npc.name, 28, top - 21, { color: COLORS.brass });
     const shown = [...this.line].slice(0, Math.floor((performance.now() - this.shownAt) / CHAR_MS)).join('');
     wrap(g, shown, W - 48).slice(0, 2).forEach((l, i) => text(g, l, 24, top + 16 + i * 24));
     text(g, 'A：買う　B：店を出る', W - 20, top + 62, { size: 12, align: 'right', color: COLORS.dim });

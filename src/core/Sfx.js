@@ -49,6 +49,13 @@ export class Sfx {
       case 'confirm':
         this.tone(660, 0.06, { vol: 0.35, when });
         return this.tone(990, 0.08, { vol: 0.35, when: (when ?? this.clock.now) + 0.06 });
+      // アイテム：回復は上がる和音、毒やダメージは下がるうねり
+      case 'heal':
+        [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.09, { type: 'triangle', vol: 0.4, when: (when ?? this.clock.now) + i * 0.06 }));
+        return undefined;
+      case 'poison':
+        this.tone(330, 0.3, { type: 'sawtooth', vol: 0.25, when, slide: 110 });
+        return this.tone(349, 0.3, { type: 'square', vol: 0.15, when: (when ?? this.clock.now) + 0.08, slide: 98 });
       case 'step': return this.tone(180, 0.03, { type: 'triangle', vol: 0.25, when });
       case 'perfect': return this.tone(1320, 0.08, { vol: 0.35, when });
       case 'good': return this.tone(880, 0.07, { vol: 0.3, when });

@@ -45,7 +45,7 @@ export class DialogState {
     panel(g, 8, top, W - 16, 100);
     if (line.speaker) {
       panel(g, 16, top - 26, Math.max(80, [...line.speaker].length * 16 + 24), 30);
-      text(g, line.speaker, 28, top - 19, { color: COLORS.brass });
+      text(g, line.speaker, 28, top - 21, { color: COLORS.brass });
     }
     const shown = [...line.text].slice(0, this.visible()).join('');
     wrap(g, shown, W - 48).slice(0, 3).forEach((l, i) => text(g, l, 24, top + 16 + i * 24));
