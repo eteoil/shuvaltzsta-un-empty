@@ -243,7 +243,8 @@ export class BattleState {
       while (this.seq.needsRefill(track, beat)) {
         let start = Math.max(track.endBeat, this.fightBeat);
         if (start < track.lockedUntil) start = ceilTo(track.lockedUntil, this.bpb);
-        const poisoned = unit.poisonUntil > beat;
+        // 混乱中は毒でも逃げない（逃げると、混乱して狙ったほかの敵から離れてしまい、同士討ちが減る）
+        const poisoned = unit.poisonUntil > beat && !this.confused(unit, beat);
         const pattern = unit.enemy.choosePattern(this.profile, { distance: this.unitDistance(unit, beat), poisoned });
         track.addPattern(this.bindPattern(pattern, unit), start);
       }
