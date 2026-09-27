@@ -14,6 +14,7 @@
       "shop": {
         "prompt": "どれにするんだ？",
         "items": [["onigiri", 300], ["ble_sand", 600], ["coffee", 1200]],
+        "nightItems": [["onigiri", 300], ["ble_sand", 600], ["rolling_star", 1200]],
         "thanks": "いってらっしゃい",
         "poor": "金が足りないみたいだな"
       }

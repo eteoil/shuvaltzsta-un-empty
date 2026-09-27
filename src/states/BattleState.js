@@ -527,7 +527,8 @@ export class BattleState {
       return this.fail(b, 'FEINT!');
     }
     this.results.set(target.id, 'dodge');
-    this.success(this.judge.grade(this.beats.deltaMs(t, target.beat)), 'dodge', b);
+    // ローリングスター：避けられた回避はすべて PERFECT（拍を外した回避は MISS のまま）
+    this.success(this.buffs.sway ? 'perfect' : this.judge.grade(this.beats.deltaMs(t, target.beat)), 'dodge', b);
     this.game.sfx.play('dodge');
     return undefined;
   }

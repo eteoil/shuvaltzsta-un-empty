@@ -156,8 +156,9 @@ export class TalkState {
     else this.close();
   }
 
-  // 買い物は専用の State で。店を出たら会話も終わる
+  // 買い物は専用の State で。店を出たら会話も終わる。夜は nightItems があればそちらを並べる（バーのお酒）
   shop(s) {
+    if (this.night && s.nightItems) s = { ...s, items: s.nightItems };
     const sale = s.festivalSale && this.today.festival ? s.festivalSale : 1;
     this.game.states.push(new ShopState(this.game, this.npc, s, this.items, () => this.close(), sale));
   }
