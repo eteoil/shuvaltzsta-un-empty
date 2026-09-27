@@ -494,7 +494,12 @@ export class BattleState {
     this.popup(back ? `BACK! ${dmg}` : String(dmg), back ? COLORS.perfect : COLORS.ink, target);
     this.anim(target, 'hurt', b);
     if (this.buffs.needle) this.poisonEnemy(unit, b, this.buffs.needle.def.poisonBeats);
-    if (this.buffs.panic) this.confuse(unit, b, this.buffs.panic.def.confuseBeats);
+    // パニックドロップ：1回使うごとに、それぞれの敵を1回だけ混乱させる（殴り続けても延びない）
+    const panic = this.buffs.panic;
+    if (panic && !panic.confused.has(unit.id)) {
+      panic.confused.add(unit.id);
+      this.confuse(unit, b, panic.def.confuseBeats);
+    }
     if (unit.enemy.down) this.unitDown(unit, b);
     return undefined;
   }
@@ -603,7 +608,8 @@ export class BattleState {
 
   addBuff(def) {
     const until = this.beats.currentBeat + def.beats;
-    this.buffs[def.buff] = { until, def };
+    // confused：この効き目のあいだに混乱させた一団（パニックドロップは1回の使用で1体1回まで）
+    this.buffs[def.buff] = { until, def, confused: new Set() };
     this.tracks.system.add({ beat: Math.max(until, this.tracks.system.lockedUntil), type: 'system.status', payload: { action: 'end', buff: def.buff } });
   }
 
