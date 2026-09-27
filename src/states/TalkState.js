@@ -209,15 +209,22 @@ export class TalkState {
   }
 
   // 持っている売れる物を買い取る。1種類でも、どれを見せるか選んでもらう。
-  // 値段はその種類を全部売ったときの合計。「いいえ」と B は no のセリフで終わる
+  // 2個以上あれば howMany で売る個数を選び（最初は全部）、値段はその個数ぶんの合計。
+  // 「いいえ」と B は no のセリフで終わる
   buy(b) {
     const list = this.sellables();
     const no = () => this.say(b.no);
-    this.choose(b.which, list.map((id) => ({ label: `${this.items[id].name}×${count(this.session, id)}`, run: () => this.offer(b, id) })), no);
+    this.choose(b.which, list.map((id) => ({ label: `${this.items[id].name}×${count(this.session, id)}`, run: () => this.pickCount(b, id, no) })), no);
   }
 
-  offer(b, id) {
-    const n = count(this.session, id);
+  pickCount(b, id, no) {
+    const max = count(this.session, id);
+    if (!b.howMany || max <= 1) { this.offer(b, id, max); return; }
+    this.say(b.howMany, null);
+    this.counter = { n: max, max, price: this.items[id].sell, run: (n) => this.offer(b, id, n), cancel: no };
+  }
+
+  offer(b, id, n) {
     const price = this.items[id].sell * n;
     const no = () => this.say(b.no);
     this.choose(b.prompt.replace('{price}', money(price)), [
