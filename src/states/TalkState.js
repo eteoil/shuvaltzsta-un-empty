@@ -4,7 +4,7 @@ import { loadItems, money, count, addItem, takeItem } from '../core/Items.js';
 import { loadJSON } from '../core/Data.js';
 import { setTotalScore } from '../core/Level.js';
 import { cure } from '../core/Hero.js';
-import { dateText, eventsOf, isNight, isOpen, passTime, sleep } from '../core/Calendar.js';
+import { dateText, eventsOf, isNight, isMapOpen, passTime, sleep } from '../core/Calendar.js';
 import { CafeJobState } from './CafeJobState.js';
 import { ShopState } from './ShopState.js';
 
@@ -134,10 +134,11 @@ export class TalkState {
     return isNight(this.game.config, this.session.minute);
   }
 
-  // いまいるマップが営業時間外（hours の外）なら、closedText だけ言って終わる（店じまいのジャグジー）。
+  // いまいるマップが営業時間外（hours の外。天赦日に休む店は天赦日も）なら、closedText だけ言って終わる（店じまいのジャグジー）。
   // nightGreet：夜のあいさつ（バーのシャルヴィス）
   menu() {
-    if (this.npc.closedText && !isOpen(this.session.map.hours, this.session.minute)) { this.say(this.npc.closedText); return; }
+    const s = this.session;
+    if (this.npc.closedText && !isMapOpen(this.game.calendar, s.map, s.day, s.minute)) { this.say(this.npc.closedText); return; }
     const shown = this.visibleOptions();
     const main = shown.filter((o) => !o.cancel);
     if (main.length === 1) { this.act(main[0]); return; }

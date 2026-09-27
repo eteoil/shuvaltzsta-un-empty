@@ -5,7 +5,7 @@ import { loadItems, money, addItem } from '../core/Items.js';
 import { poisonTick, regen } from '../core/Hero.js';
 import { drawPickup, drawExit, drawObject, objectHeight } from '../core/icons.js';
 import { Pickups } from '../core/Pickups.js';
-import { passTime, isNight, isOpen, eventsOf } from '../core/Calendar.js';
+import { passTime, isNight, isMapOpen, eventsOf } from '../core/Calendar.js';
 import { DIRS, FACE_STEP } from '../core/grid.js';
 
 // 探索。リズム入力は受け付けない（憲法③）。町のマップ（kind: town）では TOWN として動く。
@@ -87,14 +87,14 @@ export class FieldState {
     return isNight(this.game.config, this.session.minute);
   }
 
-  // このマップが営業中か（hours が無ければいつでも）
+  // このマップが営業中か（hours が無ければいつでも。closedOnRestDay なら天赦日は休み）
   get open() {
-    return isOpen(this.map.hours, this.session.minute);
+    return isMapOpen(this.game.calendar, this.map, this.session.day, this.session.minute);
   }
 
   // 出口の行き先が営業中か。行き先のマップは enter で読んでおく（まだなら開いていることにする）
   destOpen(exit) {
-    return isOpen(this.destMaps[exit.to]?.hours, this.session.minute);
+    return isMapOpen(this.game.calendar, this.destMaps[exit.to], this.session.day, this.session.minute);
   }
 
   // 営業時間のある場所の店の人（map の npcs で staff: true）は、時間外はいない。night: true の人は夜だけ（バーのエレナ）。
@@ -106,7 +106,7 @@ export class FieldState {
   }
 
   // 出口に乗ったら行き先へ。requires のフラグ（勝った戦闘など）が無ければ通れない。
-  // 行き先のマップが営業時間外（hours の外）なら、closedText を出して入れない（薬屋）
+  // 行き先のマップが営業時間外（hours の外。天赦日に休む店は天赦日も）なら、closedText を出して入れない（薬屋）
   takeExit() {
     const exit = this.exitAt(this.p.i, this.p.j);
     if (!exit) return false;

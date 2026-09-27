@@ -3,6 +3,7 @@
   "kind": "town",
   "name": "ジャグジーの薬屋",
   "hours": [540, 1020],
+  "closedOnRestDay": true,
   "floor": [
     "#####",
     "#####",

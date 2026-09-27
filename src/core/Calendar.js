@@ -82,6 +82,11 @@ export function isOpen(hours, minute) {
   return !hours || within(minute, hours);
 }
 
+// その場所が開いているか。営業時間（hours）の外と、closedOnRestDay の場所（薬屋）の天赦日は閉まっている
+export function isMapOpen(calendar, map, day, minute) {
+  return isOpen(map?.hours, minute) && !(map?.closedOnRestDay && eventsOf(calendar, day).rest);
+}
+
 // 時間を進める。session.minute は時計の時刻（0時から何分）で、0時を過ぎたら日付も進む
 export function passTime(session, minutes) {
   session.minute += minutes;
