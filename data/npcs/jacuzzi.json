@@ -4,12 +4,14 @@
   "sprite": "player",
   "palette": { "id": "jacuzzi", "map": { "#394660": "#7a3f8f", "#187fc4": "#4fae8a", "#801e6b": "#3b2f4a", "#f5c939": "#de7392" } },
   "greet": "いらっしゃいまセｪ！",
+  "nightClosed": "もう店じまいだヨ。また明日来てネ（仮）",
   "options": [
     { "label": "世間話", "say": "色々揃えてるヨ" },
     {
       "label": "買い物",
       "shop": {
         "prompt": "なにが欲しいんだイ？",
+        "festivalSale": 0.8,
         "items": [["ether_s", 1000], ["ether_l", 3000], ["poison_needle", 2000], ["antidote", 500], ["panic_drop", 1000], ["painkiller", 800], ["jacuzzi_special", 1500]],
         "thanks": "まいどあリ〜",
         "poor": "お金が足りないヨ"

@@ -11,6 +11,7 @@ import { Enemy } from '../battle/Enemy.js';
 import { areaTiles } from '../battle/areas.js';
 import { DialogState } from './DialogState.js';
 import { poisonTick, regen, attackMultiplier } from '../core/Hero.js';
+import { passTime } from '../core/Calendar.js';
 
 const THREATS = new Set(['enemy.attack', 'enemy.feint']);
 const LANE = { y: 280, h: 40, judgeX: 44 };
@@ -82,6 +83,7 @@ export class BattleState {
     this.runPhase = 0;          // 走ったマス数。走りのコマ送りに使う（1マスで2コマ）
 
     this.fightBeat = (config.bgm.battle.loopFromBar - 1) * this.bpb;
+    this.enemyPowerRate = 1;    // 敵の攻撃力に掛ける倍率
     this.setupStage();
     this.warmPoses();
     this.startMusic();
@@ -222,6 +224,7 @@ export class BattleState {
   // ---------------------------------------------------------------- 進行
 
   update(dt, presses) {
+    passTime(this.game.session, dt * this.game.config.time.minutesPerSec);
     const beat = this.beats.currentBeat;
     // チートモードの自動回復。ポーズメニューで途中から ON にしても、次の小節から始まる
     if (this.game.options.cheat && !this.ticking.regen && !this.outcome) this.scheduleTick('regen', Math.max(beat, this.fightBeat));
@@ -544,8 +547,8 @@ export class BattleState {
 
   hit(ev) {
     this.results.set(ev.id, 'hit');
-    // 痛み止めの間は damageRate 倍（半分）
-    const power = Math.max(1, Math.round((ev.payload.power ?? 10) * (this.buffs.guard?.def.damageRate ?? 1)));
+    // 痛み止めの間は damageRate 倍（半分）。enemyPowerRate はダンジョンの忌み月など
+    const power = Math.max(1, Math.round((ev.payload.power ?? 10) * this.enemyPowerRate * (this.buffs.guard?.def.damageRate ?? 1)));
     this.hero.hp = Math.max(0, this.hero.hp - power);
     this.stats.damage += power;
     this.fail(ev.beat, 'HIT');

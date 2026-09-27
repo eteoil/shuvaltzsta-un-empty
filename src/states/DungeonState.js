@@ -4,6 +4,7 @@ import { distance, FACE_STEP } from '../core/grid.js';
 import { loadItems, addItem } from '../core/Items.js';
 import { Pickups } from '../core/Pickups.js';
 import { drawPickup, drawExit } from '../core/icons.js';
+import { eventsOf } from '../core/Calendar.js';
 import { BattleState } from './BattleState.js';
 
 // ダンジョン。入った瞬間から戦闘で、戦闘曲がループし続ける。仕組みは BattleState と同じ
@@ -29,8 +30,13 @@ export class DungeonState extends BattleState {
     this.floor = this.map.floor;
     const { i, j, dir } = this.game.session.player;
     this.player = { i, j, dir, move: null };
+    // 忌み月は敵が強く（HP と攻撃力が taboo の倍率）、落とす物も増える
+    this.taboo = eventsOf(this.game.calendar, this.game.session.day).taboo ? this.game.config.taboo : null;
+    this.enemyPowerRate = this.taboo?.enemyPower ?? 1;
     this.map.spawns.forEach((sp, k) => {
-      const { def, patterns } = this.enemyData[sp.enemy];
+      const data = this.enemyData[sp.enemy];
+      const def = this.taboo ? { ...data.def, hp: Math.round(data.def.hp * this.taboo.enemyHp) } : data.def;
+      const { patterns } = data;
       const id = `${sp.enemy}${k + 1}`;
       const one = def.actors.length === 1;
       this.addUnit(id, def, patterns, def.actors.map((a) => ({ ...a, id: one ? id : `${id}.${a.id}`, at: sp.at })));
@@ -89,7 +95,13 @@ export class DungeonState extends BattleState {
     this.stats.kills++;
     this.game.sfx.play('ko');
     const a = this.actors[unit.actorIds[0]];
-    if (unit.def.drop && a) this.drops.drop(unit.def.drop, [a.i, a.j]);
+    if (!unit.def.drop || !a) return;
+    // 2個目からは、倒れたマスのまわりの空いている床に置く
+    const spots = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]]
+      .map(([di, dj]) => [a.i + di, a.j + dj])
+      .filter(([i, j]) => this.inArena(i, j) && !this.drops.at(i, j));
+    const n = this.taboo?.dropCount ?? 1;
+    for (let k = 0; k < n; k++) this.drops.drop(unit.def.drop, spots[k] ?? [a.i, a.j]);
   }
 
   attack(t, b, slot) {

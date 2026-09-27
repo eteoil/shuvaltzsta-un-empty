@@ -2,7 +2,7 @@ import { STATES } from '../core/constants.js';
 import { COLORS, text, panel, gauge, wrap } from '../core/draw.js';
 import { loadItems, money, useItem } from '../core/Items.js';
 import { saveOptions } from '../core/Options.js';
-import { dateText, eventsOf } from '../core/Calendar.js';
+import { dateText, timeText, eventsOf } from '../core/Calendar.js';
 import { levelOf, scoreFor, setTotalScore } from '../core/Level.js';
 
 const ROWS = 7;
@@ -137,9 +137,10 @@ export class MenuState {
     const tags = [this.game.options.cheat && 'CHEAT', this.game.dev && 'DEV'].filter(Boolean);
     // 日付の下に、その日の行事（祭り・天赦日・忌み月）
     const events = eventsOf(this.game.calendar, s.day).labels;   // 行事ごとに1行
-    panel(g, W - 176, 8, 168, 80 + events.length * 16);
+    panel(g, W - 176, 8, 168, 96 + events.length * 16);
     text(g, dateText(this.game.calendar, s.day), W - 164, 64, { size: 12, color: COLORS.muted });
-    events.forEach((l, i) => text(g, l, W - 164, 80 + i * 16, { size: 12, color: COLORS.brass }));
+    text(g, timeText(this.game.calendar, s.minute), W - 164, 80, { size: 12, color: COLORS.muted });
+    events.forEach((l, i) => text(g, l, W - 164, 96 + i * 16, { size: 12, color: COLORS.brass }));
     if (tags.length) text(g, tags.join(' '), W - 18, 64, { size: 12, align: 'right', color: COLORS.brass });
     text(g, `Lv ${this.level}`, W - 164, 48, { color: COLORS.ink });
     text(g, 'HP', W - 164, 18, { color: COLORS.signal });

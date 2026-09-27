@@ -1,6 +1,7 @@
 // ゲーム内の暦。月を「節」、日を「区」と呼ぶ（例：火竜節5区）。
 // 1年は16節（4つの季に4節ずつ）。1節は23区で、16節（水亀節）だけ20区。中身は data/calendar.json（憲法⑨）。
-// ゲームが持つのは session.day（1日目が 1）だけで、何節何区かは start から数えてここで出す（憲法⑧）
+// ゲームが持つのは session.day（1日目が 1）と session.minute（その日の0時から何分）だけで、
+// 何節何区か・何刻かはここで出す（憲法⑧）。時間の進み方の数値は gameConfig の time
 import { loadJSON } from './Data.js';
 
 export const loadCalendar = () => loadJSON('data/calendar.json');
@@ -25,20 +26,53 @@ export function dateText(calendar, n) {
 }
 
 // その日の行事。labels は画面に出す短い名前、wake はベッドで起きたときの一言。
-// 祭り（festivals）の日、天赦日（区が restDays.fromDay 以降。23区ある節の最後の3区）、忌み月（一言は月の初日だけ）
+// festival（祭りの日）・rest（天赦日。区が restDays.fromDay 以降＝23区ある節の最後の3区）・taboo（忌み月）は、その日の効果に使う
 export function eventsOf(calendar, n) {
   const d = dateOf(calendar, n);
   const labels = [];
   const wake = [];
-  for (const f of calendar.festivals ?? []) {
-    if (f.month === d.month && f.day === d.day) { labels.push(f.name); wake.push(f.wake); }
+  const festival = (calendar.festivals ?? []).find((f) => f.month === d.month && f.day === d.day) ?? null;
+  if (festival) { labels.push(festival.name); wake.push(festival.wake); }
+  const restDays = calendar.restDays;
+  const rest = !!restDays && d.day >= restDays.fromDay;
+  if (rest) { labels.push(restDays.name); wake.push(restDays.wake); }
+  const tabooMonth = calendar.tabooMonth;
+  const taboo = !!tabooMonth && d.month === tabooMonth.month;
+  if (taboo) {
+    labels.push(tabooMonth.name);
+    if (d.day === 1) wake.push(tabooMonth.wake);   // 忌み月の一言は月の初日だけ
   }
-  const rest = calendar.restDays;
-  if (rest && d.day >= rest.fromDay) { labels.push(rest.name); wake.push(rest.wake); }
-  const taboo = calendar.tabooMonth;
-  if (taboo && d.month === taboo.month) {
-    labels.push(taboo.name);
-    if (d.day === 1) wake.push(taboo.wake);
+  return { labels, wake, festival: !!festival, rest, taboo };
+}
+
+// 時刻。天（午前）／地（午後）と、2時間ごとの名前（陽・雷・炎・氷・泥・星）で表す。
+// 奇数の時は「半」（1時間）を足し、分は「片」。例：3:00 は天の雷刻半、18:25 は地の氷刻25片
+export function timeText(calendar, minute) {
+  const h = calendar.hours;
+  const hour = Math.floor(minute / 60) % 24;
+  const m = Math.floor(minute % 60);
+  const in12 = hour % 12;
+  const base = in12 - (in12 % 2);
+  return `${hour < 12 ? h.am : h.pm}の${h.names[base]}刻${in12 % 2 ? h.half : ''}${m ? `${m}${h.minute}` : ''}`;
+}
+
+export function isNight(config, minute) {
+  const t = config.time;
+  return minute >= t.nightFrom || minute < t.nightTo;
+}
+
+// 時間を進める。0時を過ぎたら日付も進む
+export function passTime(session, minutes) {
+  session.minute += minutes;
+  while (session.minute >= 24 * 60) {
+    session.minute -= 24 * 60;
+    session.day += 1;
   }
-  return { labels, wake };
+}
+
+// ベッドで眠る。起きるのは wakeMinute（朝6時）。夜中の0時より前に寝たら次の日、過ぎてから寝たらその日の朝
+export function sleep(session, config) {
+  const wake = config.time.wakeMinute;
+  if (session.minute >= wake) session.day += 1;
+  session.minute = wake;
 }

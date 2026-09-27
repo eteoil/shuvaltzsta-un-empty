@@ -10,12 +10,14 @@ const ROWS = 5;   // 一度に見せる品数。多ければ選んでいる品�
 export class ShopState {
   name = STATES.SHOP;
 
-  constructor(game, npc, shop, itemDefs, onClose) {
+  // sale：値段に掛ける倍率（祭りの日の特売など）。1 なら定価
+  constructor(game, npc, shop, itemDefs, onClose, sale = 1) {
     this.game = game;
     this.npc = npc;
     this.shop = shop;
     this.defs = itemDefs;
     this.onClose = onClose;
+    this.sale = sale;
     this.sel = 0;
     this.say(shop.prompt);
   }
@@ -29,6 +31,10 @@ export class ShopState {
     this.shownAt = performance.now();
   }
 
+  price(base) {
+    return Math.round(base * this.sale);
+  }
+
   update(dt, presses) {
     const list = this.shop.items;
     for (const { btn } of presses) {
@@ -36,7 +42,7 @@ export class ShopState {
         this.sel = (this.sel + list.length + (btn === 'up' ? -1 : 1)) % list.length;
         this.game.sfx.play('select');
       } else if (btn === 'a') {
-        this.buy(...list[this.sel]);
+        this.buy(list[this.sel][0], this.price(list[this.sel][1]));
       } else if (btn === 'b') {
         this.game.sfx.play('select');
         this.game.states.pop();
@@ -67,11 +73,12 @@ export class ShopState {
     // 品物の一覧と説明
     const listH = H - 128;
     panel(g, 12, 8, W - 24, listH);
-    text(g, '買い物', 28, 18, { color: COLORS.brass });
+    text(g, this.sale < 1 ? '買い物　特売！' : '買い物', 28, 18, { color: COLORS.brass });
     text(g, money(this.session.money), W - 28, 18, { align: 'right', color: COLORS.perfect });
     const list = this.shop.items;
     const first = Math.max(0, Math.min(this.sel - ROWS + 1, list.length - ROWS));
-    list.slice(first, first + ROWS).forEach(([id, price], k) => {
+    list.slice(first, first + ROWS).forEach(([id, base], k) => {
+      const price = this.price(base);
       const i = first + k;
       const y = 46 + k * 22;
       const active = i === this.sel;

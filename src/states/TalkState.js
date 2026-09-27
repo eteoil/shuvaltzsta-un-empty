@@ -2,7 +2,7 @@ import { STATES } from '../core/constants.js';
 import { COLORS, text, panel, wrap } from '../core/draw.js';
 import { loadItems, money, count, addItem, takeItem } from '../core/Items.js';
 import { cure } from '../core/Hero.js';
-import { dateText, eventsOf } from '../core/Calendar.js';
+import { dateText, eventsOf, isNight, passTime, sleep } from '../core/Calendar.js';
 import { CafeJobState } from './CafeJobState.js';
 import { ShopState } from './ShopState.js';
 
@@ -62,16 +62,29 @@ export class TalkState {
   // if.has の持ち物が if.count 個（省略時 1 個）以上あるときだけ出す選択肢がある。
   // cancel の付いた選択肢（「なんでもない」）を除いて1つしか残らなければ、あいさつも選択肢も出さずにそれを始める。
   // B で抜けたときは cancel の付いた選択肢を選んだのと同じ。無ければそのまま終わる
+  get today() {
+    return eventsOf(this.game.calendar, this.session.day);
+  }
+
+  get night() {
+    return isNight(this.game.config, this.session.minute);
+  }
+
+  // nightClosed：夜は店じまいで、それだけ言って終わる（ジャグジー）。nightGreet：夜のあいさつ（バーのシャルヴィス）
   menu() {
+    if (this.npc.nightClosed && this.night) { this.say(this.npc.nightClosed); return; }
     const shown = this.visibleOptions();
     const main = shown.filter((o) => !o.cancel);
     if (main.length === 1) { this.act(main[0]); return; }
     const cancel = shown.find((o) => o.cancel);
-    this.choose(this.npc.greet, shown.map((o) => ({ label: o.label, run: () => this.act(o) })), cancel ? () => this.act(cancel) : undefined);
+    const greet = this.night && this.npc.nightGreet ? this.npc.nightGreet : this.npc.greet;
+    this.choose(greet, shown.map((o) => ({ label: o.label, run: () => this.act(o) })), cancel ? () => this.act(cancel) : undefined);
   }
 
+  // closedOnRestDay の選択肢は、天赦日には restDayText だけ言って終わる（カフェの休み）
   act(o) {
-    if (o.say) this.say(o.say);
+    if (o.closedOnRestDay && this.today.rest) this.say(this.npc.restDayText);
+    else if (o.say) this.say(o.say);
     else if (o.shop) this.shop(o.shop);
     else if (o.appraise) this.appraise(o.appraise);
     else if (o.trade) this.trade(o.trade);
@@ -83,7 +96,8 @@ export class TalkState {
 
   // 買い物は専用の State で。店を出たら会話も終わる
   shop(s) {
-    this.game.states.push(new ShopState(this.game, this.npc, s, this.items, () => this.close()));
+    const sale = s.festivalSale && this.today.festival ? s.festivalSale : 1;
+    this.game.states.push(new ShopState(this.game, this.npc, s, this.items, () => this.close(), sale));
   }
 
   appraise(a) {
@@ -147,7 +161,7 @@ export class TalkState {
     const s = this.session;
     s.hero.hp = s.hero.maxHp;
     cure(s.hero);
-    s.day += 1;
+    sleep(s, this.game.config);
     this.game.sfx.play('heal');
     const lines = [r.say.replace('{date}', dateText(this.game.calendar, s.day)), ...eventsOf(this.game.calendar, s.day).wake];
     this.sayAll(lines);
@@ -162,6 +176,7 @@ export class TalkState {
   job(j) {
     if (this.session.worked[j.game] === this.session.day) { this.say(j.tired); return; }
     this.session.worked[j.game] = this.session.day;
+    passTime(this.session, this.game.config.time.jobMinutes);
     this.game.states.push(new CafeJobState(this.game, j.game, (reward) => {
       this.session.money += reward;
       this.say(`${j.done}（${money(reward)}もらった）`);

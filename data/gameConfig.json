@@ -21,6 +21,19 @@
   "status": {
     "poison": { "tickBeats": 8, "heroDamage": 3, "enemyDamage": 8, "fieldTickSec": 2, "fieldDamage": 1 }
   },
+  "time": {
+    "minutesPerSec": 2,
+    "startMinute": 480,
+    "wakeMinute": 360,
+    "nightFrom": 1080,
+    "nightTo": 360,
+    "jobMinutes": 180
+  },
+  "taboo": {
+    "enemyHp": 1.5,
+    "enemyPower": 1.5,
+    "dropCount": 2
+  },
   "level": {
     "max": 100,
     "scorePerLevel": 5000,
