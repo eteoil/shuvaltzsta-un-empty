@@ -28,7 +28,7 @@
     "badEndAvoidLevel": 50
   },
   "dungeon": {
-    "killScore": 300,
+    "killScore": 100,
     "focusRange": 4
   },
   "cheat": {

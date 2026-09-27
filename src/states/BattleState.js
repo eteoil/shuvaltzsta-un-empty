@@ -18,7 +18,7 @@ const key = (i, j) => `${i},${j}`;
 const ceilTo = (v, step) => Math.ceil(v / step - 1e-9) * step;
 
 // 戦場を十字キーで自由に歩き、隣の敵を A で殴り、予告されたマスへの攻撃を B で避ける。
-// 歩くのは自由、A と B だけが拍で判定される（憲法③：リズム入力は戦闘の State だけ。DungeonState はこれを土台にする）。
+// 歩くのは自由、A と B だけが拍で判定される（憲法③：リズム入力は戦闘とダンジョンだけ。DungeonState はこれを土台にする）。
 // 敵は「一団（unit）」ごとに HP と AI（Enemy）と EventTrack を1つずつ持つ。
 // 1対1の戦闘は一団が1つ（チャック＆ジッパーは2人で1つ）、ダンジョンはスライム1匹ごとに1つ
 export class BattleState {

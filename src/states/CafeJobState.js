@@ -5,7 +5,7 @@ import { money } from '../core/Items.js';
 
 const GLYPH = { up: '↑', down: '↓', left: '←', right: '→', a: 'A', b: 'B' };
 
-// カフェバイト：注文を覚えて同じ順に入力する。拍の判定は無い（憲法③：リズム入力は戦闘だけ）。
+// カフェバイト：注文を覚えて同じ順に入力する。拍の判定は無い（憲法③：リズム入力は戦闘とダンジョンだけ）。
 // 中身は data/minigames/*.json。報酬は base + perRound × 正解した回数
 export class CafeJobState {
   name = STATES.MINIGAME;
