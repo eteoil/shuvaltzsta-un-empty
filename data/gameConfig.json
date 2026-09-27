@@ -24,7 +24,7 @@
   "time": {
     "minutesPerSec": 1,
     "startMinute": 840,
-    "wakeMinute": 360,
+    "dayStart": 480,
     "nightFrom": 1080,
     "nightTo": 360,
     "jobMinutes": 180

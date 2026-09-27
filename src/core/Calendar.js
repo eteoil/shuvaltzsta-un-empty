@@ -56,23 +56,38 @@ export function timeText(calendar, minute) {
   return `${hour < 12 ? h.am : h.pm}の${h.names[base]}刻${in12 % 2 ? h.half : ''}${m ? `${m}${h.minute}` : ''}`;
 }
 
+const DAY = 24 * 60;
+
+// [from, to) の中か。to が from より小さければ0時をまたぐ
+const within = (minute, [from, to]) => (from <= to ? minute >= from && minute < to : minute >= from || minute < to);
+
 export function isNight(config, minute) {
-  const t = config.time;
-  return minute >= t.nightFrom || minute < t.nightTo;
+  return within(minute, [config.time.nightFrom, config.time.nightTo]);
 }
 
-// 時間を進める。0時を過ぎたら日付も進む
-export function passTime(session, minutes) {
-  session.minute += minutes;
-  while (session.minute >= 24 * 60) {
-    session.minute -= 24 * 60;
+// 営業中か。hours（[開店, 閉店] の分）が無い場所はいつでも開いている
+export function isOpen(hours, minute) {
+  return !hours || within(minute, hours);
+}
+
+// 時間を進める。session.minute は時計の時刻（0時から何分）で、日付は dayStart（朝8時）をまたぐと進む
+export function passTime(session, config, minutes) {
+  const start = config.time.dayStart;
+  let left = minutes;
+  while (left > 0) {
+    const toStart = ((start - session.minute) % DAY + DAY) % DAY || DAY;
+    if (left < toStart) {
+      session.minute = (session.minute + left) % DAY;
+      return;
+    }
+    left -= toStart;
+    session.minute = start;
     session.day += 1;
   }
 }
 
-// ベッドで眠る。起きるのは wakeMinute（朝6時）。夜中の0時より前に寝たら次の日、過ぎてから寝たらその日の朝
+// ベッドで眠る。起きるのは dayStart（朝8時）で、そこで日付が変わるので、何時に寝ても起きたら次の日
 export function sleep(session, config) {
-  const wake = config.time.wakeMinute;
-  if (session.minute >= wake) session.day += 1;
-  session.minute = wake;
+  session.day += 1;
+  session.minute = config.time.dayStart;
 }

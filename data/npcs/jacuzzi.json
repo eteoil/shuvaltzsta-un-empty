@@ -4,7 +4,7 @@
   "sprite": "player",
   "palette": { "id": "jacuzzi", "map": { "#394660": "#7a3f8f", "#187fc4": "#4fae8a", "#801e6b": "#3b2f4a", "#f5c939": "#de7392" } },
   "greet": "いらっしゃいまセｪ！",
-  "nightClosed": "もう店じまいだヨ。また明日来てネ（仮）",
+  "closedText": "もう店じまいだヨ。また明日来てネ（仮）",
   "options": [
     { "label": "世間話", "say": "色々揃えてるヨ" },
     {

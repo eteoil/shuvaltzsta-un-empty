@@ -2,7 +2,7 @@ import { STATES } from '../core/constants.js';
 import { COLORS, text, panel, wrap } from '../core/draw.js';
 import { loadItems, money, count, addItem, takeItem } from '../core/Items.js';
 import { cure } from '../core/Hero.js';
-import { dateText, eventsOf, isNight, passTime, sleep } from '../core/Calendar.js';
+import { dateText, eventsOf, isNight, isOpen, passTime, sleep } from '../core/Calendar.js';
 import { CafeJobState } from './CafeJobState.js';
 import { ShopState } from './ShopState.js';
 
@@ -72,9 +72,10 @@ export class TalkState {
     return isNight(this.game.config, this.session.minute);
   }
 
-  // nightClosed：夜は店じまいで、それだけ言って終わる（ジャグジー）。nightGreet：夜のあいさつ（バーのシャルヴィス）
+  // いまいるマップが営業時間外（hours の外）なら、closedText だけ言って終わる（店じまいのジャグジー）。
+  // nightGreet：夜のあいさつ（バーのシャルヴィス）
   menu() {
-    if (this.npc.nightClosed && this.night) { this.say(this.npc.nightClosed); return; }
+    if (this.npc.closedText && !isOpen(this.session.map.hours, this.session.minute)) { this.say(this.npc.closedText); return; }
     const shown = this.visibleOptions();
     const main = shown.filter((o) => !o.cancel);
     if (main.length === 1) { this.act(main[0]); return; }
@@ -202,7 +203,7 @@ export class TalkState {
   job(j) {
     if (this.session.worked[j.game] === this.session.day) { this.say(j.tired); return; }
     this.session.worked[j.game] = this.session.day;
-    passTime(this.session, this.game.config.time.jobMinutes);
+    passTime(this.session, this.game.config, this.game.config.time.jobMinutes);
     this.game.states.push(new CafeJobState(this.game, j.game, (reward) => {
       this.session.money += reward;
       this.say(`${j.done}（${money(reward)}もらった）`);

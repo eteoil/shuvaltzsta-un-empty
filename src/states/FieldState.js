@@ -1,11 +1,11 @@
 import { STATES } from '../core/constants.js';
-import { loadEnemy, loadJSON } from '../core/Data.js';
+import { loadEnemy, loadJSON, loadMap } from '../core/Data.js';
 import { COLORS, text, panel, sprite, gauge, isoTop, isoCenter } from '../core/draw.js';
 import { loadItems, money, addItem } from '../core/Items.js';
 import { poisonTick, regen } from '../core/Hero.js';
 import { drawPickup, drawExit, drawObject, objectHeight } from '../core/icons.js';
 import { Pickups } from '../core/Pickups.js';
-import { passTime, isNight } from '../core/Calendar.js';
+import { passTime, isNight, isOpen } from '../core/Calendar.js';
 import { DIRS, FACE_STEP } from '../core/grid.js';
 
 // 探索。リズム入力は受け付けない（憲法③）。町のマップ（kind: town）では TOWN として動く。
@@ -36,6 +36,8 @@ export class FieldState {
 
   enter() {
     loadItems().then((d) => { this.itemDefs = d; });
+    this.destMaps = {};
+    for (const e of this.map.exits ?? []) loadMap(e.to).then((m) => { this.destMaps[e.to] = m; });
     this.drops = new Pickups(this.game, this.map, (i, j) => this.nearCharacter(i, j));
     this.drops.fill();
     for (const enc of this.map.encounters) {
@@ -47,7 +49,7 @@ export class FieldState {
   }
 
   npcAt(i, j) {
-    return (this.map.npcs ?? []).find((n) => n.at[0] === i && n.at[1] === j);
+    return this.presentNpcs().find((n) => n.at[0] === i && n.at[1] === j);
   }
 
   // 主人公・NPC・敵のいるマスと、その周り8マス。拾い物は取りにくいので置かない
@@ -79,13 +81,28 @@ export class FieldState {
     return isNight(this.game.config, this.session.minute);
   }
 
+  // このマップが営業中か（hours が無ければいつでも）
+  get open() {
+    return isOpen(this.map.hours, this.session.minute);
+  }
+
+  // 出口の行き先が営業中か。行き先のマップは enter で読んでおく（まだなら開いていることにする）
+  destOpen(exit) {
+    return isOpen(this.destMaps[exit.to]?.hours, this.session.minute);
+  }
+
+  // 営業時間のある場所の店の人（map の npcs で staff: true）は、時間外はいない
+  presentNpcs() {
+    return (this.map.npcs ?? []).filter((n) => !n.staff || this.open);
+  }
+
   // 出口に乗ったら行き先へ。requires のフラグ（勝った戦闘など）が無ければ通れない。
-  // closedAtNight があれば夜は閉まっている（ジャグジーの薬屋）
+  // 行き先のマップが営業時間外（hours の外）なら、closedText を出して入れない（薬屋）
   takeExit() {
     const exit = this.exitAt(this.p.i, this.p.j);
     if (!exit) return false;
     const locked = exit.requires && !this.session.flags[exit.requires] ? exit.locked
-      : exit.closedAtNight && this.night ? exit.closedAtNight : null;
+      : exit.closedText && !this.destOpen(exit) ? exit.closedText : null;
     if (locked) {
       this.toast = { text: locked, at: performance.now() };
       this.game.sfx.play('miss');
@@ -111,7 +128,7 @@ export class FieldState {
 
   update(dt, presses) {
     if (this.leaving) return;   // 出口から次のマップを読み込んでいる間
-    passTime(this.session, dt * this.game.config.time.minutesPerSec);
+    passTime(this.session, this.game.config, dt * this.game.config.time.minutesPerSec);
     for (const { btn } of presses) {
       if (btn === 'pause' || btn === 'start') { this.game.pause(); return; }
       if (btn === 'a' && !this.move) {
@@ -225,8 +242,9 @@ export class FieldState {
     // 出口と拾い物は床の上なので、人より先に描く
     for (const e of this.map.exits ?? []) {
       const pos = isoCenter(e.at[0], e.at[1], ox, oy, tile);
-      const closed = (e.requires && !this.session.flags[e.requires]) || (e.closedAtNight && this.night);
-      drawExit(g, pos.x, pos.y, this.night && e.nightLabel ? e.nightLabel : e.label, performance.now(), closed);
+      const open = this.destOpen(e);
+      const closed = (e.requires && !this.session.flags[e.requires]) || (e.closedText && !open);
+      drawExit(g, pos.x, pos.y, this.night && open && e.nightLabel ? e.nightLabel : e.label, performance.now(), closed);
     }
     for (const p of this.drops.spots) {
       const pos = isoCenter(p.at[0], p.at[1], ox, oy, tile);
@@ -242,7 +260,7 @@ export class FieldState {
         people.push({ sprite: actor.sprite, frame: a.dir, anim: null, n: 0, palette: actor.palette, i: a.at[0], j: a.at[1] });
       }
     }
-    for (const n of this.map.npcs ?? []) {
+    for (const n of this.presentNpcs()) {
       const def = this.npcDefs[n.id];
       if (def) people.push({ sprite: def.sprite, object: def.object, frame: n.dir, anim: null, n: 0, palette: def.palette, i: n.at[0], j: n.at[1], label: def.name });
     }
@@ -282,7 +300,7 @@ export class FieldState {
 
     g.fillStyle = 'rgba(11,12,24,0.55)';
     g.fillRect(0, 0, W, 26);
-    text(g, this.night && this.map.nightName ? this.map.nightName : this.map.name, 8, 5);
+    text(g, this.night && this.open && this.map.nightName ? this.map.nightName : this.map.name, 8, 5);
     const hero = this.session.hero;
     text(g, 'HP', 236, 5, { color: COLORS.signal });
     gauge(g, 262, 9, 90, 9, hero.hp / hero.maxHp, COLORS.signal);

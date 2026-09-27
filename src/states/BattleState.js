@@ -224,7 +224,7 @@ export class BattleState {
   // ---------------------------------------------------------------- 進行
 
   update(dt, presses) {
-    passTime(this.game.session, dt * this.game.config.time.minutesPerSec);
+    passTime(this.game.session, this.game.config, dt * this.game.config.time.minutesPerSec);
     const beat = this.beats.currentBeat;
     // チートモードの自動回復。ポーズメニューで途中から ON にしても、次の小節から始まる
     if (this.game.options.cheat && !this.ticking.regen && !this.outcome) this.scheduleTick('regen', Math.max(beat, this.fightBeat));
