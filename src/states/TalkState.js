@@ -175,19 +175,31 @@ export class TalkState {
     this.say(a.results[got]);
   }
 
-  // 「いいえ」と B は同じ。no があればそのセリフを言ってから終わる
+  // 「いいえ」と B は同じ。no があればそのセリフを言ってから終わる。
+  // howMany があれば、何回ぶん交換できるときに先に回数を選ぶ（毒キノコをまとめて毒針に）。
+  // 選べるのは、持ち物とお金の両方が足りる回数まで。1回ぶんしか無ければ聞かない
   trade(t) {
     const no = () => (t.no ? this.say(t.no) : this.close());
-    this.choose(t.prompt.replace('{price}', money(t.price)), [
+    const have = Math.floor(count(this.session, t.give) / (t.giveCount ?? 1));
+    const afford = t.price ? Math.floor(this.session.money / t.price) : Infinity;
+    const max = Math.max(1, Math.min(have, afford));
+    if (!t.howMany || max <= 1) { this.tradeOffer(t, 1, no); return; }
+    this.say(t.howMany, null);
+    this.counter = { n: max, max, price: t.price, run: (n) => this.tradeOffer(t, n, no), cancel: no };
+  }
+
+  tradeOffer(t, times, no) {
+    const price = t.price * times;
+    this.choose(t.prompt.replace('{price}', money(price)), [
       {
         label: 'はい',
         run: () => {
-          const n = t.giveCount ?? 1;
-          if (this.session.money < t.price) { this.say(t.poor); return; }
+          const n = (t.giveCount ?? 1) * times;
+          if (this.session.money < price) { this.say(t.poor); return; }
           if (count(this.session, t.give) < n) { this.close(); return; }
           for (let k = 0; k < n; k++) takeItem(this.session, t.give);
-          this.session.money -= t.price;
-          addItem(this.session, t.get);
+          this.session.money -= price;
+          addItem(this.session, t.get, times);
           this.game.sfx.play('confirm');
           this.say(t.yes);
         },

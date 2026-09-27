@@ -21,6 +21,7 @@
       "label": "毒キノコ",
       "if": { "has": "poison_mushroom" },
       "trade": {
+        "howMany": "いくつ毒針にするんだイ？",
         "prompt": "お、{price}で毒針にするヨ？",
         "give": "poison_mushroom",
         "price": 500,
