@@ -164,34 +164,36 @@ function drawFigure(g, w, h, frame) {
   g.fillRect(cx + dx * 6, 46 + dy * 4, 3, 3);
 }
 
-// ぷるんとした半円。正面（南東・南西）だけ目を描き、向いている側へ寄せる
+// ぷるんとした半円のドット絵（1文字＝1ドット、表示は3倍）。正面（南東・南西）だけ目を描き、向いている側へ寄せる。
+// o 輪郭・g 体・d 影・s 光・. 透明
+const SLIME = [
+  '......oooooooo......',
+  '....oggggggggggo....',
+  '...ogssgggggggggo...',
+  '..ogssgggggggggggo..',
+  '.ogsggggggggggggggo.',
+  '.oggggggggggggggggo.',
+  'oggggggggggggggggggo',
+  'oggggggggggggggggggo',
+  'oggggggggggggggggggo',
+  'oddddddddddddddddddo',
+  '.oooooooooooooooooo.',
+];
+const SLIME_COLORS = { o: BASE.line, g: BASE.slime, d: BASE.slimeDark, s: BASE.slimeShine };
+
 function drawSlime(g, w, h, frame) {
-  const cx = w / 2;
-  const base = h - 8;
-  const r = 22;
-  g.fillStyle = BASE.line;
-  g.beginPath();
-  g.ellipse(cx, base, r + 2, r + 2, 0, Math.PI, 0);
-  g.lineTo(cx + r + 2, base + 4);
-  g.lineTo(cx - r - 2, base + 4);
-  g.closePath();
-  g.fill();
-  g.fillStyle = BASE.slime;
-  g.beginPath();
-  g.ellipse(cx, base, r, r, 0, Math.PI, 0);
-  g.lineTo(cx + r, base + 2);
-  g.lineTo(cx - r, base + 2);
-  g.closePath();
-  g.fill();
-  g.fillStyle = BASE.slimeDark;
-  g.fillRect(cx - r, base - 2, r * 2, 4);
-  g.fillStyle = BASE.slimeShine;
-  g.fillRect(cx - 12, base - 16, 6, 4);
-  g.fillRect(cx - 14, base - 12, 3, 3);
+  const scale = 3;
+  const cols = SLIME[0].length;
+  const left = Math.round(w / 2 - (cols * scale) / 2);
+  const top = h - 4 - SLIME.length * scale;
+  SLIME.forEach((row, j) => [...row].forEach((c, i) => {
+    if (c === '.') return;
+    g.fillStyle = SLIME_COLORS[c];
+    g.fillRect(left + i * scale, top + j * scale, scale, scale);
+  }));
   if (frame.startsWith('s')) {
-    const dx = frame.endsWith('e') ? 5 : -5;
+    const eye = frame.endsWith('e') ? 10 : 6;
     g.fillStyle = BASE.line;
-    g.fillRect(cx + dx - 8, base - 12, 4, 6);
-    g.fillRect(cx + dx + 4, base - 12, 4, 6);
+    for (const i of [eye, eye + 3]) g.fillRect(left + i * scale, top + 5 * scale, scale, scale * 2);
   }
 }

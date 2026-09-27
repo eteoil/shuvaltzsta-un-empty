@@ -1,14 +1,26 @@
 import { COLORS, text } from './draw.js';
 
-// 探索マップに落ちている物の仮のドット絵（本番の絵ができたら data/sprites.json の画像へ移す）。
-// 1文字＝1ドット、'.' は透明。表示は2倍
+// マップに置く物のドット絵。画像ファイルは使わずコードで描く（落ちている物はこれが本番の絵）。
+// 1文字＝1ドット、'.' は透明。落ちている物は2倍、家具は3倍で表示
 const SCALE = 2;
 const PALETTE = {
   g: '#5fbf5a', r: '#d8394f', R: '#ff8a9a',
   b: '#a8643a', B: '#c98452', w: '#f3e6cf', s: '#efe0c2',
   h: '#3f9e6a', H: '#8fe07a', t: '#6b4a2a',
+  c: '#c9e6f0', j: '#5fbf5a', J: '#d8f5c8',
+  o: '#231815', n: '#8a5a3a', p: '#f3e6cf', q: '#5a7fc4', Q: '#8fb0e6',
 };
 const ICONS = {
+  slime_jelly: [
+    '..tttt..',
+    '...tt...',
+    '..cccc..',
+    '.cjjjjc.',
+    '.cJjjjc.',
+    '.cjjjjc.',
+    '.cjjjjc.',
+    '..cccc..',
+  ],
   wild_berry: [
     '....g....',
     '...ggg...',
@@ -41,12 +53,12 @@ const ICONS = {
   ],
 };
 
-function dots(g, rows, x, y, color) {
+function dots(g, rows, x, y, color, scale = SCALE) {
   rows.forEach((row, j) => {
     [...row].forEach((c, i) => {
       if (c === '.') return;
       g.fillStyle = color ?? PALETTE[c];
-      g.fillRect(x + i * SCALE, y + j * SCALE, SCALE, SCALE);
+      g.fillRect(x + i * scale, y + j * scale, scale, scale);
     });
   });
 }
@@ -90,4 +102,38 @@ export function drawExit(g, x, y, label, ms, locked = false) {
   }
   g.restore();
   if (label) text(g, label, x, y - 36, { size: 12, align: 'center', color: locked ? COLORS.muted : COLORS.signal });
+}
+
+// 家具（マップの npcs に object で置く物）
+const OBJECTS = {
+  bed: [
+    'oo..............',
+    'ono.............',
+    'onppppqqqqqqqqqo',
+    'onppppqQQqqqqqqo',
+    'onnnnnqqqqqqqqqo',
+    'oqqqqqqqqqqqqqqo',
+    'onnnnnnnnnnnnnno',
+    'on............no',
+    'oo............oo',
+  ],
+};
+
+// (x, y) は置いてあるマスの中心
+export function drawObject(g, kind, x, y) {
+  const rows = OBJECTS[kind];
+  if (!rows) return;
+  const scale = 3;
+  const w = rows[0].length * scale;
+  const h = rows.length * scale;
+  g.fillStyle = 'rgba(11,12,24,0.45)';
+  g.beginPath();
+  g.ellipse(x, y + 2, w / 2, 7, 0, 0, Math.PI * 2);
+  g.fill();
+  dots(g, rows, Math.round(x - w / 2), Math.round(y - h + 4), null, scale);
+}
+
+// 家具の高さ（名前を上に出すため）
+export function objectHeight(kind) {
+  return (OBJECTS[kind]?.length ?? 0) * 3;
 }

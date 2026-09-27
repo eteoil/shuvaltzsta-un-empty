@@ -7,6 +7,9 @@ export const loadItems = () => loadJSON('data/items.json');
 
 export const money = (n) => `${n.toLocaleString('en-US')}$`;
 
+// 効果を持つフィールド。どれも無いアイテム（スライム液など）は売るだけの物
+const EFFECTS = ['heal', 'damage', 'poison', 'cure', 'buff', 'outcomes'];
+
 // 数字ならその量、[分子, 分母] なら最大HPに対する割合
 const part = (v, max) => (Array.isArray(v) ? Math.max(1, Math.round((max * v[0]) / v[1])) : v);
 
@@ -29,6 +32,7 @@ export function takeItem(session, id) {
 // 戻り値の lines は画面に出すメッセージ、sound は鳴らす効果音（使えなかったときは miss）
 export function useItem(items, session, id, battle = null) {
   const def = items[id];
+  if (!EFFECTS.some((k) => def[k])) return { used: false, lines: ['使い道がない'], sound: 'miss' };
   if (def.battleOnly && !battle) return { used: false, lines: ['戦闘中にしか使えない'], sound: 'miss' };
   if (def.heal && session.hero.hp >= session.hero.maxHp) return { used: false, lines: ['HPはまんたんだ'], sound: 'miss' };
   if (!takeItem(session, id)) return { used: false, lines: [], sound: 'miss' };

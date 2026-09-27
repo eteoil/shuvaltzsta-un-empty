@@ -3,6 +3,7 @@
   "name": "スライム",
   "hp": 30,
   "aggro": 4,
+  "drop": "slime_jelly",
   "patterns": ["slime_idle", "slime_wander", "slime_approach", "slime_hop", "slime_splash", "slime_retreat"],
   "actors": [
     { "id": "slime", "name": "スライム", "sprite": "slime", "palette": null }

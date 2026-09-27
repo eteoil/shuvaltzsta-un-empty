@@ -2,7 +2,8 @@
 // 置き方はマップの pickups：count 個を、table（[アイテム, 重み]）の重みで選んで空いている床へランダムに。
 // 状態は session.pickups[マップid] = { spots: [{ item, at }], waits: [秒] }。
 // 拾うと waits に pickupRespawnSec を積み、0 になったら別の場所に1つ置き直す。
-// 町のマップには pickups を書かない（特別なイベントのときだけ書く）
+// 町のマップには pickups を書かない（特別なイベントのときだけ書く）。
+// 敵が落とした物（drop）も同じ場所に置くが、count には数えず、拾っても置き直さない
 export class Pickups {
   // blocked(i, j)：置いてはいけないマス（人のそばなど）なら true
   constructor(game, map, blocked) {
@@ -10,20 +11,25 @@ export class Pickups {
     this.map = map;
     this.def = map.pickups ?? null;
     this.blocked = blocked;
-    if (!this.def) return;
     const all = game.session.pickups;
     all[map.id] ??= { spots: [], waits: [] };
     this.state = all[map.id];
   }
 
   get spots() {
-    return this.state?.spots ?? [];
+    return this.state.spots;
   }
 
   fill() {
     if (!this.def) return;
     const s = this.state;
-    while (s.spots.length + s.waits.length < this.def.count && this.spawn()) { /* 置けるだけ置く */ }
+    const placed = () => s.spots.filter((p) => !p.drop).length + s.waits.length;
+    while (placed() < this.def.count && this.spawn()) { /* 置けるだけ置く */ }
+  }
+
+  // 敵が倒れたマスに落とす
+  drop(item, at) {
+    this.state.spots.push({ item, at, drop: true });
   }
 
   spawn() {
@@ -47,7 +53,7 @@ export class Pickups {
   // 拾った物を取り除き、次に現れるまでの秒を積む
   take(p) {
     this.state.spots.splice(this.state.spots.indexOf(p), 1);
-    this.state.waits.push(this.game.config.field.pickupRespawnSec);
+    if (!p.drop) this.state.waits.push(this.game.config.field.pickupRespawnSec);
   }
 
   // dt は AudioContext の時刻から出した秒（憲法⑫）

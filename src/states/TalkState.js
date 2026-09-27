@@ -1,13 +1,14 @@
 import { STATES } from '../core/constants.js';
 import { COLORS, text, panel, wrap } from '../core/draw.js';
 import { loadItems, money, count, addItem, takeItem } from '../core/Items.js';
+import { cure } from '../core/Hero.js';
 import { CafeJobState } from './CafeJobState.js';
 import { ShopState } from './ShopState.js';
 
 const CHAR_MS = 32;
 
-// NPC との会話。あいさつ → 選択肢 → 世間話・買い物（SHOP）・鑑定・交換・バイト（MINIGAME）。
-// 中身は data/npcs/*.json（憲法⑨）。B で選択肢を閉じると会話も終わる
+// NPC との会話。あいさつ → 選択肢 → 世間話・買い物（SHOP）・鑑定・交換・買い取り・バイト（MINIGAME）・休む。
+// 中身は data/npcs/*.json（憲法⑨）。ベッドのような家具も、選択肢を持つ NPC として同じ仕組みで話しかける
 export class TalkState {
   name = STATES.DIALOG;
 
@@ -46,11 +47,22 @@ export class TalkState {
     this.game.states.pop();
   }
 
+  // 売れる物（items.json に sell がある物）のうち持っている物
+  sellables() {
+    return Object.keys(this.session.items).filter((id) => this.items[id]?.sell && count(this.session, id) > 0);
+  }
+
+  // 出す選択肢。if.has の持ち物が if.count 個（省略時 1 個）以上、if.sellable なら売れる物を持っているときだけ
+  visibleOptions() {
+    return this.npc.options.filter((o) => (!o.if?.has || count(this.session, o.if.has) >= (o.if.count ?? 1))
+      && (!o.if?.sellable || this.sellables().length > 0));
+  }
+
   // if.has の持ち物が if.count 個（省略時 1 個）以上あるときだけ出す選択肢がある。
   // cancel の付いた選択肢（「なんでもない」）を除いて1つしか残らなければ、あいさつも選択肢も出さずにそれを始める。
   // B で抜けたときは cancel の付いた選択肢を選んだのと同じ。無ければそのまま終わる
   menu() {
-    const shown = this.npc.options.filter((o) => !o.if?.has || count(this.session, o.if.has) >= (o.if.count ?? 1));
+    const shown = this.visibleOptions();
     const main = shown.filter((o) => !o.cancel);
     if (main.length === 1) { this.act(main[0]); return; }
     const cancel = shown.find((o) => o.cancel);
@@ -63,6 +75,9 @@ export class TalkState {
     else if (o.appraise) this.appraise(o.appraise);
     else if (o.trade) this.trade(o.trade);
     else if (o.job) this.job(o.job);
+    else if (o.buy) this.buy(o.buy);
+    else if (o.rest) this.rest(o.rest);
+    else this.close();
   }
 
   // 買い物は専用の State で。店を出たら会話も終わる
@@ -99,7 +114,47 @@ export class TalkState {
     ], no);
   }
 
+  // 持っている売れる物を買い取る。1種類ならすぐ、何種類かあれば選んでもらう。
+  // 値段はその種類を全部売ったときの合計。「いいえ」と B は no のセリフで終わる
+  buy(b) {
+    const list = this.sellables();
+    if (list.length === 1) { this.offer(b, list[0]); return; }
+    const no = () => this.say(b.no);
+    this.choose(b.which, list.map((id) => ({ label: `${this.items[id].name}×${count(this.session, id)}`, run: () => this.offer(b, id) })), no);
+  }
+
+  offer(b, id) {
+    const n = count(this.session, id);
+    const price = this.items[id].sell * n;
+    const no = () => this.say(b.no);
+    this.choose(b.prompt.replace('{price}', money(price)), [
+      {
+        label: 'はい',
+        run: () => {
+          for (let k = 0; k < n; k++) takeItem(this.session, id);
+          this.session.money += price;
+          this.game.sfx.play('confirm');
+          this.say(b.yes);
+        },
+      },
+      { label: 'いいえ', run: no },
+    ], no);
+  }
+
+  // ベッドで休む。HP が満タンになり毒も消え、次の日になる（バイトがまたできる）
+  rest(r) {
+    const s = this.session;
+    s.hero.hp = s.hero.maxHp;
+    cure(s.hero);
+    s.day += 1;
+    this.game.sfx.play('heal');
+    this.say(r.say.replace('{day}', s.day));
+  }
+
+  // バイトは1日1回（ベッドで休むと次の日）
   job(j) {
+    if (this.session.worked[j.game] === this.session.day) { this.say(j.tired); return; }
+    this.session.worked[j.game] = this.session.day;
     this.game.states.push(new CafeJobState(this.game, j.game, (reward) => {
       this.session.money += reward;
       this.say(`${j.done}（${money(reward)}もらった）`);

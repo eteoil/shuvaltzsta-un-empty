@@ -82,11 +82,14 @@ export class DungeonState extends BattleState {
     this.decide('exit');
   }
 
+  // 倒れた敵は、落とす物（敵データの drop）をそのマスに残す
   unitDown(unit) {
     unit.dead = true;
     unit.deadBeat = this.beats.currentBeat;
     this.stats.kills++;
     this.game.sfx.play('ko');
+    const a = this.actors[unit.actorIds[0]];
+    if (unit.def.drop && a) this.drops.drop(unit.def.drop, [a.i, a.j]);
   }
 
   attack(t, b, slot) {

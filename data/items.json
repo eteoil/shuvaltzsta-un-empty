@@ -10,5 +10,6 @@
   "poison_mushroom": { "name": "毒キノコ", "desc": "毒キノコ", "damage": [2, 3], "poison": true },
   "antidote": { "name": "毒消し草", "desc": "特徴的な形をした薬草", "cure": "poison" },
   "poison_needle": { "name": "毒針", "desc": "先端に毒が詰められた針", "battleOnly": true, "buff": "needle", "beats": 32, "reach": 2, "poisonBeats": 32 },
-  "coffee": { "name": "コーヒー", "desc": "こだわりの当日焙煎", "battleOnly": true, "buff": "perfect", "beats": 32 }
+  "coffee": { "name": "コーヒー", "desc": "こだわりの当日焙煎", "battleOnly": true, "buff": "perfect", "beats": 32 },
+  "slime_jelly": { "name": "スライム液", "desc": "スライムが落とした、ぷるぷるの液（仮）", "sell": 10 }
 }

@@ -3,7 +3,7 @@ import { loadEnemy, loadJSON } from '../core/Data.js';
 import { COLORS, text, panel, sprite, gauge, isoTop, isoCenter } from '../core/draw.js';
 import { loadItems, money, addItem } from '../core/Items.js';
 import { poisonTick, regen } from '../core/Hero.js';
-import { drawPickup, drawExit } from '../core/icons.js';
+import { drawPickup, drawExit, drawObject, objectHeight } from '../core/icons.js';
 import { Pickups } from '../core/Pickups.js';
 import { DIRS, FACE_STEP } from '../core/grid.js';
 
@@ -234,11 +234,13 @@ export class FieldState {
     }
     for (const n of this.map.npcs ?? []) {
       const def = this.npcDefs[n.id];
-      if (def) people.push({ sprite: def.sprite, frame: n.dir, anim: null, n: 0, palette: def.palette, i: n.at[0], j: n.at[1], label: def.name });
+      if (def) people.push({ sprite: def.sprite, object: def.object, frame: n.dir, anim: null, n: 0, palette: def.palette, i: n.at[0], j: n.at[1], label: def.name });
     }
     people.sort((a, b) => a.i + a.j - (b.i + b.j));
     for (const c of people) {
       const pos = isoCenter(c.i, c.j, ox, oy, tile);
+      // ベッドなどの家具は NPC と同じ扱いで、絵だけコードで描く
+      if (c.object) { drawObject(g, c.object, pos.x, pos.y); continue; }
       g.fillStyle = 'rgba(11,12,24,0.45)';
       g.beginPath();
       g.ellipse(pos.x, pos.y, 22, 8, 0, 0, Math.PI * 2);
@@ -250,7 +252,9 @@ export class FieldState {
     for (const c of people) {
       if (!c.label) continue;
       const pos = isoCenter(c.i, c.j, ox, oy, tile);
-      text(g, c.label, pos.x, pos.y - assets.def(c.sprite).anchor[1] - 16, { size: 12, align: 'center', color: COLORS.brass });
+      const height = c.object ? objectHeight(c.object) : assets.def(c.sprite).anchor[1];
+      // 奥にいる人の名前が上の帯（HP・所持金）に重ならないよう、帯より下に収める
+      text(g, c.label, pos.x, Math.max(30, pos.y - height - 16), { size: 12, align: 'center', color: COLORS.brass });
     }
 
     // 毒で減った瞬間は画面が紫に光る（演出）

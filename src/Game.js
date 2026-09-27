@@ -79,6 +79,8 @@ export class Game {
       money: start.money,
       items: { ...start.items },
       flags: {},
+      day: 1,             // 何日目か。ベッドで休むと進む
+      worked: {},         // バイトの id → 最後にした日（1日1回）
       pickups: {},        // マップの id → 落ちている物と、次に現れるまでの秒（FieldState）
       totalScore: 0,
     };
