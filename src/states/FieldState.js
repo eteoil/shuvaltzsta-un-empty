@@ -2,7 +2,7 @@ import { STATES } from '../core/constants.js';
 import { loadEnemy, loadJSON, loadMap } from '../core/Data.js';
 import { COLORS, text, panel, sprite, gauge, isoTop, isoCenter } from '../core/draw.js';
 import { loadItems, money, addItem } from '../core/Items.js';
-import { poisonTick, regen } from '../core/Hero.js';
+import { poisonTick, regen, regenStep } from '../core/Hero.js';
 import { drawPickup, drawExit, drawObject, objectHeight } from '../core/icons.js';
 import { Pickups } from '../core/Pickups.js';
 import { passTime, isNight, isMapOpen, eventsOf } from '../core/Calendar.js';
@@ -22,6 +22,7 @@ export class FieldState {
     this.move = null;
     this.stride = 0;            // 歩いたマス数。歩きのコマ送りに使う（1マスで2コマ）
     this.poisonT = 0;           // 毒のダメージまでの経過秒（AudioContext の時刻から。憲法⑫）
+    this.foodT = 0;             // 食べ物の継続回復（ドラゴンフライ）までの経過秒
     this.regenT = 0;            // チートモードの自動回復までの経過秒
     this.hurtAt = -1e9;
     this.toast = null;          // 拾ったときの一言（演出なので rAF の時刻で消す）
@@ -179,6 +180,7 @@ export class FieldState {
 
     this.poisonTick(dt);
     this.regenTick(dt);
+    this.foodTick(dt);
     this.drops.tick(dt);
 
     if (this.move) {
@@ -225,6 +227,18 @@ export class FieldState {
   }
 
   // チートモードでは fieldRegenSec 秒ごとに HP が戻る
+  // 食べ物の継続回復。status.regen.fieldTickSec 秒ごとに1回
+  foodTick(dt) {
+    const hero = this.session.hero;
+    if (!hero.regen) { this.foodT = 0; return; }
+    const sec = this.game.config.status.regen.fieldTickSec;
+    this.foodT += dt;
+    while (hero.regen && this.foodT >= sec) {
+      this.foodT -= sec;
+      regenStep(hero);
+    }
+  }
+
   regenTick(dt) {
     if (!this.game.options.cheat) { this.regenT = 0; return; }
     const { fieldRegenSec, fieldRegen } = this.game.config.cheat;
@@ -340,6 +354,7 @@ export class FieldState {
     text(g, 'HP', 236, 5, { color: COLORS.signal });
     gauge(g, 262, 9, 90, 9, hero.hp / hero.maxHp, COLORS.signal);
     if (hero.poisoned) text(g, '毒', 358, 5, { color: COLORS.unguard });
+    if (hero.regen) text(g, '回復', hero.poisoned ? 376 : 358, 5, { size: 12, color: COLORS.open });
     text(g, money(this.session.money), W - 8, 5, { align: 'right', color: COLORS.perfect });
 
     const age = this.toast ? performance.now() - this.toast.at : Infinity;

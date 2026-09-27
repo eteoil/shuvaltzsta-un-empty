@@ -6,7 +6,9 @@ const CHAR_MS = 32;
 const ROWS = 5;   // 一度に見せる品数。多ければ選んでいる品に合わせて送る
 
 // お店。NPC の選択肢「買い物」から入る。品物と値段は data/npcs/*.json の shop（憲法⑨）。
-// 十字で選んで A で買う。続けて何個でも買え、B で店を出る（出たら会話も終わる）
+// 十字で選んで A で買う。続けて何個でも買え、B で店を出る（出たら会話も終わる）。
+// 品物に3つ目の数（[品物, 値段, 数]）があれば、1日にその数までしか売らない（祭りのドラゴンフライ）。
+// 売った数は session.stock["店の人:品物"] = { day, sold } に覚える
 export class ShopState {
   name = STATES.SHOP;
 
@@ -42,7 +44,13 @@ export class ShopState {
         this.sel = (this.sel + list.length + (btn === 'up' ? -1 : 1)) % list.length;
         this.game.sfx.play('select');
       } else if (btn === 'a') {
-        this.buy(list[this.sel][0], this.price(list[this.sel][1]));
+        const [id, base, limit] = list[this.sel];
+        if (limit !== undefined && this.left(id, limit) <= 0) {
+          this.game.sfx.play('miss');
+          this.say(this.shop.soldOut);
+        } else if (this.buy(id, this.price(base)) && limit !== undefined) {
+          this.sold(id);
+        }
       } else if (btn === 'b') {
         this.game.sfx.play('select');
         this.game.states.pop();
@@ -52,16 +60,35 @@ export class ShopState {
     }
   }
 
+  // 買えたら true
   buy(id, price) {
     if (this.session.money < price) {
       this.game.sfx.play('miss');
       this.say(this.shop.poor);
-      return;
+      return false;
     }
     this.session.money -= price;
     addItem(this.session, id);
     this.game.sfx.play('confirm');
     this.say(this.shop.thanks);
+    return true;
+  }
+
+  stockOf(id) {
+    const s = this.session;
+    s.stock ??= {};
+    const key = `${this.npc.id}:${id}`;
+    if (s.stock[key]?.day !== s.day) s.stock[key] = { day: s.day, sold: 0 };
+    return s.stock[key];
+  }
+
+  // 今日あといくつ売れるか
+  left(id, limit) {
+    return limit - this.stockOf(id).sold;
+  }
+
+  sold(id) {
+    this.stockOf(id).sold += 1;
   }
 
   render(g) {
@@ -77,7 +104,7 @@ export class ShopState {
     text(g, money(this.session.money), W - 28, 18, { align: 'right', color: COLORS.perfect });
     const list = this.shop.items;
     const first = Math.max(0, Math.min(this.sel - ROWS + 1, list.length - ROWS));
-    list.slice(first, first + ROWS).forEach(([id, base], k) => {
+    list.slice(first, first + ROWS).forEach(([id, base, limit], k) => {
       const price = this.price(base);
       const i = first + k;
       const y = 46 + k * 22;
@@ -86,7 +113,10 @@ export class ShopState {
       if (active) text(g, '▶', 26, y, { color: COLORS.signal });
       text(g, this.defs[id].name, 44, y, { color: active ? COLORS.ink : COLORS.muted });
       text(g, `×${count(this.session, id)}`, W - 150, y, { size: 12, align: 'right', color: COLORS.dim });
-      text(g, money(price), W - 28, y, { align: 'right', color: poor ? COLORS.miss : COLORS.perfect });
+      const out = limit !== undefined && this.left(id, limit) <= 0;
+      if (limit !== undefined && !out) text(g, `残り${this.left(id, limit)}`, W - 196, y + 2, { size: 12, align: 'right', color: COLORS.brass });
+      if (out) text(g, '売り切れ', W - 28, y, { align: 'right', color: COLORS.miss });
+      else text(g, money(price), W - 28, y, { align: 'right', color: poor ? COLORS.miss : COLORS.perfect });
     });
     if (first > 0) text(g, '▲', W / 2, 30, { size: 12, align: 'center', color: COLORS.dim });
     if (first + ROWS < list.length) text(g, '▼', W / 2, 46 + ROWS * 22 - 8, { size: 12, align: 'center', color: COLORS.dim });

@@ -10,7 +10,7 @@ import { PlayerProfile } from '../battle/PlayerProfile.js';
 import { Enemy } from '../battle/Enemy.js';
 import { areaTiles } from '../battle/areas.js';
 import { DialogState } from './DialogState.js';
-import { poisonTick, regen, attackMultiplier } from '../core/Hero.js';
+import { poisonTick, regen, regenStep, attackMultiplier } from '../core/Hero.js';
 import { passTime } from '../core/Calendar.js';
 
 const THREATS = new Set(['enemy.attack', 'enemy.feint']);
@@ -88,6 +88,7 @@ export class BattleState {
     this.warmPoses();
     this.startMusic();
     if (this.hero.poisoned) this.startHeroPoison();
+    if (this.hero.regen) this.startHeroRegen();
   }
 
   // 1対1：cfg.arena の広さの床に、相手の一団を1つ置く
@@ -629,6 +630,11 @@ export class BattleState {
     this.scheduleTick('hero');
   }
 
+  // 食べ物の継続回復（ドラゴンフライ）。毒と同じく小節頭で、status.regen.tickBeats 拍ごと
+  startHeroRegen() {
+    this.scheduleTick('food');
+  }
+
   // パニックドロップで殴った敵を混乱させる。混乱は確定済み区間の先の行動から効く（憲法⑮）
   confuse(unit, beat, beats) {
     if (!this.confused(unit, beat)) this.popup('混乱！', COLORS.perfect, unit.actorIds[0]);
@@ -665,6 +671,11 @@ export class BattleState {
       if (damage) this.popup(`毒 ${damage}`, COLORS.unguard);
       if (cured) this.popup('毒が消えた', COLORS.open);
       else this.scheduleTick('hero', next);
+    }
+    if (p.target === 'food' && this.hero.regen) {
+      const n = regenStep(this.hero);
+      if (n) this.popup(`+${n}`, COLORS.open);
+      if (this.hero.regen) this.scheduleTick('food', ev.beat + this.game.config.status.regen.tickBeats);
     }
     if (p.target === 'regen' && this.game.options.cheat) {
       const cheat = this.game.config.cheat;
@@ -948,6 +959,7 @@ export class BattleState {
       if (this.confused(unit, beat)) text(g, '混乱', 168, 26, { size: 12, color: COLORS.perfect });
     }
     if (this.hero.poisoned) text(g, '毒', 344, 26, { size: 12, color: COLORS.unguard });
+    if (this.hero.regen) text(g, '回復', this.hero.poisoned ? 362 : 344, 26, { size: 12, color: COLORS.open });
     Object.values(this.buffs).forEach((v, i) => {
       text(g, `${v.def.name} ${Math.max(0, Math.ceil(v.until - beat))}`, W - 8, 28 + i * 14, { size: 12, align: 'right', color: COLORS.perfect });
     });

@@ -7,7 +7,7 @@
   "nightGreet": "今夜は何にする？",
   "restDayText": "今日は天赦日だから店は休みだ",
   "options": [
-    { "label": "世間話", "say": "明日の豆は何にしようか……", "sayBeforeRest": "明日の休みは何をしようか……" },
+    { "label": "世間話", "say": "明日の豆は何にしようか……", "sayBeforeRest": "明日の休みは何をしようか……", "sayOnFestival": "今日は祭りだからな……文字通り身を切った……" },
     {
       "label": "お弁当",
       "closedOnRestDay": true,
@@ -15,6 +15,8 @@
         "prompt": "どれにするんだ？",
         "items": [["onigiri", 300], ["ble_sand", 600], ["coffee", 1200]],
         "nightItems": [["onigiri", 300], ["ble_sand", 600], ["rolling_star", 1200]],
+        "festivalItems": [["dragon_fry", 900, 5]],
+        "soldOut": "今日の分は売り切れだ",
         "thanks": "いってらっしゃい",
         "poor": "金が足りないみたいだな"
       }

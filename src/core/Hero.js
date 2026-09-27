@@ -23,6 +23,23 @@ export function cure(hero) {
   hero.poisonTicks = 0;
 }
 
+// 食べ物の継続回復（ドラゴンフライ）。hero.regen = { left: 残りの回数, rate: [分子, 分母]（最大HPに対する1回の回復量） }。
+// 食べ直すと回数が元に戻る（重ねがけはしない）
+export function startRegen(hero, { rate, ticks }) {
+  hero.regen = { left: ticks, rate };
+}
+
+// 継続回復を1回ぶん進める。戻り値は回復した量。回数を使い切ったら終わる
+export function regenStep(hero) {
+  const r = hero.regen;
+  if (!r) return 0;
+  const n = Math.min(Math.max(1, Math.round((hero.maxHp * r.rate[0]) / r.rate[1])), hero.maxHp - hero.hp);
+  hero.hp += n;
+  r.left -= 1;
+  if (r.left <= 0) hero.regen = null;
+  return n;
+}
+
 // チートモードの自動回復。戻り値は回復した量
 export function regen(game, amount) {
   const hero = game.session.hero;

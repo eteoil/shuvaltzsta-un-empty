@@ -33,6 +33,7 @@ export class TalkState {
 
   async enter() {
     this.items = await loadItems();
+    if (this.festivalGift()) return;
     if (this.npc.quest) {
       this.quest = await loadJSON(`data/quests/${this.npc.quest}.json`);
       this.questTalk();
@@ -63,6 +64,20 @@ export class TalkState {
   sayLines(lines, then = () => this.close(), k = 0) {
     if (k >= lines.length) { then(); return; }
     this.say(lines[k].text, () => this.sayLines(lines, then, k + 1), lines[k].speaker ?? null);
+  }
+
+  // 祭りの日に初めて話しかけると、festivalGift のセリフと一緒に物をくれる（エレナのエーテル・小）。
+  // もらえるのは祭りの日ごとに1回。session.gifts[NPC の id] に、もらった日を覚える
+  festivalGift() {
+    const f = this.npc.festivalGift;
+    const s = this.session;
+    s.gifts ??= {};
+    if (!f || !this.today.festival || s.gifts[this.npc.id] === s.day) return false;
+    s.gifts[this.npc.id] = s.day;
+    addItem(s, f.item);
+    this.game.sfx.play('confirm');
+    this.sayLines([{ text: f.say }, { speaker: '', text: f.got.replace('{name}', this.items[f.item].name) }]);
+    return true;
   }
 
   // ---------------------------------------------------------------- クエスト
@@ -169,9 +184,11 @@ export class TalkState {
     return o.say;
   }
 
-  // 買い物は専用の State で。店を出たら会話も終わる。夜は nightItems があればそちらを並べる（バーのお酒）
+  // 買い物は専用の State で。店を出たら会話も終わる。夜は nightItems があればそちらを並べる（バーのお酒）。
+  // 祭りの日は festivalItems を後ろに足す（[品物, 値段, 1日に売る数]。ドラゴンフライ）
   shop(s) {
     if (this.night && s.nightItems) s = { ...s, items: s.nightItems };
+    if (this.today.festival && s.festivalItems) s = { ...s, items: [...s.items, ...s.festivalItems] };
     const sale = s.festivalSale && this.today.festival ? s.festivalSale : 1;
     this.game.states.push(new ShopState(this.game, this.npc, s, this.items, () => this.close(), sale));
   }

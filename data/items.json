@@ -3,6 +3,7 @@
   "wild_berry_jam": { "name": "野イチゴジャム", "desc": "野イチゴのジャム", "heal": [30, 100] },
   "onigiri": { "name": "おにぎり", "desc": "ツナマヨコンブが入っている", "heal": [40, 100] },
   "ble_sand": { "name": "BLEサンド", "desc": "ベーコン・レタス・タマゴが入っている", "heal": [50, 100] },
+  "dragon_fry": { "name": "ドラゴンフライ", "desc": "ドラゴンの尻尾を揚げたっぽい肉", "regen": { "rate": [3, 100], "ticks": 20 }, "useText": "しばらくHPが少しずつ回復する" },
   "ether_s": { "name": "エーテル・小", "desc": "エーテルを詰めた小瓶", "heal": [70, 100] },
   "ether_l": { "name": "エーテル・大", "desc": "エーテルを詰めた大瓶", "heal": [100, 100] },
   "mushroom": { "name": "キノコ", "desc": "食べられそうなキノコ", "outcomes": ["edible_mushroom", "poison_mushroom"] },

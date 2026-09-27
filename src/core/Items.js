@@ -1,14 +1,14 @@
 // 所持品とアイテムの効果。アイテムの中身は data/items.json（憲法⑨）。
-// 効果はデータのフィールドの組み合わせで決まる：heal / damage / poison / cure / buff / outcomes
+// 効果はデータのフィールドの組み合わせで決まる：heal / regen / damage / poison / cure / buff / outcomes
 import { loadJSON } from './Data.js';
-import { poison, cure } from './Hero.js';
+import { poison, cure, startRegen } from './Hero.js';
 
 export const loadItems = () => loadJSON('data/items.json');
 
 export const money = (n) => `${n.toLocaleString('en-US')}$`;
 
 // 効果を持つフィールド。どれも無いアイテム（スライム液など）は売るだけの物
-const EFFECTS = ['heal', 'damage', 'poison', 'cure', 'buff', 'outcomes'];
+const EFFECTS = ['heal', 'regen', 'damage', 'poison', 'cure', 'buff', 'outcomes'];
 
 // 数字ならその量、[分子, 分母] なら最大HPに対する割合
 const part = (v, max) => (Array.isArray(v) ? Math.max(1, Math.round((max * v[0]) / v[1])) : v);
@@ -48,6 +48,12 @@ export function useItem(items, session, id, battle = null) {
     const n = Math.min(part(effect.heal, hero.maxHp), hero.maxHp - hero.hp);
     hero.hp += n;
     lines.push(`HPが${n}回復した`);
+  }
+  if (effect.regen) {
+    // しばらく少しずつ回復する（探索でも戦闘でも続く）
+    startRegen(hero, effect.regen);
+    battle?.startHeroRegen();
+    lines.push(effect.useText);
   }
   if (effect.damage) {
     // アイテムでは倒れない（HP は 1 残る）
