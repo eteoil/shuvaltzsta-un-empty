@@ -9,6 +9,7 @@ const PALETTE = {
   h: '#3f9e6a', H: '#8fe07a', t: '#6b4a2a',
   c: '#c9e6f0', j: '#5fbf5a', J: '#d8f5c8',
   o: '#231815', n: '#8a5a3a', p: '#f3e6cf', q: '#5a7fc4', Q: '#8fb0e6',
+  m: '#b5523b', M: '#e08a6a',
 };
 const ICONS = {
   slime_jelly: [
@@ -40,6 +41,16 @@ const ICONS = {
     '...hh...',
     '...tt...',
     '..t..t..',
+  ],
+  wolf_meat: [
+    '....mmm.',
+    '...mMMmm',
+    '..mMMmmm',
+    '..mMmmmm',
+    '...mmmm.',
+    '..wwmm..',
+    '.ww.....',
+    'www.....',
   ],
   mushroom: [
     '..bbbb..',

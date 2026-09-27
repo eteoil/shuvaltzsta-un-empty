@@ -127,16 +127,21 @@ export class TalkState {
     this.game.states.pop();
   }
 
-  // 売れる物（items.json に sell がある物）のうち持っている物
-  sellables() {
-    return Object.keys(this.session.items).filter((id) => this.items[id]?.sell && count(this.session, id) > 0);
+  // 買い取りの値段。buy.prices（シャルヴィスの食材）があればそれ、無ければ items.json の sell（ジャグジーの鑑定）
+  priceOf(b, id) {
+    return b?.prices ? b.prices[id] : this.items[id]?.sell;
+  }
+
+  // その人が買い取る物のうち、持っている物
+  sellables(b) {
+    return Object.keys(this.session.items).filter((id) => this.priceOf(b, id) && count(this.session, id) > 0);
   }
 
   // 出す選択肢。if.has の持ち物が if.count 個（省略時 1 個）以上、if.sellable なら売れる物を持っているときだけ。
   // closedOnRestDay の選択肢（カフェのお弁当とバイト）は、天赦日には出さない
   visibleOptions() {
     return this.npc.options.filter((o) => (!o.if?.has || count(this.session, o.if.has) >= (o.if.count ?? 1))
-      && (!o.if?.sellable || this.sellables().length > 0)
+      && (!o.if?.sellable || this.sellables(o.buy).length > 0)
       && !(o.closedOnRestDay && this.today.rest));
   }
 
@@ -173,7 +178,6 @@ export class TalkState {
     else if (o.trade) this.trade(o.trade);
     else if (o.job) this.job(o.job);
     else if (o.buy) this.buy(o.buy);
-    else if (o.gift) this.gift(o.gift);
     else if (o.rest) this.rest(o.rest);
     else this.close();
   }
@@ -234,11 +238,11 @@ export class TalkState {
     ], no);
   }
 
-  // 持っている売れる物を買い取る。1種類でも、どれを見せるか選んでもらう。
+  // 持っている売れる物を買い取る（ジャグジーの鑑定・シャルヴィスの食材）。1種類でも、どれを見せるか選んでもらう。
   // 2個以上あれば howMany で売る個数を選び（最初は全部）、値段はその個数ぶんの合計。
-  // 「いいえ」と B は no のセリフで終わる
+  // 売ったら yes のセリフ、got があれば続けて名前札なしで「○○$手に入れた！」。「いいえ」と B は no のセリフで終わる
   buy(b) {
-    const list = this.sellables();
+    const list = this.sellables(b);
     const no = () => this.say(b.no);
     this.choose(b.which, list.map((id) => ({ label: `${this.items[id].name}×${count(this.session, id)}`, run: () => this.pickCount(b, id, no) })), no);
   }
@@ -247,11 +251,11 @@ export class TalkState {
     const max = count(this.session, id);
     if (!b.howMany || max <= 1) { this.offer(b, id, max); return; }
     this.say(b.howMany, null);
-    this.counter = { n: max, max, price: this.items[id].sell, run: (n) => this.offer(b, id, n), cancel: no };
+    this.counter = { n: max, max, price: this.priceOf(b, id), run: (n) => this.offer(b, id, n), cancel: no };
   }
 
   offer(b, id, n) {
-    const price = this.items[id].sell * n;
+    const price = this.priceOf(b, id) * n;
     const no = () => this.say(b.no);
     this.choose(b.prompt.replace('{price}', money(price)), [
       {
@@ -260,37 +264,12 @@ export class TalkState {
           for (let k = 0; k < n; k++) takeItem(this.session, id);
           this.session.money += price;
           this.game.sfx.play('confirm');
-          this.say(b.yes);
+          if (b.got) this.sayLines([{ text: b.yes }, { speaker: '', text: b.got.replace('{price}', money(price)) }]);
+          else this.say(b.yes);
         },
       },
       { label: 'いいえ', run: no },
     ], no);
-  }
-
-  // 持ち物を渡してお金をもらう（シャルヴィスに食用キノコ）。「はい」のあと、2個以上あれば個数を選ぶ。
-  // 「いいえ」と B は no のセリフで終わる
-  gift(gi) {
-    const no = () => this.say(gi.no);
-    this.choose(gi.prompt, [
-      {
-        label: 'はい',
-        run: () => {
-          const max = count(this.session, gi.item);
-          if (max <= 1) { this.give(gi, 1); return; }
-          this.say(gi.howMany, null);
-          this.counter = { n: max, max, price: gi.price, run: (n) => this.give(gi, n), cancel: no };
-        },
-      },
-      { label: 'いいえ', run: no },
-    ], no);
-  }
-
-  give(gi, n) {
-    for (let k = 0; k < n; k++) takeItem(this.session, gi.item);
-    const gain = gi.price * n;
-    this.session.money += gain;
-    this.game.sfx.play('confirm');
-    this.sayLines([{ text: gi.yes }, { speaker: '', text: gi.got.replace('{price}', money(gain)) }]);
   }
 
   // ベッドで休む。HP が満タンになり毒も消え、次の日になる（バイトがまたできる）

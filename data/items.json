@@ -16,5 +16,6 @@
   "panic_drop": { "name": "パニックドロップ", "desc": "ぷるぷるしている", "useVerb": "食べた", "battleOnly": true, "buff": "panic", "beats": 32, "reach": 2, "confuseBeats": 24, "useText": "しばらく攻撃が2マス先まで届き、敵を混乱させる" },
   "painkiller": { "name": "痛み止め", "desc": "どんな痛みもこれ一本！", "useVerb": "飲んだ", "battleOnly": true, "buff": "guard", "beats": 32, "damageRate": 0.5, "useText": "しばらく受けるダメージが半分になる" },
   "jacuzzi_special": { "name": "ジャグジースペシャル", "desc": "ジャグジー謹製のナゾの薬", "useVerb": "飲んだ", "battleOnly": true, "outcomes": ["panic_drop", "painkiller", "poison_needle"], "outcomeText": "{name}の効果が出た！", "durationRate": 2 },
+  "wolf_meat": { "name": "オオカミ肉", "desc": "ワイルドな味わい", "useVerb": "食べた", "heal": [5, 100] },
   "slime_jelly": { "name": "スライム液", "desc": "スライムが落とした、ぷるぷるの液", "sell": 10 }
 }

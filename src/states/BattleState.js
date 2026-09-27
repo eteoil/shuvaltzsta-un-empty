@@ -11,7 +11,7 @@ import { Enemy } from '../battle/Enemy.js';
 import { areaTiles } from '../battle/areas.js';
 import { DialogState } from './DialogState.js';
 import { poisonTick, regen, regenStep, attackMultiplier } from '../core/Hero.js';
-import { passTime } from '../core/Calendar.js';
+import { passTime, eventsOf } from '../core/Calendar.js';
 
 const THREATS = new Set(['enemy.attack', 'enemy.feint']);
 const LANE = { y: 280, h: 40, judgeX: 44 };
@@ -83,7 +83,7 @@ export class BattleState {
     this.runPhase = 0;          // 走ったマス数。走りのコマ送りに使う（1マスで2コマ）
 
     this.fightBeat = (config.bgm.battle.loopFromBar - 1) * this.bpb;
-    this.enemyPowerRate = 1;    // 敵の攻撃力に掛ける倍率
+    this.dayRates = this.dayEffects();   // 行事によるザコの強さと落とす物の数
     this.setupStage();
     this.warmPoses();
     this.startMusic();
@@ -108,10 +108,29 @@ export class BattleState {
     this.tracks.system.add({ beat: this.fightBeat, type: 'system.phase', payload: { phase: 'fight' } });
   }
 
-  // actors：[{ id, name, sprite, palette, at: [i, j] }]。id は戦闘の中で重ならない名前にする
+  // 行事による敵の強さ（HP と攻撃力の倍率）と、ダンジョンで落とす物の数。強さが変わるのはザコだけ（ボスはいつも同じ）。
+  // 忌み月：強い（taboo の倍率）・落とす物2個。祭り：落とす物2個（festival）。天赦日：弱い（restDay の倍率）。
+  // 忌み月の祭り（水亀節20区のクイン＝ド＝レンチ）：強さはふだんどおり・落とす物3個（taboo.withFestival）
+  dayEffects() {
+    const { taboo, festival, restDay } = this.game.config;
+    const ev = eventsOf(this.game.calendar, this.game.session.day);
+    if (ev.taboo && ev.festival) return { enemyHp: 1, enemyPower: 1, dropCount: taboo.withFestival.dropCount };
+    if (ev.taboo) return { enemyHp: taboo.enemyHp, enemyPower: taboo.enemyPower, dropCount: taboo.dropCount };
+    if (ev.festival) return { enemyHp: 1, enemyPower: 1, dropCount: festival.dropCount };
+    if (ev.rest) return { enemyHp: restDay.enemyHp, enemyPower: restDay.enemyPower, dropCount: 1 };
+    return { enemyHp: 1, enemyPower: 1, dropCount: 1 };
+  }
+
+  // actors：[{ id, name, sprite, palette, at: [i, j] }]。id は戦闘の中で重ならない名前にする。
+  // ザコ（boss の無い敵）は、行事の倍率で HP を変え、攻撃力の倍率を powerRate に持つ
   addUnit(id, def, patterns, actors) {
     const track = new EventTrack(`enemy:${id}`);
-    const unit = { id, def, enemy: new Enemy(def, patterns), track, actorIds: [], poisonUntil: -Infinity, confusedUntil: -Infinity, dead: false };
+    const rates = def.boss ? { enemyHp: 1, enemyPower: 1 } : this.dayRates;
+    const scaled = { ...def, hp: Math.max(1, Math.round(def.hp * rates.enemyHp)) };
+    const unit = {
+      id, def: scaled, enemy: new Enemy(scaled, patterns), track, actorIds: [],
+      powerRate: rates.enemyPower, poisonUntil: -Infinity, confusedUntil: -Infinity, dead: false,
+    };
     const me = { i: this.player.i, j: this.player.j };
     for (const a of actors) {
       const at = { i: a.at[0], j: a.at[1] };
@@ -572,8 +591,9 @@ export class BattleState {
 
   hit(ev) {
     this.results.set(ev.id, 'hit');
-    // 痛み止めの間は damageRate 倍（半分）。enemyPowerRate はダンジョンの忌み月など
-    const power = Math.max(1, Math.round((ev.payload.power ?? 10) * this.enemyPowerRate * (this.buffs.guard?.def.damageRate ?? 1)));
+    // 痛み止めの間は damageRate 倍（半分）。powerRate は行事によるザコの攻撃力の倍率（dayEffects）
+    const rate = this.unitMap[ev.payload.unit]?.powerRate ?? 1;
+    const power = Math.max(1, Math.round((ev.payload.power ?? 10) * rate * (this.buffs.guard?.def.damageRate ?? 1)));
     this.hero.hp = Math.max(0, this.hero.hp - power);
     this.stats.damage += power;
     this.fail(ev.beat, 'HIT');

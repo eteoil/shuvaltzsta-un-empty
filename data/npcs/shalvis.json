@@ -34,13 +34,13 @@
       }
     },
     {
-      "label": "食用キノコ",
-      "if": { "has": "edible_mushroom" },
-      "gift": {
-        "item": "edible_mushroom",
-        "price": 30,
-        "prompt": "くれるのか",
+      "label": "食材",
+      "if": { "sellable": true },
+      "buy": {
+        "prices": { "edible_mushroom": 30, "wolf_meat": 50 },
+        "which": "どれをくれるんだ？",
         "howMany": "いくつくれるんだ？",
+        "prompt": "くれるのか",
         "yes": "ありがとう、少ないが持っていけ",
         "got": "{price}手に入れた！",
         "no": "そうか"

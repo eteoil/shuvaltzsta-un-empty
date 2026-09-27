@@ -3,6 +3,7 @@
   "name": "オオカミ",
   "hp": 80,
   "aggro": 5,
+  "drop": "wolf_meat",
   "patterns": [
     "wolf_idle",
     "wolf_wander",

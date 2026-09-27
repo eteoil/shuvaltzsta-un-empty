@@ -4,7 +4,6 @@ import { distance, FACE_STEP } from '../core/grid.js';
 import { loadItems, addItem } from '../core/Items.js';
 import { Pickups } from '../core/Pickups.js';
 import { drawPickup, drawExit } from '../core/icons.js';
-import { eventsOf } from '../core/Calendar.js';
 import { BattleState } from './BattleState.js';
 
 // ダンジョン。入った瞬間から戦闘で、戦闘曲がループし続ける。仕組みは BattleState と同じ
@@ -31,12 +30,9 @@ export class DungeonState extends BattleState {
     this.floor = this.map.floor;
     const { i, j, dir } = this.game.session.player;
     this.player = { i, j, dir, move: null };
-    this.dayRates = this.dayEffects();
-    this.enemyPowerRate = this.dayRates.enemyPower;
+    // 行事による強さは addUnit が掛ける（ザコだけ）
     this.map.spawns.forEach((sp, k) => {
-      const data = this.enemyData[sp.enemy];
-      const def = { ...data.def, hp: Math.max(1, Math.round(data.def.hp * this.dayRates.enemyHp)) };
-      const { patterns } = data;
+      const { def, patterns } = this.enemyData[sp.enemy];
       const id = `${sp.enemy}${k + 1}`;
       const one = def.actors.length === 1;
       this.addUnit(id, def, patterns, def.actors.map((a) => ({ ...a, id: one ? id : `${id}.${a.id}`, at: sp.at })));
@@ -51,19 +47,6 @@ export class DungeonState extends BattleState {
     this.beats.start(bgm.play('battle', clock.now + 0.1, config.bgm.battle.loopFromBar));
     this.phase = 'fight';
     this.banner = { text: this.map.name, beat: this.fightBeat, steady: true };
-  }
-
-  // 行事による敵の強さと落とす物の数。
-  // 忌み月は敵が強く（HP と攻撃力が taboo の倍率）落とす物も増える。天赦日は敵が弱い（restDay の倍率）。
-  // 忌み月と天赦日が重なったら、強さはふだんどおりで落とす物が restDay.withTaboo.dropCount 倍
-  // （いまの暦では、忌み月の水亀節は20区までなので天赦日と重ならない）
-  dayEffects() {
-    const { taboo, restDay } = this.game.config;
-    const ev = eventsOf(this.game.calendar, this.game.session.day);
-    if (ev.taboo && ev.rest) return { ...restDay.withTaboo };
-    if (ev.taboo) return { enemyHp: taboo.enemyHp, enemyPower: taboo.enemyPower, dropCount: taboo.dropCount };
-    if (ev.rest) return { enemyHp: restDay.enemyHp, enemyPower: restDay.enemyPower, dropCount: 1 };
-    return { enemyHp: 1, enemyPower: 1, dropCount: 1 };
   }
 
   // 主人公・生きている敵・出口のそばには物を置かない

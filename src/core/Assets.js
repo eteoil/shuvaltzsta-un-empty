@@ -204,8 +204,9 @@ function drawSlime(g, w, h, frame) {
 
 // オオカミ（1ドット＝2px）。frame は向き（「se」）か、モーションのコマ（「run_se_2」「attack_nw_1」）。
 // 右向きに組み立て、西向き（nw・sw）は左右を反転する。形は図形を塗ってから、まわりに輪郭を付ける。
-// run：4コマで脚を前後に（2・4コマ目は脚を上げて体が1ドット浮く）。
-// attack：0 構え（頭を下げて体を引く）・1 飛びかかる（前へ2ドット、口を開けて牙）・2 噛みつく
+// 脚は「付け根 → 膝 → 足先」の2本の線で、立ちポーズ以外は膝で曲げる（後ろ脚は膝が後ろ、前脚は膝が前）。
+// run：4コマで脚を前後に（2・4コマ目は片側の脚を曲げて持ち上げ、体が1ドット浮く）。
+// attack：0 構え（脚を曲げて沈み、頭を下げる）・1 飛びかかる（前へ2ドット、前脚を前へ・後ろ脚を後ろへ伸ばし、口を開けて牙）・2 噛みつく
 const WOLF_COLORS = { f: BASE.wolf, d: BASE.wolfDark, l: BASE.wolfLight, o: BASE.line, e: BASE.eye, w: BASE.fang };
 
 function wolfDots(anim, n) {
@@ -222,21 +223,46 @@ function wolfDots(anim, n) {
   let head = 0;
   let open = false;
   let tail = 0;
-  let legs = [0, 0, 0, 0];
-  let lift = [0, 0, 0, 0];
+  // 脚ごとに [膝のずれ, 足先のずれ, 足先の持ち上げ]（右向きで前が +）。並びは 手前の後ろ脚・奥の後ろ脚・手前の前脚・奥の前脚
+  const STAND = [0, 0, 0];
+  let legs = [STAND, STAND, STAND, STAND];
   if (anim === 'run') {
     const k = n % 4;
     dy = k % 2 ? -1 : 0;
-    legs = [[1, -1, -1, 1], [0, 0, 0, 0], [-1, 1, 1, -1], [0, 0, 0, 0]][k];
-    lift = [[0, 0, 0, 0], [1, 0, 1, 0], [0, 0, 0, 0], [0, 1, 0, 1]][k];
     tail = k % 2;
+    legs = [
+      // 手前の脚が前に出る
+      [[-1, -2, 0], [1, 1, 0], [1, 2, 0], [0, -1, 0]],
+      // 手前の脚を曲げて持ち上げる
+      [[-1, -3, 2], [-1, 0, 0], [2, 0, 2], [0, 0, 0]],
+      // 奥の脚が前に出る
+      [[1, 1, 0], [-1, -2, 0], [0, -1, 0], [1, 2, 0]],
+      // 奥の脚を曲げて持ち上げる
+      [[-1, 0, 0], [-1, -3, 2], [0, 0, 0], [2, 0, 2]],
+    ][k];
   } else if (anim === 'attack') {
-    if (n === 0) { dx = -1; dy = 1; head = 1; tail = 1; }
-    if (n === 1) { dx = 2; open = true; legs = [2, 1, -1, -2]; }
-    if (n === 2) { dx = 1; open = true; legs = [1, 1, 0, 0]; }
+    if (n === 0) { dx = -1; dy = 1; head = 1; tail = 1; legs = [[-2, -1, 0], [-2, 0, 0], [1, 0, 0], [1, 1, 0]]; }
+    if (n === 1) { dx = 2; open = true; legs = [[-2, -4, 1], [-1, -3, 0], [2, 3, 1], [1, 3, 0]]; }
+    if (n === 2) { dx = 1; open = true; legs = [[-1, -2, 0], [-1, -1, 0], [1, 1, 0], [0, 1, 0]]; }
   }
-  // 脚（後ろ脚 2本・前脚 2本。奥の脚は暗く）
-  [8, 11, 19, 22].forEach((x, k) => rect(x + dx + legs[k], 13 + dy, x + dx + legs[k] + 1, 21 - lift[k], k % 2 ? 'd' : 'f'));
+  // 太さ2ドットの線を上から下へ（1行ごとに横へずらす）
+  const line = (x0, y0, x1, y1, c) => {
+    for (let y = y0; y <= y1; y++) {
+      const x = Math.round(x0 + ((x1 - x0) * (y - y0)) / Math.max(1, y1 - y0));
+      rect(x, y, x + 1, y, c);
+    }
+  };
+  // 脚（奥の脚を先に、暗く描く）
+  [1, 3, 0, 2].forEach((k) => {
+    const x = [8, 11, 19, 22][k] + dx;
+    const [knee, paw, lift] = legs[k];
+    const top = 13 + dy;
+    const bottom = 21 - lift;
+    const kneeY = Math.min(17, bottom - 2);
+    const c = k % 2 ? 'd' : 'f';
+    line(x, top, x + knee, kneeY, c);
+    line(x + knee, kneeY, x + paw, bottom, c);
+  });
   // ふさふさのしっぽ（胴から左上へ）
   for (const [x, y, r] of [[8, 9.5, 1.8], [6.5, 8.5, 2], [5, 7.5, 2], [3.5, 6.5, 1.7], [2.3, 5.8, 1.2]]) ell(x + dx, y + dy + tail, r, r * 0.85, 'f');
   ell(15 + dx, 11 + dy, 8.5, 4.2, 'f');          // 胴
