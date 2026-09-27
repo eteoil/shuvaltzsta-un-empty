@@ -36,7 +36,8 @@ export function useItem(items, session, id, battle = null) {
   if (def.battleOnly && !battle) return { used: false, lines: ['戦闘中にしか使えない'], sound: 'miss' };
   if (def.heal && session.hero.hp >= session.hero.maxHp) return { used: false, lines: ['HPはまんたんだ'], sound: 'miss' };
   if (!takeItem(session, id)) return { used: false, lines: [], sound: 'miss' };
-  const lines = [`${def.name}を使った`];
+  // 使ったときの言い方は useVerb（食べた・飲んだ・装備した）。無ければ「使った」
+  const lines = [`${def.name}を${def.useVerb ?? '使った'}`];
   let effect = def;
   if (def.outcomes) {
     const pick = def.outcomes[Math.floor(Math.random() * def.outcomes.length)];

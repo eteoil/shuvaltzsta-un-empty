@@ -4,5 +4,5 @@
   "sprite": "player",
   "palette": { "id": "elena", "map": { "#394660": "#e8c35a", "#187fc4": "#b0303a", "#801e6b": "#3a2a4a", "#f5c939": "#f3e6cf" } },
   "quest": "strawberry_jam",
-  "festivalGift": { "say": "今日みたいな日はめいいっぱい楽しまなきゃね", "item": "ether_s", "got": "{name}をもらった！" }
+  "festivalGift": { "say": "今日みたいな日はめいっぱい楽しまなきゃね", "item": "ether_s", "got": "{name}をもらった！" }
 }
