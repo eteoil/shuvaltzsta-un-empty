@@ -20,7 +20,7 @@
   ],
   "pickups": {
     "count": 5,
-    "table": [["wild_berry", 6], ["mushroom", 3], ["antidote", 1]]
+    "table": [["wild_berry", 5], ["mushroom", 3], ["antidote", 2]]
   },
   "encounters": [
     {
