@@ -32,6 +32,19 @@
         "no": "そうか"
       }
     },
+    {
+      "label": "食用キノコ",
+      "if": { "has": "edible_mushroom" },
+      "gift": {
+        "item": "edible_mushroom",
+        "price": 30,
+        "prompt": "くれるのか",
+        "howMany": "いくつくれるんだ？",
+        "yes": "ありがとう、少ないが持っていけ",
+        "got": "{price}手に入れた！",
+        "no": "そうか"
+      }
+    },
     { "label": "バイト", "closedOnRestDay": true, "job": { "game": "cafe", "done": "お疲れさま", "tired": "働き過ぎだ。また明日頼む" } },
     { "label": "なんでもない", "say": "そうか", "cancel": true }
   ]

@@ -9,6 +9,7 @@ import { CafeJobState } from './CafeJobState.js';
 import { ShopState } from './ShopState.js';
 
 const CHAR_MS = 32;
+const DPAD_STEP = { up: 1, right: 1, down: -1, left: -1 };
 // ベッドで休むときの暗転（秒）。暗くなる → 真っ暗のままメロディ → 明るくなる
 const SLEEP = { out: 0.8, hold: 2.2, in: 0.8 };
 
@@ -25,6 +26,7 @@ export class TalkState {
     this.line = '';
     this.shownAt = 0;
     this.choices = null;     // { options: [{ label, run }], sel, cancel }
+    this.counter = null;     // 個数を選ぶ窓 { n, max, price, run, cancel }
     this.next = null;        // セリフを読み終えて A を押したら呼ぶ
     this.speaker = null;     // 名前札に出す名前（null なら話しかけた相手、'' なら名前札なし）
   }
@@ -47,6 +49,7 @@ export class TalkState {
     this.line = line;
     this.shownAt = performance.now();
     this.choices = null;
+    this.counter = null;
     this.next = next;
     this.speaker = speaker;
   }
@@ -152,6 +155,7 @@ export class TalkState {
     else if (o.trade) this.trade(o.trade);
     else if (o.job) this.job(o.job);
     else if (o.buy) this.buy(o.buy);
+    else if (o.gift) this.gift(o.gift);
     else if (o.rest) this.rest(o.rest);
     else this.close();
   }
@@ -218,6 +222,32 @@ export class TalkState {
     ], no);
   }
 
+  // 持ち物を渡してお金をもらう（シャルヴィスに食用キノコ）。「はい」のあと、2個以上あれば個数を選ぶ。
+  // 「いいえ」と B は no のセリフで終わる
+  gift(gi) {
+    const no = () => this.say(gi.no);
+    this.choose(gi.prompt, [
+      {
+        label: 'はい',
+        run: () => {
+          const max = count(this.session, gi.item);
+          if (max <= 1) { this.give(gi, 1); return; }
+          this.say(gi.howMany, null);
+          this.counter = { n: max, max, price: gi.price, run: (n) => this.give(gi, n), cancel: no };
+        },
+      },
+      { label: 'いいえ', run: no },
+    ], no);
+  }
+
+  give(gi, n) {
+    for (let k = 0; k < n; k++) takeItem(this.session, gi.item);
+    const gain = gi.price * n;
+    this.session.money += gain;
+    this.game.sfx.play('confirm');
+    this.sayLines([{ text: gi.yes }, { speaker: '', text: gi.got.replace('{price}', money(gain)) }]);
+  }
+
   // ベッドで休む。HP が満タンになり毒も消え、次の日になる（バイトがまたできる）
   // 暗転しているあいだに眠る（回復・日付）。明るくなってから起きたときのセリフ
   rest(r) {
@@ -278,6 +308,22 @@ export class TalkState {
     for (const { btn } of presses) {
       const typing = this.visible() < [...this.line].length;
       if (typing && (btn === 'a' || btn === 'b')) { this.shownAt = -1e9; continue; }
+      const k = this.counter;
+      if (k) {
+        // 上・右で1個増やし、下・左で1個減らす（端まで行くと反対の端へ）
+        if (DPAD_STEP[btn]) {
+          k.n = ((k.n - 1 + DPAD_STEP[btn] + k.max) % k.max) + 1;
+          this.game.sfx.play('select');
+        } else if (btn === 'a') {
+          this.game.sfx.play('select');
+          k.run(k.n);
+          return;
+        } else if (btn === 'b') {
+          k.cancel();
+          return;
+        }
+        continue;
+      }
       const c = this.choices;
       if (c) {
         if (btn === 'up' || btn === 'down') {
@@ -319,6 +365,17 @@ export class TalkState {
     const shown = [...this.line].slice(0, this.visible()).join('');
     wrap(g, shown, W - 48).slice(0, 3).forEach((l, i) => text(g, l, 24, top + 16 + i * 24));
 
+    const k = this.counter;
+    if (k && this.visible() >= [...this.line].length) {
+      const label = `${k.n}個（${money(k.n * k.price)}）`;
+      const w = [...label].length * 12 + 64;
+      const x = W - 12 - w;
+      const y = top - 34 - 40;
+      panel(g, x, y, w, 40);
+      text(g, '▲', x + 12, y + 6, { size: 12, color: COLORS.signal });
+      text(g, '▼', x + 12, y + 20, { size: 12, color: COLORS.signal });
+      text(g, label, x + 32, y + 10, { color: COLORS.ink });
+    }
     const c = this.choices;
     if (c && this.visible() >= [...this.line].length) {
       const w = Math.max(...c.options.map((o) => [...o.label].length)) * 16 + 44;
@@ -330,7 +387,7 @@ export class TalkState {
         if (i === c.sel) text(g, '▶', x + 10, y + 10 + i * 24, { color: COLORS.signal });
         text(g, o.label, x + 28, y + 10 + i * 24, { color: i === c.sel ? COLORS.ink : COLORS.muted });
       });
-    } else if (!c && this.visible() >= [...this.line].length && Math.floor(performance.now() / 350) % 2 === 0) {
+    } else if (!c && !k && this.visible() >= [...this.line].length && Math.floor(performance.now() / 350) % 2 === 0) {
       text(g, '▼', W - 30, top + 76, { size: 12, color: COLORS.signal });
     }
   }
