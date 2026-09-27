@@ -31,12 +31,17 @@ export class MenuState {
       { label: () => `チート：${this.game.options.cheat ? 'ON' : 'OFF'}`, run: () => this.toggleCheat() },
       { label: 'タイトルへ', run: () => this.game.toTitle() },
     ];
-    // 開発モード（URL に ?dev）のときだけ、レベルを変える項目。◀▶ で1ずつ、A で10ずつ（100の次は1）
+    // 開発モード（URL に ?dev）のときだけ、レベルと日付を変える項目。
+    // レベルは ◀▶ で1ずつ、A で10ずつ（100の次は1）。日付は ◀▶ で1日ずつ、A で次の行事の日へ（時刻はそのまま）
     if (game.dev && game.session) {
       this.items.splice(3, 0, {
         label: () => `レベル ◀ ${this.level} ▶`,
         adjust: (d) => this.setLevel(this.level + d),
         run: () => this.setLevel(this.level >= this.game.config.level.max ? 1 : this.level + 10),
+      }, {
+        label: () => `日付 ◀ ${dateNumber(this.game.calendar, this.session.day)} ▶`,
+        adjust: (d) => { this.session.day = Math.max(1, this.session.day + d); },
+        run: () => this.nextEventDay(),
       });
     }
   }
@@ -93,6 +98,17 @@ export class MenuState {
   setLevel(level) {
     const { config } = this.game;
     setTotalScore(this.game, scoreFor(config, Math.max(1, Math.min(config.level.max, level))));
+  }
+
+  // 次の行事が始まる日（祭り・天赦日・忌み月のどれかがあって、前の日と顔ぶれが違う日）へ進める。1年先まで探す。
+  // 天赦日が3日続くときは、その1日目で止まる
+  nextEventDay() {
+    const cal = this.game.calendar;
+    const labels = (d) => eventsOf(cal, d).labels.join();
+    const year = cal.months.reduce((sum, m) => sum + m.days, 0);
+    for (let d = this.session.day + 1; d <= this.session.day + year; d++) {
+      if (labels(d) && labels(d) !== labels(d - 1)) { this.session.day = d; return; }
+    }
   }
 
   // タイトルの OPTION と同じ設定。切り替えたらすぐ効き、このブラウザに覚える
