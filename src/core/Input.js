@@ -38,6 +38,7 @@ export class Input {
     this.clock = clock;
     this.held = new Map();      // btn → 押している入力元の数
     this.queue = [];
+    this.drained = [];          // 直前の drain で渡した入力（このコマの入力）
     this.pointers = new Map();  // pointerId → btn
     this.buttons = new Map();   // btn → 画面上のボタン要素
     for (const el of root.querySelectorAll('[data-btn]')) this.buttons.set(el.dataset.btn, el);
@@ -65,7 +66,11 @@ export class Input {
       const btn = KEYMAP[e.code];
       if (btn) this.release(btn);
     });
+    // 裏へ回ると、押していた指を離したこと（pointerup・keyup）が届かないことがある。
+    // 押しっぱなしのまま残ると、ほかの方向を押しても歩けなくなるので、裏へ回るときと戻ったときに全部離す
     window.addEventListener('blur', () => this.releaseAll());
+    window.addEventListener('pagehide', () => this.releaseAll());
+    document.addEventListener('visibilitychange', () => this.releaseAll());
 
     root.addEventListener('pointerdown', (e) => {
       const btn = e.target.closest?.('[data-btn]')?.dataset.btn;
@@ -94,6 +99,7 @@ export class Input {
     };
     root.addEventListener('pointerup', end);
     root.addEventListener('pointercancel', end);
+    root.addEventListener('lostpointercapture', end);
     root.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 
@@ -127,9 +133,20 @@ export class Input {
     return this.held.has(btn);
   }
 
+  // btns のうち押している物で、一番あとに押し始めた物。十字ボタンを2つ押しているときは、あとから押した方へ歩く。
+  // 押していなくても、このコマのうちに押して離した物（1コマより短い素早いタップ）があればそれ。無ければ null
+  latest(btns) {
+    let found = null;
+    for (const btn of this.held.keys()) if (btns.includes(btn)) found = btn;
+    if (found) return found;
+    for (const { btn } of this.drained) if (btns.includes(btn)) found = btn;
+    return found;
+  }
+
   drain() {
     const q = this.queue;
     this.queue = [];
+    this.drained = q;
     return q;
   }
 }

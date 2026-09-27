@@ -12,6 +12,9 @@ export class AudioClock {
     // 画面操作の効果音用。ポーズで ctx を止めている間も鳴らせるよう、こちらは止めない。
     // ゲーム性に関わる時間には使わない（憲法⑫）
     this.ui = new AC({ latencyHint: 'interactive' });
+    // 裏から戻ったら、止めていない（ポーズ中でない）のに止まっている時計を動かし直す。
+    // ここで動かせなくても、次にボタンを押したとき unlock でもう一度試す
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) this.unlock(); });
   }
 
   get now() {

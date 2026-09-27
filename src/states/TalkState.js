@@ -146,10 +146,11 @@ export class TalkState {
     this.choose(greet, shown.map((o) => ({ label: o.label, run: () => this.act(o) })), cancel ? () => this.act(cancel) : undefined);
   }
 
-  // closedOnRestDay の選択肢は、天赦日には restDayText だけ言って終わる（カフェの休み）
+  // closedOnRestDay の選択肢は、天赦日には restDayText だけ言って終わる（カフェの休み）。
+  // sayBeforeRest があれば、翌日が天赦日の日は say の代わりにそちらを言う（シャルヴィスの世間話）
   act(o) {
     if (o.closedOnRestDay && this.today.rest) this.say(this.npc.restDayText);
-    else if (o.say) this.say(o.say);
+    else if (o.say) this.say(o.sayBeforeRest && eventsOf(this.game.calendar, this.session.day + 1).rest ? o.sayBeforeRest : o.say);
     else if (o.shop) this.shop(o.shop);
     else if (o.appraise) this.appraise(o.appraise);
     else if (o.trade) this.trade(o.trade);

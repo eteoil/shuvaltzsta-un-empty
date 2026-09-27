@@ -5,7 +5,7 @@ import { loadItems, money, addItem } from '../core/Items.js';
 import { poisonTick, regen } from '../core/Hero.js';
 import { drawPickup, drawExit, drawObject, objectHeight } from '../core/icons.js';
 import { Pickups } from '../core/Pickups.js';
-import { passTime, isNight, isOpen } from '../core/Calendar.js';
+import { passTime, isNight, isOpen, eventsOf } from '../core/Calendar.js';
 import { DIRS, FACE_STEP } from '../core/grid.js';
 
 // 探索。リズム入力は受け付けない（憲法③）。町のマップ（kind: town）では TOWN として動く。
@@ -97,9 +97,12 @@ export class FieldState {
     return isOpen(this.destMaps[exit.to]?.hours, this.session.minute);
   }
 
-  // 営業時間のある場所の店の人（map の npcs で staff: true）は、時間外はいない。night: true の人は夜だけ（バーのエレナ）
+  // 営業時間のある場所の店の人（map の npcs で staff: true）は、時間外はいない。night: true の人は夜だけ（バーのエレナ）。
+  // restDay: true の人は天赦日だけ、restDay: false の人は天赦日以外だけいる（天赦日のコウはカフェでなく森の入り口の前）
   presentNpcs() {
-    return (this.map.npcs ?? []).filter((n) => (!n.staff || this.open) && (!n.night || this.night));
+    const rest = eventsOf(this.game.calendar, this.session.day).rest;
+    return (this.map.npcs ?? []).filter((n) => (!n.staff || this.open) && (!n.night || this.night)
+      && (n.restDay === undefined || n.restDay === rest));
   }
 
   // 出口に乗ったら行き先へ。requires のフラグ（勝った戦闘など）が無ければ通れない。
@@ -188,7 +191,7 @@ export class FieldState {
       if (this.takeExit()) return;
     }
 
-    const btn = Object.keys(DIRS).find((b) => this.game.input.isDown(b));
+    const btn = this.game.input.latest(Object.keys(DIRS));
     if (this.waitRelease) {
       if (btn) return;
       this.waitRelease = false;

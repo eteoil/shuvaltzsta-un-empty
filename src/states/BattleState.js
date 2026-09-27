@@ -209,7 +209,7 @@ export class BattleState {
       p.move = null;
       this.onStep();
     }
-    const btn = Object.keys(DIRS).find((b) => this.game.input.isDown(b));
+    const btn = this.game.input.latest(Object.keys(DIRS));
     if (!btn) return;
     const d = DIRS[btn];
     p.dir = d.face;

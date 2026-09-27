@@ -19,7 +19,7 @@
   "npcs": [
     { "id": "shalvis", "at": [3, 0], "dir": "sw", "staff": true },
     { "id": "elena", "at": [4, 0], "dir": "sw", "staff": true, "night": true },
-    { "id": "kou", "at": [0, 2], "dir": "se", "staff": true },
+    { "id": "kou", "at": [0, 2], "dir": "se", "staff": true, "restDay": false },
     { "id": "cafe_bed", "at": [6, 1], "dir": "sw" }
   ],
   "encounters": []

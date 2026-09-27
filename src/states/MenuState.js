@@ -3,7 +3,7 @@ import { COLORS, text, panel, gauge, wrap } from '../core/draw.js';
 import { loadItems, money, useItem, count } from '../core/Items.js';
 import { loadJSON } from '../core/Data.js';
 import { saveOptions } from '../core/Options.js';
-import { dateText, dateNumber, timeText, clockText, eventsOf, passTime } from '../core/Calendar.js';
+import { dateOf, dateText, dateNumber, timeText, clockText, eventsOf, passTime } from '../core/Calendar.js';
 import { levelOf, scoreFor, setTotalScore } from '../core/Level.js';
 
 const ROWS = 7;
@@ -32,7 +32,8 @@ export class MenuState {
       { label: 'タイトルへ', run: () => this.game.toTitle() },
     ];
     // 開発モード（URL に ?dev）のときだけ、レベルと日付を変える項目。
-    // レベルは ◀▶ で1ずつ、A で10ずつ（100の次は1）。日付は ◀▶ で1日ずつ、A で次の行事の日へ（時刻はそのまま）
+    // レベルは ◀▶ で1ずつ、A で10ずつ（100の次は1）。日付は ◀▶ で1日ずつ、A で次の行事の日へ。
+    // 節は ◀▶（A でも次へ）で1節ずつ、同じ区のまま（20区までの水亀節では20区に）。時刻はどれもそのまま
     if (game.dev && game.session) {
       this.items.splice(3, 0, {
         label: () => `レベル ◀ ${this.level} ▶`,
@@ -42,6 +43,10 @@ export class MenuState {
         label: () => `日付 ◀ ${dateNumber(this.game.calendar, this.session.day)} ▶`,
         adjust: (d) => { this.session.day = Math.max(1, this.session.day + d); },
         run: () => this.nextEventDay(),
+      }, {
+        label: () => `節 ◀ ${dateOf(this.game.calendar, this.session.day).name}節 ▶`,
+        adjust: (d) => this.stepMonth(d),
+        run: () => this.stepMonth(1),
       });
     }
   }
@@ -98,6 +103,16 @@ export class MenuState {
   setLevel(level) {
     const { config } = this.game;
     setTotalScore(this.game, scoreFor(config, Math.max(1, Math.min(config.level.max, level))));
+  }
+
+  // 1節先（d = 1）か前（d = -1）の同じ区へ。1日目より前には戻らない
+  stepMonth(d) {
+    const cal = this.game.calendar;
+    const now = dateOf(cal, this.session.day);
+    const days = (m) => cal.months[(m - 1 + cal.months.length) % cal.months.length].days;
+    const to = Math.min(now.day, days(now.month + d));
+    const delta = d > 0 ? days(now.month) - now.day + to : -(now.day + days(now.month - 1) - to);
+    if (this.session.day + delta >= 1) this.session.day += delta;
   }
 
   // 次の行事が始まる日（祭り・天赦日・忌み月のどれかがあって、前の日と顔ぶれが違う日）へ進める。1年先まで探す。

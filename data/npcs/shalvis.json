@@ -7,7 +7,7 @@
   "nightGreet": "今夜は何にする？",
   "restDayText": "今日は天赦日だから店は休みだ",
   "options": [
-    { "label": "世間話", "say": "明日の豆は何にしようか……" },
+    { "label": "世間話", "say": "明日の豆は何にしようか……", "sayBeforeRest": "明日の休みは何をしようか……" },
     {
       "label": "お弁当",
       "closedOnRestDay": true,
