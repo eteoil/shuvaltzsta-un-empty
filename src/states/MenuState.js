@@ -32,11 +32,11 @@ export class MenuState {
     const o = this.game.options;
     o.cheat = !o.cheat;
     saveOptions(o);
-    this.game.sfx.play(o.cheat ? 'confirm' : 'select');
   }
 
   enter() {
     this.game.clock.suspend();
+    this.game.sfx.play('confirm');
   }
 
   exit() {
@@ -68,8 +68,12 @@ export class MenuState {
         this.sel = (this.sel + this.items.length + (btn === 'up' ? -1 : 1)) % this.items.length;
         this.game.sfx.play('select');
       }
-      if (btn === 'a') { this.items[this.sel].run(); return; }
-      if (btn === 'b' || btn === 'pause' || btn === 'start') { this.game.states.pop(); return; }
+      if (btn === 'a') {
+        this.game.sfx.play('select');
+        this.items[this.sel].run();
+        return;
+      }
+      if (btn === 'b' || btn === 'pause' || btn === 'start') { this.game.sfx.play('select'); this.game.states.pop(); return; }
     }
   }
 

@@ -2,16 +2,42 @@
 export class Sfx {
   constructor(clock, config) {
     this.clock = clock;
-    this.out = clock.ctx.createGain();
-    this.out.gain.value = config.volume?.sfx ?? 0.3;
-    this.out.connect(clock.master);
-    this.noiseBuffer = null;
+    this.volume = config.volume?.sfx ?? 0.3;
+    this.outs = new Map();       // AudioContext → 出口の GainNode
+    this.noiseBuffers = new Map();
   }
 
-  tone(freq, dur, { type = 'square', vol = 0.5, when, slide } = {}) {
-    const ctx = this.clock.ctx;
-    if (ctx.state !== 'running') return;
-    const t = Math.max(when ?? ctx.currentTime, ctx.currentTime);
+  // when（拍に合わせた時刻）があれば本体の AudioContext で鳴らし、止まっていれば鳴らさない。
+  // 無ければ今すぐ鳴らす音なので、本体が止まっている間（ポーズ中・音の許可待ち）は画面操作用の AudioContext で鳴らす
+  pick(when) {
+    const { ctx, ui } = this.clock;
+    if (when !== undefined || ctx.state === 'running') return ctx;
+    return ui;
+  }
+
+  out(ctx) {
+    if (!this.outs.has(ctx)) {
+      const gain = ctx.createGain();
+      gain.gain.value = this.volume;
+      gain.connect(ctx === this.clock.ctx ? this.clock.master : ctx.destination);
+      this.outs.set(ctx, gain);
+    }
+    return this.outs.get(ctx);
+  }
+
+  // 鳴らせる AudioContext を返す。音の許可がまだ下りていなければ、下りてから retry を呼ぶ
+  ready(when, retry) {
+    const ctx = this.pick(when);
+    if (ctx.state === 'running') return ctx;
+    if (ctx === this.clock.ui) ctx.resume().then(retry, () => {});
+    return null;
+  }
+
+  // delay は when（無ければ今）からの遅れ（秒）
+  tone(freq, dur, { type = 'square', vol = 0.5, when, delay = 0, slide } = {}) {
+    const ctx = this.ready(when, () => this.tone(freq, dur, { type, vol, when, delay, slide }));
+    if (!ctx) return;
+    const t = Math.max(when ?? ctx.currentTime, ctx.currentTime) + delay;
     const osc = ctx.createOscillator();
     const env = ctx.createGain();
     osc.type = type;
@@ -19,26 +45,27 @@ export class Sfx {
     if (slide) osc.frequency.exponentialRampToValueAtTime(slide, t + dur);
     env.gain.setValueAtTime(vol, t);
     env.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    osc.connect(env).connect(this.out);
+    osc.connect(env).connect(this.out(ctx));
     osc.start(t);
     osc.stop(t + dur + 0.02);
   }
 
   noise(dur, { vol = 0.5, when } = {}) {
-    const ctx = this.clock.ctx;
-    if (ctx.state !== 'running') return;
-    if (!this.noiseBuffer) {
-      this.noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 0.5, ctx.sampleRate);
-      const d = this.noiseBuffer.getChannelData(0);
+    const ctx = this.ready(when, () => this.noise(dur, { vol, when }));
+    if (!ctx) return;
+    if (!this.noiseBuffers.has(ctx)) {
+      const buf = ctx.createBuffer(1, ctx.sampleRate * 0.5, ctx.sampleRate);
+      const d = buf.getChannelData(0);
       for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      this.noiseBuffers.set(ctx, buf);
     }
     const t = Math.max(when ?? ctx.currentTime, ctx.currentTime);
     const src = ctx.createBufferSource();
     const env = ctx.createGain();
-    src.buffer = this.noiseBuffer;
+    src.buffer = this.noiseBuffers.get(ctx);
     env.gain.setValueAtTime(vol, t);
     env.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    src.connect(env).connect(this.out);
+    src.connect(env).connect(this.out(ctx));
     src.start(t);
     src.stop(t + dur + 0.02);
   }
@@ -48,14 +75,14 @@ export class Sfx {
       case 'select': return this.tone(660, 0.05, { vol: 0.3, when });
       case 'confirm':
         this.tone(660, 0.06, { vol: 0.35, when });
-        return this.tone(990, 0.08, { vol: 0.35, when: (when ?? this.clock.now) + 0.06 });
+        return this.tone(990, 0.08, { vol: 0.35, when, delay: 0.06 });
       // アイテム：回復は上がる和音、毒やダメージは下がるうねり
       case 'heal':
-        [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.09, { type: 'triangle', vol: 0.4, when: (when ?? this.clock.now) + i * 0.06 }));
+        [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.09, { type: 'triangle', vol: 0.4, when, delay: i * 0.06 }));
         return undefined;
       case 'poison':
         this.tone(330, 0.3, { type: 'sawtooth', vol: 0.25, when, slide: 110 });
-        return this.tone(349, 0.3, { type: 'square', vol: 0.15, when: (when ?? this.clock.now) + 0.08, slide: 98 });
+        return this.tone(349, 0.3, { type: 'square', vol: 0.15, when, delay: 0.08, slide: 98 });
       case 'step': return this.tone(180, 0.03, { type: 'triangle', vol: 0.25, when });
       case 'perfect': return this.tone(1320, 0.08, { vol: 0.35, when });
       case 'good': return this.tone(880, 0.07, { vol: 0.3, when });

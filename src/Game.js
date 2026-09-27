@@ -75,7 +75,7 @@ export class Game {
       money: start.money,
       items: { ...start.items },
       flags: {},
-      pickups: {},        // 拾った物の id → 次に現れるまでの秒
+      pickups: {},        // マップの id → 落ちている物と、次に現れるまでの秒（FieldState）
       totalScore: 0,
     };
     this.states.change(new FieldState(this));

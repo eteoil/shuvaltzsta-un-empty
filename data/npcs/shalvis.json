@@ -12,22 +12,23 @@
         "prompt": "どれにするんだ？",
         "items": [["onigiri", 300], ["ble_sand", 600], ["coffee", 1200]],
         "thanks": "いってらっしゃい",
-        "poor": "金が足りないみたいだな（仮）"
+        "poor": "金が足りないみたいだな"
       }
     },
     {
       "label": "野イチゴ",
       "if": { "has": "wild_berry", "count": 6 },
       "trade": {
-        "prompt": "野イチゴが6個あるなら、ジャムにしてやろうか？（仮）",
+        "prompt": "野イチゴが6個あるなら、ジャムにしてやろうか？",
         "give": "wild_berry",
         "giveCount": 6,
         "price": 0,
         "get": "wild_berry_jam",
-        "yes": "ほら、野イチゴジャムだ（仮）"
+        "yes": "ほら、野イチゴジャムだ",
+        "no": "そうか"
       }
     },
     { "label": "バイト", "job": { "game": "cafe", "done": "お疲れさま" } },
-    { "label": "なんでもない", "say": "そうか" }
+    { "label": "なんでもない", "say": "そうか", "cancel": true }
   ]
 }

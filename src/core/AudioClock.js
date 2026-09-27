@@ -9,6 +9,9 @@ export class AudioClock {
     this.master.connect(this.ctx.destination);
     this.offsetSec = (config.audioOffsetMs || 0) / 1000;
     this.paused = false;
+    // 画面操作の効果音用。ポーズで ctx を止めている間も鳴らせるよう、こちらは止めない。
+    // ゲーム性に関わる時間には使わない（憲法⑫）
+    this.ui = new AC({ latencyHint: 'interactive' });
   }
 
   get now() {
@@ -27,6 +30,7 @@ export class AudioClock {
   // ブラウザは操作の中でしか音を鳴らせないので、入力のたびに呼ぶ
   unlock() {
     if (!this.paused && this.ctx.state !== 'running') this.ctx.resume();
+    if (this.ui.state !== 'running') this.ui.resume();
   }
 
   suspend() {

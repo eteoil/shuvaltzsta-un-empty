@@ -4,6 +4,7 @@ const SCALE = 2;
 const PALETTE = {
   g: '#5fbf5a', r: '#d8394f', R: '#ff8a9a',
   b: '#a8643a', B: '#c98452', w: '#f3e6cf', s: '#efe0c2',
+  h: '#3f9e6a', H: '#8fe07a', t: '#6b4a2a',
 };
 const ICONS = {
   wild_berry: [
@@ -15,6 +16,16 @@ const ICONS = {
     '..rrRr...',
     '...rrr...',
     '....r....',
+  ],
+  antidote: [
+    '.H....H.',
+    'hHh..hHh',
+    'hhHhhHhh',
+    '.hhHHhh.',
+    '..hHHh..',
+    '...hh...',
+    '...tt...',
+    '..t..t..',
   ],
   mushroom: [
     '..bbbb..',

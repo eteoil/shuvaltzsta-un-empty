@@ -32,6 +32,7 @@ export class FieldState {
 
   enter() {
     loadItems().then((d) => { this.itemDefs = d; });
+    this.fillPickups();
     for (const enc of this.map.encounters) {
       loadEnemy(enc.enemy).then(({ def }) => { this.enemyDefs[enc.id] = def; });
     }
@@ -44,9 +45,40 @@ export class FieldState {
     return (this.map.npcs ?? []).find((n) => n.at[0] === i && n.at[1] === j);
   }
 
-  // いま見えている拾い物（拾ってから pickupRespawnSec 秒は消えている）
+  // 落ちている物はマップごとに session.pickups[マップid] = { spots: [{ item, at }], waits: [秒] } で持つ。
+  // 置き方はマップの pickups（count 個を、table の重みで選んで空いている床へランダムに）。
+  // 拾うと waits に pickupRespawnSec を積み、0 になったら別の場所に1つ置き直す
+  get pickups() {
+    const all = this.session.pickups;
+    all[this.map.id] ??= { spots: [], waits: [] };
+    return all[this.map.id];
+  }
+
+  fillPickups() {
+    const def = this.map.pickups;
+    if (!def) return;
+    const state = this.pickups;
+    while (state.spots.length + state.waits.length < def.count && this.spawnPickup()) { /* 置けるだけ置く */ }
+  }
+
+  spawnPickup() {
+    const def = this.map.pickups;
+    const free = [];
+    this.map.floor.forEach((row, j) => [...row].forEach((c, i) => {
+      if (c !== '#' || this.npcAt(i, j) || this.encounterAt(i, j) || this.pickupAt(i, j)) return;
+      if (i === this.p.i && j === this.p.j) return;
+      free.push([i, j]);
+    }));
+    if (!free.length) return false;
+    const total = def.table.reduce((sum, [, w]) => sum + w, 0);
+    let r = Math.random() * total;
+    const [item] = def.table.find(([, w]) => (r -= w) < 0) ?? def.table[0];
+    this.pickups.spots.push({ item, at: free[Math.floor(Math.random() * free.length)] });
+    return true;
+  }
+
   pickupAt(i, j) {
-    return (this.map.pickups ?? []).find((p) => p.at[0] === i && p.at[1] === j && !(this.session.pickups[p.id] > 0));
+    return this.pickups.spots.find((p) => p.at[0] === i && p.at[1] === j);
   }
 
   // A で拾う。乗っているマスか、向いている1歩先のマスにある物
@@ -54,7 +86,9 @@ export class FieldState {
     const p = this.pickupAt(this.p.i, this.p.j) ?? this.pickupAt(fi, fj);
     if (!p || !this.itemDefs) return false;
     addItem(this.session, p.item);
-    this.session.pickups[p.id] = this.game.config.field.pickupRespawnSec;
+    const state = this.pickups;
+    state.spots.splice(state.spots.indexOf(p), 1);
+    state.waits.push(this.game.config.field.pickupRespawnSec);
     this.toast = { text: `${this.itemDefs[p.item].name}を拾った`, at: performance.now() };
     this.game.sfx.play('confirm');
     return true;
@@ -92,7 +126,7 @@ export class FieldState {
 
     this.poisonTick(dt);
     this.regenTick(dt);
-    for (const id of Object.keys(this.session.pickups)) this.session.pickups[id] -= dt;
+    this.respawnTick(dt);
 
     if (this.move) {
       const step = dt / this.game.config.field.moveSecPerTile;
@@ -130,6 +164,14 @@ export class FieldState {
       this.hurtAt = performance.now();
       this.game.sfx.play('telegraph');
     }
+  }
+
+  respawnTick(dt) {
+    const state = this.pickups;
+    state.waits = state.waits.map((w) => w - dt);
+    const due = state.waits.filter((w) => w <= 0).length;
+    state.waits = state.waits.filter((w) => w > 0);
+    for (let k = 0; k < due; k++) this.spawnPickup();
   }
 
   // チートモードでは fieldRegenSec 秒ごとに HP が戻る
@@ -183,8 +225,7 @@ export class FieldState {
     }
 
     // 拾い物は床の上なので、人より先に描く
-    for (const p of this.map.pickups ?? []) {
-      if (this.session.pickups[p.id] > 0) continue;
+    for (const p of this.pickups.spots) {
       const pos = isoCenter(p.at[0], p.at[1], ox, oy, tile);
       drawPickup(g, p.item, pos.x, pos.y, performance.now());
     }
