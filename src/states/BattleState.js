@@ -630,7 +630,7 @@ export class BattleState {
     this.scheduleTick('hero');
   }
 
-  // 食べ物の継続回復（ドラゴンフライ）。毒と同じく小節頭で、status.regen.tickBeats 拍ごと
+  // 食べ物の継続回復（フライドドラコ）。毒と同じく小節頭で、status.regen.tickBeats 拍ごと
   startHeroRegen() {
     this.scheduleTick('food');
   }

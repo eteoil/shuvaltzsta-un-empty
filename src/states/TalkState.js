@@ -185,7 +185,7 @@ export class TalkState {
   }
 
   // 買い物は専用の State で。店を出たら会話も終わる。夜は nightItems があればそちらを並べる（バーのお酒）。
-  // 祭りの日は festivalItems を後ろに足す（[品物, 値段, 1日に売る数]。ドラゴンフライ）
+  // 祭りの日は festivalItems を後ろに足す（[品物, 値段, 1日に売る数]。フライドドラコ）
   shop(s) {
     if (this.night && s.nightItems) s = { ...s, items: s.nightItems };
     if (this.today.festival && s.festivalItems) s = { ...s, items: [...s.items, ...s.festivalItems] };

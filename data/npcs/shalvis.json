@@ -15,7 +15,7 @@
         "prompt": "どれにするんだ？",
         "items": [["onigiri", 300], ["ble_sand", 600], ["coffee", 1200]],
         "nightItems": [["onigiri", 300], ["ble_sand", 600], ["rolling_star", 1200]],
-        "festivalItems": [["dragon_fry", 900, 5]],
+        "festivalItems": [["fried_draco", 900, 5]],
         "soldOut": "今日の分は売り切れだ",
         "thanks": "いってらっしゃい",
         "poor": "金が足りないみたいだな"

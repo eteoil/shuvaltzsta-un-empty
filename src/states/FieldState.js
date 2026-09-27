@@ -22,7 +22,7 @@ export class FieldState {
     this.move = null;
     this.stride = 0;            // 歩いたマス数。歩きのコマ送りに使う（1マスで2コマ）
     this.poisonT = 0;           // 毒のダメージまでの経過秒（AudioContext の時刻から。憲法⑫）
-    this.foodT = 0;             // 食べ物の継続回復（ドラゴンフライ）までの経過秒
+    this.foodT = 0;             // 食べ物の継続回復（フライドドラコ）までの経過秒
     this.regenT = 0;            // チートモードの自動回復までの経過秒
     this.hurtAt = -1e9;
     this.toast = null;          // 拾ったときの一言（演出なので rAF の時刻で消す）

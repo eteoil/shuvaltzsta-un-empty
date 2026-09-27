@@ -23,7 +23,7 @@ export function cure(hero) {
   hero.poisonTicks = 0;
 }
 
-// 食べ物の継続回復（ドラゴンフライ）。hero.regen = { left: 残りの回数, rate: [分子, 分母]（最大HPに対する1回の回復量） }。
+// 食べ物の継続回復（フライドドラコ）。hero.regen = { left: 残りの回数, rate: [分子, 分母]（最大HPに対する1回の回復量） }。
 // 食べ直すと回数が元に戻る（重ねがけはしない）
 export function startRegen(hero, { rate, ticks }) {
   hero.regen = { left: ticks, rate };
