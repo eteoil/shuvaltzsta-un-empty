@@ -3,6 +3,7 @@ import { COLORS, text, panel, wrap } from '../core/draw.js';
 import { money, count, addItem } from '../core/Items.js';
 
 const CHAR_MS = 32;
+const ROWS = 5;   // 一度に見せる品数。多ければ選んでいる品に合わせて送る
 
 // お店。NPC の選択肢「買い物」から入る。品物と値段は data/npcs/*.json の shop（憲法⑨）。
 // 十字で選んで A で買う。続けて何個でも買え、B で店を出る（出たら会話も終わる）
@@ -68,8 +69,11 @@ export class ShopState {
     panel(g, 12, 8, W - 24, listH);
     text(g, '買い物', 28, 18, { color: COLORS.brass });
     text(g, money(this.session.money), W - 28, 18, { align: 'right', color: COLORS.perfect });
-    this.shop.items.forEach(([id, price], i) => {
-      const y = 46 + i * 22;
+    const list = this.shop.items;
+    const first = Math.max(0, Math.min(this.sel - ROWS + 1, list.length - ROWS));
+    list.slice(first, first + ROWS).forEach(([id, price], k) => {
+      const i = first + k;
+      const y = 46 + k * 22;
       const active = i === this.sel;
       const poor = this.session.money < price;
       if (active) text(g, '▶', 26, y, { color: COLORS.signal });
@@ -77,8 +81,10 @@ export class ShopState {
       text(g, `×${count(this.session, id)}`, W - 150, y, { size: 12, align: 'right', color: COLORS.dim });
       text(g, money(price), W - 28, y, { align: 'right', color: poor ? COLORS.miss : COLORS.perfect });
     });
-    const d = this.defs[this.shop.items[this.sel][0]];
-    const descY = 46 + this.shop.items.length * 22 + 10;
+    if (first > 0) text(g, '▲', W / 2, 30, { size: 12, align: 'center', color: COLORS.dim });
+    if (first + ROWS < list.length) text(g, '▼', W / 2, 46 + ROWS * 22 - 8, { size: 12, align: 'center', color: COLORS.dim });
+    const d = this.defs[list[this.sel][0]];
+    const descY = 46 + Math.min(ROWS, list.length) * 22 + 10;
     g.fillStyle = COLORS.line;
     g.fillRect(24, descY - 6, W - 48, 1);
     wrap(g, d.desc, W - 64).slice(0, 2).forEach((l, i) => text(g, l, 28, descY + i * 22));

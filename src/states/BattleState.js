@@ -108,7 +108,7 @@ export class BattleState {
   // actors：[{ id, name, sprite, palette, at: [i, j] }]。id は戦闘の中で重ならない名前にする
   addUnit(id, def, patterns, actors) {
     const track = new EventTrack(`enemy:${id}`);
-    const unit = { id, def, enemy: new Enemy(def, patterns), track, actorIds: [], poisonUntil: -Infinity, dead: false };
+    const unit = { id, def, enemy: new Enemy(def, patterns), track, actorIds: [], poisonUntil: -Infinity, confusedUntil: -Infinity, dead: false };
     const me = { i: this.player.i, j: this.player.j };
     for (const a of actors) {
       const at = { i: a.at[0], j: a.at[1] };
@@ -173,9 +173,26 @@ export class BattleState {
     return Object.keys(this.actors).find((id) => this.actors[id].i === i && this.actors[id].j === j) ?? null;
   }
 
-  // 一団のうち、プレイヤーにいちばん近い者までの距離（確定済み区間の先頭時点の位置で）
-  unitDistance(unit) {
-    return Math.min(...unit.actorIds.map((id) => distance(this.plan[id], this.tile)));
+  // 一団のうち、向かう先にいちばん近い者までの距離（確定済み区間の先頭時点の位置で）。向かう先が無ければ遠いことにする
+  unitDistance(unit, beat) {
+    return Math.min(...unit.actorIds.map((id) => {
+      const goal = this.goalOf(id, beat);
+      return goal ? distance(this.plan[id], goal) : 99;
+    }));
+  }
+
+  confused(unit, beat) {
+    return unit.confusedUntil > beat;
+  }
+
+  // 敵が向かう先。ふだんはプレイヤー。混乱中は一番近いほかの敵（いなければ null で、うろつくだけ）
+  goalOf(id, beat) {
+    const unit = this.unitOf(id);
+    if (!unit || !this.confused(unit, beat)) return this.tile;
+    const me = this.plan[id];
+    const others = Object.keys(this.plan).filter((o) => o !== id && !this.unitOf(o)?.dead);
+    if (!others.length) return null;
+    return this.plan[others.reduce((a, b) => (distance(this.plan[a], me) <= distance(this.plan[b], me) ? a : b))];
   }
 
   walk(dt) {
@@ -224,7 +241,7 @@ export class BattleState {
         let start = Math.max(track.endBeat, this.fightBeat);
         if (start < track.lockedUntil) start = ceilTo(track.lockedUntil, this.bpb);
         const poisoned = unit.poisonUntil > beat;
-        const pattern = unit.enemy.choosePattern(this.profile, { distance: this.unitDistance(unit), poisoned });
+        const pattern = unit.enemy.choosePattern(this.profile, { distance: this.unitDistance(unit, beat), poisoned });
         track.addPattern(this.bindPattern(pattern, unit), start);
       }
     }
@@ -254,7 +271,8 @@ export class BattleState {
         break;
       case 'enemy.move': {
         const from = this.plan[p.actor];
-        const to = p.wander ? this.wanderStep(p.actor, from) : this.planStep(p.actor, from, p.away);
+        const goal = this.goalOf(p.actor, ev.beat);
+        const to = p.wander || !goal ? this.wanderStep(p.actor, from) : this.planStep(p.actor, from, p.away, goal);
         this.moves.set(ev.id, to);
         this.plan[p.actor] = to;
         break;
@@ -262,12 +280,15 @@ export class BattleState {
       case 'enemy.attack':
       case 'enemy.feint': {
         const from = this.plan[p.actor];
-        const dir = stepToward(from, this.tile);
+        const goal = this.goalOf(p.actor, ev.beat);
+        const dir = goal ? stepToward(from, goal) : this.actors[p.actor].face;
         const tiles = areaTiles(p.area, from, dir.di || dir.dj ? dir : { di: 0, dj: 1 })
           .filter(([i, j]) => this.inArena(i, j));
         this.zones.set(ev.id, {
           beat: ev.beat,
           feint: ev.type === 'enemy.feint',
+          // 混乱した敵の攻撃。ほかの敵にだけ当たり、主人公には当たらない
+          confused: this.confused(this.unitOf(p.actor), ev.beat),
           dodgeable: p.dodgeable !== false,
           tiles,
           set: new Set(tiles.map(([i, j]) => key(i, j))),
@@ -279,10 +300,10 @@ export class BattleState {
     }
   }
 
-  // プレイヤーへ1歩（away なら離れる1歩）。塞がっていたらもう一方の軸、それも駄目ならその場
-  planStep(id, from, away = false) {
+  // goal（ふだんはプレイヤー）へ1歩（away なら離れる1歩）。塞がっていたらもう一方の軸、それも駄目ならその場
+  planStep(id, from, away = false, goal = this.tile) {
     const me = this.tile;
-    const target = away ? { i: 2 * from.i - me.i, j: 2 * from.j - me.j } : me;
+    const target = away ? { i: 2 * from.i - goal.i, j: 2 * from.j - goal.j } : goal;
     const taken = (i, j) => (i === me.i && j === me.j)
       || Object.entries(this.plan).some(([other, q]) => other !== id && q.i === i && q.j === j);
     const di = Math.sign(target.i - from.i);
@@ -355,6 +376,7 @@ export class BattleState {
         this.turn(p.actor);
         this.anim(p.actor, 'strike', ev.beat);
         if (this.results.has(ev.id)) break;
+        if (this.zones.get(ev.id)?.confused) { this.confusedHit(ev, this.zones.get(ev.id)); break; }
         if (this.zones.get(ev.id)?.set.has(key(this.tile.i, this.tile.j))) this.pending.push(ev);
         else this.results.set(ev.id, 'clear');
         break;
@@ -374,11 +396,28 @@ export class BattleState {
     }
   }
 
-  // 行動するたびにプレイヤーへ向き直る。その合間が回り込むすき
+  // 行動するたびに向かう先（ふだんはプレイヤー）へ向き直る。その合間が回り込むすき
   turn(id) {
     const a = this.actors[id];
-    const s = stepToward(a, this.tile);
+    const goal = this.goalOf(id, this.beats.currentBeat);
+    if (!goal) return;
+    const s = stepToward(a, goal);
     if (s.di || s.dj) a.face = s;
+  }
+
+  // 混乱した敵の攻撃は、範囲にいるほかの敵に当たる（主人公には当たらない）
+  confusedHit(ev, zone) {
+    this.results.set(ev.id, 'clear');
+    for (const [id, a] of Object.entries(this.actors)) {
+      if (id === ev.payload.actor || a.unit.dead || !zone.set.has(key(a.i, a.j))) continue;
+      const { unit } = a;
+      const n = Math.min(ev.payload.power ?? 10, unit.enemy.hp);
+      unit.enemy.hp -= n;
+      this.popup(String(n), COLORS.unguard, id);
+      this.anim(id, 'hurt', ev.beat);
+      this.game.sfx.play('hit');
+      if (unit.enemy.down) this.unitDown(unit, ev.beat);
+    }
   }
 
   // プレイヤーが敵の背中側か横にいるか
@@ -404,10 +443,10 @@ export class BattleState {
     else this.dodge(t, b);
   }
 
-  // 隣（斜めを含む8マス）にいる敵。毒針の間は reach マス先まで。向いている方を優先する
+  // 隣（斜めを含む8マス）にいる敵。毒針・パニックドロップの間は reach マス先まで。向いている方を優先する
   adjacentActor() {
     const me = this.tile;
-    const reach = this.buffs.needle?.def.reach ?? 1;
+    const reach = Math.max(1, ...Object.values(this.buffs).map((v) => v.def.reach ?? 1));
     const ids = Object.keys(this.actors)
       .filter((id) => !this.actors[id].unit.dead && distance(this.actors[id], me) <= reach)
       .sort((x, y) => distance(this.actors[x], me) - distance(this.actors[y], me));
@@ -444,6 +483,7 @@ export class BattleState {
     this.popup(back ? `BACK! ${dmg}` : String(dmg), back ? COLORS.perfect : COLORS.ink, target);
     this.anim(target, 'hurt', b);
     if (this.buffs.needle) this.poisonEnemy(unit, b, this.buffs.needle.def.poisonBeats);
+    if (this.buffs.panic) this.confuse(unit, b, this.buffs.panic.def.confuseBeats);
     if (unit.enemy.down) this.unitDown(unit, b);
     return undefined;
   }
@@ -461,7 +501,7 @@ export class BattleState {
     this.anim('player', 'dodge', b);
     const here = key(this.tile.i, this.tile.j);
     const near = this.enemyEvents(b - 2, b + 2)
-      .filter((e) => THREATS.has(e.type) && !this.results.has(e.id) && this.zones.get(e.id)?.dodgeable
+      .filter((e) => THREATS.has(e.type) && !this.results.has(e.id) && this.zones.get(e.id)?.dodgeable && !this.zones.get(e.id).confused
         && this.judge.grade(this.beats.deltaMs(t, e.beat)))
       .sort((x, y) => Math.abs(this.beats.deltaMs(t, x.beat)) - Math.abs(this.beats.deltaMs(t, y.beat)));
     const target = near.find((e) => this.zones.get(e.id)?.set.has(here));
@@ -504,7 +544,8 @@ export class BattleState {
 
   hit(ev) {
     this.results.set(ev.id, 'hit');
-    const power = ev.payload.power ?? 10;
+    // 痛み止めの間は damageRate 倍（半分）
+    const power = Math.max(1, Math.round((ev.payload.power ?? 10) * (this.buffs.guard?.def.damageRate ?? 1)));
     this.hero.hp = Math.max(0, this.hero.hp - power);
     this.stats.damage += power;
     this.fail(ev.beat, 'HIT');
@@ -559,6 +600,12 @@ export class BattleState {
     this.scheduleTick('hero');
   }
 
+  // パニックドロップで殴った敵を混乱させる。混乱は確定済み区間の先の行動から効く（憲法⑮）
+  confuse(unit, beat, beats) {
+    if (!this.confused(unit, beat)) this.popup('混乱！', COLORS.perfect, unit.actorIds[0]);
+    unit.confusedUntil = Math.max(unit.confusedUntil, beat + beats);
+  }
+
   poisonEnemy(unit, beat, beats) {
     const first = unit.poisonUntil <= beat;
     unit.poisonUntil = Math.max(unit.poisonUntil, beat + beats);
@@ -585,7 +632,7 @@ export class BattleState {
     const next = ev.beat + poison.tickBeats;
     // 毒では倒れない（HP は 1 残る）
     if (p.target === 'hero' && this.hero.poisoned) {
-      const { damage, cured } = poisonTick(this.game, poison.heroDamage);
+      const { damage, cured } = poisonTick(this.game, Math.max(1, Math.round(poison.heroDamage * (this.buffs.guard?.def.damageRate ?? 1))));
       if (damage) this.popup(`毒 ${damage}`, COLORS.unguard);
       if (cured) this.popup('毒が消えた', COLORS.open);
       else this.scheduleTick('hero', next);
@@ -782,7 +829,7 @@ export class BattleState {
           g.strokeStyle = `rgba(255,95,95,${0.35 + 0.5 * heat})`;
           g.stroke();
         } else {
-          const rgb = z.dodgeable ? '255,70,70' : '196,107,255';
+          const rgb = z.confused ? '245,201,57' : z.dodgeable ? '255,70,70' : '196,107,255';
           g.fillStyle = left < 0 ? 'rgba(255,255,255,0.6)' : `rgba(${rgb},${0.18 + 0.5 * heat})`;
           g.fill();
         }
@@ -831,6 +878,7 @@ export class BattleState {
     if (this.anims[c.id]?.kind === 'windup' && beat - this.anims[c.id].beat < 1) text(g, '!', pos.x, top - 14, { color: COLORS.brass, align: 'center' });
     if (this.spanAt('enemy.guard', slot, c.id)) text(g, 'GUARD', pos.x, top, { size: 12, color: COLORS.guard, align: 'center' });
     if (this.spanAt('enemy.open', slot, c.id)) text(g, 'CHANCE', pos.x, top, { size: 12, color: COLORS.open, align: 'center' });
+    if (this.confused(c.unit, beat)) text(g, '混乱', pos.x, top - 30, { size: 12, color: COLORS.perfect, align: 'center' });
   }
 
   drawPopups(g, now) {
@@ -866,11 +914,11 @@ export class BattleState {
     if (unit) {
       gauge(g, 150, 9, 110, 9, unit.enemy.hp / unit.enemy.maxHp, COLORS.rose);
       if (unit.poisonUntil > beat) text(g, '毒', 150, 26, { size: 12, color: COLORS.unguard });
+      if (this.confused(unit, beat)) text(g, '混乱', 168, 26, { size: 12, color: COLORS.perfect });
     }
     if (this.hero.poisoned) text(g, '毒', 344, 26, { size: 12, color: COLORS.unguard });
-    const names = { perfect: 'コーヒー', needle: '毒針' };
-    Object.entries(this.buffs).forEach(([k, v], i) => {
-      text(g, `${names[k] ?? k} ${Math.max(0, Math.ceil(v.until - beat))}`, W - 8, 28 + i * 14, { size: 12, align: 'right', color: COLORS.perfect });
+    Object.values(this.buffs).forEach((v, i) => {
+      text(g, `${v.def.name} ${Math.max(0, Math.ceil(v.until - beat))}`, W - 8, 28 + i * 14, { size: 12, align: 'right', color: COLORS.perfect });
     });
     text(g, 'HP', 318, 5, { color: COLORS.signal });
     gauge(g, 344, 9, 128, 9, this.hero.hp / this.hero.maxHp, COLORS.signal);
@@ -912,6 +960,7 @@ export class BattleState {
       if (x < judgeX - 16 || x > W + 10) continue;
       const res = this.results.get(e.id);
       if (res === 'void' || res === 'clear' || res === 'baited') continue;
+      if (this.zones.get(e.id)?.confused) continue;
       const aimed = this.zones.get(e.id)?.set.has(here);
       if (e.type === 'enemy.feint') diamond(g, x, mid, 7, null, aimed ? COLORS.danger : COLORS.dim);
       else if (res === 'dodge') diamond(g, x, mid, 5, COLORS.good);

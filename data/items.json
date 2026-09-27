@@ -9,7 +9,10 @@
   "edible_mushroom": { "name": "食用キノコ", "desc": "食べられるキノコ", "heal": [60, 100] },
   "poison_mushroom": { "name": "毒キノコ", "desc": "毒キノコ", "damage": [2, 3], "poison": true },
   "antidote": { "name": "毒消し草", "desc": "特徴的な形をした薬草", "cure": "poison" },
-  "poison_needle": { "name": "毒針", "desc": "先端に毒が詰められた針", "battleOnly": true, "buff": "needle", "beats": 32, "reach": 2, "poisonBeats": 32 },
-  "coffee": { "name": "コーヒー", "desc": "こだわりの当日焙煎", "battleOnly": true, "buff": "perfect", "beats": 32 },
+  "poison_needle": { "name": "毒針", "desc": "先端に毒が詰められた針", "battleOnly": true, "buff": "needle", "beats": 32, "reach": 2, "poisonBeats": 32, "useText": "しばらく攻撃が2マス先まで届き、毒を与える" },
+  "coffee": { "name": "コーヒー", "desc": "こだわりの当日焙煎", "battleOnly": true, "buff": "perfect", "beats": 32, "useText": "しばらく攻撃がすべて PERFECT になる" },
+  "panic_drop": { "name": "パニックドロップ", "desc": "ぷるぷるしている", "battleOnly": true, "buff": "panic", "beats": 32, "reach": 2, "confuseBeats": 16, "useText": "しばらく攻撃が2マス先まで届き、敵を混乱させる" },
+  "painkiller": { "name": "痛み止め", "desc": "どんな痛みもこれ一本！", "battleOnly": true, "buff": "guard", "beats": 32, "damageRate": 0.5, "useText": "しばらく受けるダメージが半分になる" },
+  "jacuzzi_special": { "name": "ジャグジースペシャル", "desc": "ジャグジー謹製のナゾの薬", "battleOnly": true, "outcomes": ["panic_drop", "painkiller", "poison_needle"], "outcomeText": "{name}の効果が出た！" },
   "slime_jelly": { "name": "スライム液", "desc": "スライムが落とした、ぷるぷるの液（仮）", "sell": 10 }
 }

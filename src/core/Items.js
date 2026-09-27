@@ -41,7 +41,7 @@ export function useItem(items, session, id, battle = null) {
   if (def.outcomes) {
     const pick = def.outcomes[Math.floor(Math.random() * def.outcomes.length)];
     effect = items[pick];
-    lines.push(`${effect.name}だった！`);
+    lines.push((def.outcomeText ?? '{name}だった！').replace('{name}', effect.name));
   }
   const hero = session.hero;
   if (effect.heal) {
@@ -66,7 +66,7 @@ export function useItem(items, session, id, battle = null) {
   }
   if (effect.buff) {
     battle.addBuff(effect);
-    lines.push(effect.buff === 'needle' ? 'しばらく攻撃が2マス先まで届き、毒を与える' : 'しばらく攻撃がすべて PERFECT になる');
+    lines.push(effect.useText);
   }
   return { used: true, lines, sound: effect.damage || effect.poison ? 'poison' : 'heal' };
 }
