@@ -65,7 +65,8 @@ export function useItem(items, session, id, battle = null) {
     cure(hero);
   }
   if (effect.buff) {
-    battle.addBuff(effect);
+    // durationRate：outcomes で選ばれた効果が続く長さの倍率（ジャグジースペシャルは2倍）
+    battle.addBuff(def.durationRate ? { ...effect, beats: effect.beats * def.durationRate } : effect);
     lines.push(effect.useText);
   }
   return { used: true, lines, sound: effect.damage || effect.poison ? 'poison' : 'heal' };

@@ -132,11 +132,10 @@ export class TalkState {
     ], no);
   }
 
-  // 持っている売れる物を買い取る。1種類ならすぐ、何種類かあれば選んでもらう。
+  // 持っている売れる物を買い取る。1種類でも、どれを見せるか選んでもらう。
   // 値段はその種類を全部売ったときの合計。「いいえ」と B は no のセリフで終わる
   buy(b) {
     const list = this.sellables();
-    if (list.length === 1) { this.offer(b, list[0]); return; }
     const no = () => this.say(b.no);
     this.choose(b.which, list.map((id) => ({ label: `${this.items[id].name}×${count(this.session, id)}`, run: () => this.offer(b, id) })), no);
   }

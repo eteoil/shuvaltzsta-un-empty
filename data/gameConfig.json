@@ -27,7 +27,8 @@
     "wakeMinute": 480,
     "nightFrom": 1080,
     "nightTo": 360,
-    "jobMinutes": 180
+    "jobMinutes": 180,
+    "waitMaxHours": 24
   },
   "taboo": {
     "enemyHp": 1.5,

@@ -26,6 +26,8 @@ export class FieldState {
     this.hurtAt = -1e9;
     this.toast = null;          // 拾ったときの一言（演出なので rAF の時刻で消す）
     this.itemDefs = null;
+    // マップに入った直後は、十字キーをいったん離すまで歩かない（押したまま出口を出て、すぐ入り直さないように）
+    this.waitRelease = true;
     this.enemyDefs = {};
     this.npcDefs = {};
   }
@@ -161,6 +163,10 @@ export class FieldState {
     }
 
     const btn = Object.keys(DIRS).find((b) => this.game.input.isDown(b));
+    if (this.waitRelease) {
+      if (btn) return;
+      this.waitRelease = false;
+    }
     if (!btn) return;
     const d = DIRS[btn];
     this.p.dir = d.face;

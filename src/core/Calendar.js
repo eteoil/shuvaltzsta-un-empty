@@ -25,6 +25,18 @@ export function dateText(calendar, n) {
   return `${d.name}節${d.day}区`;
 }
 
+// 数字だけの日付（何節／何区。書き文字では1〜16月で書くことも多い）
+export function dateNumber(calendar, n) {
+  const d = dateOf(calendar, n);
+  return `${d.month}/${d.day}`;
+}
+
+// 24時間の時刻（14:05）
+export function clockText(minute) {
+  const m = Math.floor(minute);
+  return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
+}
+
 // その日の行事。labels は画面に出す短い名前、wake はベッドで起きたときの一言。
 // festival（祭りの日）・rest（天赦日。区が restDays.fromDay 以降＝23区ある節の最後の3区）・taboo（忌み月）は、その日の効果に使う
 export function eventsOf(calendar, n) {

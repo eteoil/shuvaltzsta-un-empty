@@ -12,7 +12,7 @@
       "shop": {
         "prompt": "なにが欲しいんだイ？",
         "festivalSale": 0.7,
-        "items": [["ether_s", 1000], ["ether_l", 3000], ["poison_needle", 2000], ["antidote", 500], ["panic_drop", 1000], ["painkiller", 800], ["jacuzzi_special", 1500]],
+        "items": [["ether_s", 1000], ["ether_l", 3000], ["poison_needle", 2000], ["antidote", 100], ["panic_drop", 1000], ["painkiller", 800], ["jacuzzi_special", 1500]],
         "thanks": "まいどあリ〜",
         "poor": "お金が足りないヨ"
       }

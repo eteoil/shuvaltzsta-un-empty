@@ -2,7 +2,7 @@ import { STATES } from '../core/constants.js';
 import { COLORS, text, panel, gauge, wrap } from '../core/draw.js';
 import { loadItems, money, useItem } from '../core/Items.js';
 import { saveOptions } from '../core/Options.js';
-import { dateText, timeText, eventsOf } from '../core/Calendar.js';
+import { dateText, dateNumber, timeText, clockText, eventsOf, passTime } from '../core/Calendar.js';
 import { levelOf, scoreFor, setTotalScore } from '../core/Level.js';
 
 const ROWS = 7;
@@ -24,6 +24,7 @@ export class MenuState {
     this.items = [
       { label: 'さいかい', run: () => this.game.states.pop() },
       { label: 'アイテム', run: () => { this.mode = 'items'; this.itemSel = 0; } },
+      { label: '時間を進める', run: () => this.openWait() },
       { label: () => `チート：${this.game.options.cheat ? 'ON' : 'OFF'}`, run: () => this.toggleCheat() },
       { label: 'タイトルへ', run: () => this.game.toTitle() },
     ];
@@ -34,6 +35,31 @@ export class MenuState {
         adjust: (d) => this.setLevel(this.level + d),
         run: () => this.setLevel(this.level >= this.game.config.level.max ? 1 : this.level + 10),
       });
+    }
+  }
+
+  // 時間を進める。戦闘とダンジョンの中では拍と噛み合わなくなるので使えない
+  openWait() {
+    if (this.battle) { this.message = { lines: ['戦闘中は時間を進められない'], at: performance.now() }; return; }
+    this.mode = 'wait';
+    this.waitHours = 1;
+  }
+
+  // ◀▶（上下でも）で1時間ずつ、1〜waitMaxHours 時間
+  updateWait(btn) {
+    const max = this.game.config.time.waitMaxHours;
+    if (btn === 'b' || btn === 'pause' || btn === 'start') { this.mode = 'main'; return; }
+    const d = { right: 1, up: 1, left: -1, down: -1 }[btn];
+    if (d) {
+      this.waitHours = ((this.waitHours - 1 + d + max) % max) + 1;
+      this.game.sfx.play('select');
+    }
+    if (btn === 'a') {
+      const h = this.waitHours;
+      passTime(this.session, h * 60);
+      this.game.sfx.play('confirm');
+      const cal = this.game.calendar;
+      this.message = { lines: [`${h}時間待った`, `${dateText(cal, this.session.day)}　${timeText(cal, this.session.minute)}`], at: performance.now() };
     }
   }
 
@@ -84,6 +110,7 @@ export class MenuState {
         if (fresh || btn === 'a' || btn === 'b') continue;
       }
       if (this.mode === 'items') { this.updateItems(btn); continue; }
+      if (this.mode === 'wait') { this.updateWait(btn); continue; }
       if (btn === 'up' || btn === 'down') {
         this.sel = (this.sel + this.items.length + (btn === 'up' ? -1 : 1)) % this.items.length;
         this.game.sfx.play('select');
@@ -124,6 +151,7 @@ export class MenuState {
     g.fillRect(0, 0, W, H);
     if (this.mode === 'items') this.renderItems(g, W, H);
     else this.renderMain(g, W);
+    if (this.mode === 'wait') this.renderWait(g, W);
     this.renderStatus(g, W);
     if (this.message) {
       panel(g, 60, H - 96, W - 120, 84);
@@ -135,13 +163,15 @@ export class MenuState {
     const s = this.session;
     if (!s) return;
     const tags = [this.game.options.cheat && 'CHEAT', this.game.dev && 'DEV'].filter(Boolean);
-    // 日付の下に、その日の行事（祭り・天赦日・忌み月）
-    const events = eventsOf(this.game.calendar, s.day).labels;   // 行事ごとに1行
-    panel(g, W - 176, 8, 168, 96 + events.length * 16);
-    text(g, dateText(this.game.calendar, s.day), W - 164, 64, { size: 12, color: COLORS.muted });
-    text(g, timeText(this.game.calendar, s.minute), W - 164, 80, { size: 12, color: COLORS.muted });
-    events.forEach((l, i) => text(g, l, W - 164, 96 + i * 16, { size: 12, color: COLORS.brass }));
-    if (tags.length) text(g, tags.join(' '), W - 18, 64, { size: 12, align: 'right', color: COLORS.brass });
+    // 日付と時刻（右に数字）。その下に、その日の行事（祭り・天赦日・忌み月）を1行ずつ、最後に CHEAT / DEV
+    const cal = this.game.calendar;
+    const lines = [...eventsOf(cal, s.day).labels, ...(tags.length ? [tags.join(' ')] : [])];
+    panel(g, W - 176, 8, 168, 96 + lines.length * 16);
+    text(g, dateText(cal, s.day), W - 164, 64, { size: 12, color: COLORS.muted });
+    text(g, `(${dateNumber(cal, s.day)})`, W - 18, 64, { size: 12, align: 'right', color: COLORS.muted });
+    text(g, timeText(cal, s.minute), W - 164, 80, { size: 12, color: COLORS.muted });
+    text(g, `(${clockText(s.minute)})`, W - 18, 80, { size: 12, align: 'right', color: COLORS.muted });
+    lines.forEach((l, i) => text(g, l, W - 164, 96 + i * 16, { size: 12, color: COLORS.brass }));
     text(g, `Lv ${this.level}`, W - 164, 48, { color: COLORS.ink });
     text(g, 'HP', W - 164, 18, { color: COLORS.signal });
     gauge(g, W - 136, 23, 90, 8, s.hero.hp / s.hero.maxHp, COLORS.signal);
@@ -159,6 +189,20 @@ export class MenuState {
       const label = typeof it.label === 'function' ? it.label() : it.label;
       text(g, label, W / 2 - 60, y, { color: i === this.sel ? COLORS.ink : COLORS.muted });
     });
+  }
+
+  // 何時間進めるか。進めたあとの時刻も見せる
+  renderWait(g, W) {
+    const cal = this.game.calendar;
+    const after = { ...this.session };
+    passTime(after, this.waitHours * 60);
+    const x = W / 2 - 90;
+    const y = 132;
+    panel(g, x, y, 180, 96);
+    text(g, '時間を進める', W / 2, y + 12, { size: 12, align: 'center', color: COLORS.brass });
+    text(g, `◀ ${this.waitHours}時間 ▶`, W / 2, y + 34, { align: 'center', color: COLORS.ink });
+    text(g, `${dateText(cal, after.day)}　${timeText(cal, after.minute)}`, W / 2, y + 60, { size: 12, align: 'center', color: COLORS.muted });
+    text(g, `(${dateNumber(cal, after.day)} ${clockText(after.minute)})　A：決定`, W / 2, y + 76, { size: 12, align: 'center', color: COLORS.dim });
   }
 
   renderItems(g, W, H) {
