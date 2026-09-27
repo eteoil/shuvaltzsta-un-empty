@@ -1,5 +1,6 @@
 import { STATES } from '../core/constants.js';
 import { text, sprite } from '../core/draw.js';
+import { OptionState } from './OptionState.js';
 
 const PAPER = '#fbf7ee';
 const INK = '#3a2c24';
@@ -21,7 +22,7 @@ export class TitleState {
     this.items = [
       { label: 'NEW GAME', run: () => this.newGame() },
       { label: 'LOAD DATA', run: null },
-      { label: 'OPTION', run: null },
+      { label: 'OPTION', run: () => this.game.states.push(new OptionState(this.game)) },
     ];
   }
 

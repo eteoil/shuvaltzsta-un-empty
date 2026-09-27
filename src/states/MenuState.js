@@ -89,10 +89,17 @@ export class MenuState {
     }
   }
 
+  // 総スコアはチートモードのときだけ見せる
   renderStatus(g, W) {
     const s = this.session;
     if (!s) return;
-    panel(g, W - 176, 8, 168, 64);
+    const cheat = this.game.options.cheat;
+    panel(g, W - 176, 8, 168, cheat ? 104 : 64);
+    if (cheat) {
+      text(g, 'CHEAT', W - 164, 62, { size: 12, color: COLORS.brass });
+      text(g, '総スコア', W - 164, 80, { size: 12, color: COLORS.muted });
+      text(g, s.totalScore.toLocaleString('en-US'), W - 18, 78, { align: 'right', color: COLORS.ink });
+    }
     text(g, 'HP', W - 164, 18, { color: COLORS.signal });
     gauge(g, W - 136, 23, 90, 8, s.hero.hp / s.hero.maxHp, COLORS.signal);
     if (s.hero.poisoned) text(g, '毒', W - 40, 18, { color: COLORS.unguard });

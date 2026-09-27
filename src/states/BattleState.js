@@ -10,6 +10,7 @@ import { PlayerProfile } from '../battle/PlayerProfile.js';
 import { Enemy } from '../battle/Enemy.js';
 import { areaTiles } from '../battle/areas.js';
 import { DialogState } from './DialogState.js';
+import { poisonTick, regen, attackMultiplier } from '../core/Hero.js';
 
 const THREATS = new Set(['enemy.attack', 'enemy.feint']);
 const LANE = { y: 280, h: 40, judgeX: 44 };
@@ -49,7 +50,7 @@ export class BattleState {
     // buffs：アイテムの一時効果（名前 → { until, def }）。終わりは EventTrack の system.status で知らせる
     this.buffs = {};
     this.enemyPoisonUntil = -Infinity;
-    this.ticking = { hero: false, enemy: false };
+    this.ticking = { hero: false, enemy: false, regen: false };
     // actors は今いるマス。plan は確定済み区間の先頭時点でいる予定のマス（範囲と移動先はこちらで決める）
     // face は向いている方向の1歩。背中や横から殴ると2倍になる
     this.actors = {};
@@ -102,6 +103,7 @@ export class BattleState {
     this.tracks.system.add({ beat: this.fightBeat - 2 * this.bpb, type: 'system.phase', payload: { phase: 'ready' } });
     this.tracks.system.add({ beat: this.fightBeat, type: 'system.phase', payload: { phase: 'fight' } });
     if (this.hero.poisoned) this.startHeroPoison();
+    if (this.game.options.cheat) this.scheduleTick('regen');
   }
 
   // ---------------------------------------------------------------- 盤面
@@ -346,7 +348,8 @@ export class BattleState {
       * (grade === 'perfect' ? c.perfectMultiplier : 1)
       * (1 + Math.min(this.combo * c.comboBonus, c.comboBonusMax))
       * (this.spanAt('enemy.open', slot, target) ? c.openMultiplier : 1)
-      * (back ? c.backMultiplier : 1));
+      * (back ? c.backMultiplier : 1)
+      * attackMultiplier(this.game));
     this.enemy.hp = Math.max(0, this.enemy.hp - dmg);
     this.success(grade, 'attack', b);
     this.popup(back ? `BACK! ${dmg}` : String(dmg), back ? COLORS.perfect : COLORS.ink, target);
@@ -431,12 +434,15 @@ export class BattleState {
     });
   }
 
-  // 決着。終了と曲の切り替えは確定済み区間の先、次の小節頭に載せる（憲法⑭⑮）
+  // 決着。終了は確定済み区間の先の小節頭に載せる（憲法⑭⑮）。
+  // 曲は途中で切ると不自然なので、アウトロへ自然につながる小節頭まで待ってから切り替える。
+  // 勝つと「まいった」の会話が上に乗って戦闘の update は止まるが、曲は流れ続ける。
+  // 切り替えの予約が遅れないよう、載せたその場で prepare しておく（2度目の prepare は Bgm が無視する）
   decide(outcome) {
     if (this.outcome) return;
     this.outcome = outcome;
     const at = ceilTo(this.tracks.system.lockedUntil, this.bpb);
-    this.tracks.system.add({ beat: at, type: 'bgm.outro' });
+    this.prepare(this.tracks.system.add({ beat: this.game.bgm.joinBeat('battle', at), type: 'bgm.outro' }));
     this.tracks.system.add({ beat: at, type: 'system.finish', payload: { outcome } });
     this.finishBeat = at;
   }
@@ -465,7 +471,7 @@ export class BattleState {
     this.scheduleTick('enemy');
   }
 
-  // 毒のダメージは tickBeats 拍ごとの小節頭。次の1回だけを載せ、発火したらまた次を載せる
+  // 毒のダメージ（とチートモードの自動回復）は一定拍ごとの小節頭。次の1回だけを載せ、発火したらまた次を載せる
   scheduleTick(target, after = this.fightBeat) {
     if (this.ticking[target]) return;
     this.ticking[target] = true;
@@ -484,13 +490,18 @@ export class BattleState {
     const next = ev.beat + poison.tickBeats;
     // 毒では倒れない（HP は 1 残る）
     if (p.target === 'hero' && this.hero.poisoned) {
-      const n = Math.min(poison.heroDamage, this.hero.hp - 1);
-      this.hero.hp -= n;
-      if (n) this.popup(`毒 ${n}`, COLORS.unguard);
-      this.scheduleTick('hero', next);
+      const { damage, cured } = poisonTick(this.game, poison.heroDamage);
+      if (damage) this.popup(`毒 ${damage}`, COLORS.unguard);
+      if (cured) this.popup('毒が消えた', COLORS.open);
+      else this.scheduleTick('hero', next);
+    }
+    if (p.target === 'regen' && this.game.options.cheat) {
+      const cheat = this.game.config.cheat;
+      regen(this.game, cheat.battleRegen);
+      this.scheduleTick('regen', ev.beat + cheat.battleRegenBeats);
     }
     if (p.target === 'enemy' && this.enemyPoisonUntil > ev.beat) {
-      const n = Math.min(poison.enemyDamage, this.enemy.hp - 1);
+      const n = Math.min(Math.round(poison.enemyDamage * attackMultiplier(this.game)), this.enemy.hp - 1);
       this.enemy.hp -= n;
       if (n) this.popup(`毒 ${n}`, COLORS.unguard, this.def.actors[0].id);
       this.scheduleTick('enemy', next);

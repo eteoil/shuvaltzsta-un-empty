@@ -8,6 +8,6 @@ export const STATES = Object.freeze({
   SHOP: 'SHOP',
   DIALOG: 'DIALOG',
   MENU: 'MENU',
-  // 憲法①の一覧には無い。カフェバイトなどのミニゲーム用（憲法への追加は TODO.md）
+  // カフェバイトなどのミニゲーム（憲法 Ver.1.3 で追加）
   MINIGAME: 'MINIGAME',
 });

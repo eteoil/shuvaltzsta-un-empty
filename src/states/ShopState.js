@@ -1,0 +1,96 @@
+import { STATES } from '../core/constants.js';
+import { COLORS, text, panel, wrap } from '../core/draw.js';
+import { money, count, addItem } from '../core/Items.js';
+
+const CHAR_MS = 32;
+
+// お店。NPC の選択肢「買い物」から入る。品物と値段は data/npcs/*.json の shop（憲法⑨）。
+// 十字で選んで A で買う。続けて何個でも買え、B で店を出る（出たら会話も終わる）
+export class ShopState {
+  name = STATES.SHOP;
+
+  constructor(game, npc, shop, itemDefs, onClose) {
+    this.game = game;
+    this.npc = npc;
+    this.shop = shop;
+    this.defs = itemDefs;
+    this.onClose = onClose;
+    this.sel = 0;
+    this.say(shop.prompt);
+  }
+
+  get session() {
+    return this.game.session;
+  }
+
+  say(line) {
+    this.line = line;
+    this.shownAt = performance.now();
+  }
+
+  update(dt, presses) {
+    const list = this.shop.items;
+    for (const { btn } of presses) {
+      if (btn === 'up' || btn === 'down') {
+        this.sel = (this.sel + list.length + (btn === 'up' ? -1 : 1)) % list.length;
+        this.game.sfx.play('select');
+      } else if (btn === 'a') {
+        this.buy(...list[this.sel]);
+      } else if (btn === 'b') {
+        this.game.sfx.play('select');
+        this.game.states.pop();
+        this.onClose?.();
+        return;
+      }
+    }
+  }
+
+  buy(id, price) {
+    if (this.session.money < price) {
+      this.game.sfx.play('miss');
+      this.say(this.shop.poor);
+      return;
+    }
+    this.session.money -= price;
+    addItem(this.session, id);
+    this.game.sfx.play('confirm');
+    this.say(this.shop.thanks);
+  }
+
+  render(g) {
+    const W = this.game.config.screen.width;
+    const H = this.game.config.screen.height;
+    g.fillStyle = 'rgba(11,12,24,0.6)';
+    g.fillRect(0, 0, W, H);
+
+    // 品物の一覧と説明
+    const listH = H - 128;
+    panel(g, 12, 8, W - 24, listH);
+    text(g, '買い物', 28, 18, { color: COLORS.brass });
+    text(g, money(this.session.money), W - 28, 18, { align: 'right', color: COLORS.perfect });
+    this.shop.items.forEach(([id, price], i) => {
+      const y = 48 + i * 24;
+      const active = i === this.sel;
+      const poor = this.session.money < price;
+      if (active) text(g, '▶', 26, y, { color: COLORS.signal });
+      text(g, this.defs[id].name, 44, y, { color: active ? COLORS.ink : COLORS.muted });
+      text(g, `×${count(this.session, id)}`, W - 150, y, { size: 12, align: 'right', color: COLORS.dim });
+      text(g, money(price), W - 28, y, { align: 'right', color: poor ? COLORS.miss : COLORS.perfect });
+    });
+    const d = this.defs[this.shop.items[this.sel][0]];
+    const descY = 8 + listH - 58;
+    g.fillStyle = COLORS.line;
+    g.fillRect(24, descY - 6, W - 48, 1);
+    wrap(g, d.desc, W - 64).slice(0, 2).forEach((l, i) => text(g, l, 28, descY + i * 22));
+    if (d.battleOnly) text(g, '戦闘中のみ', W - 28, descY + 22, { size: 12, align: 'right', color: COLORS.brass });
+
+    // 店の人のセリフ
+    const top = H - 92;
+    panel(g, 8, top, W - 16, 84);
+    panel(g, 16, top - 26, Math.max(80, [...this.npc.name].length * 16 + 24), 30);
+    text(g, this.npc.name, 28, top - 19, { color: COLORS.brass });
+    const shown = [...this.line].slice(0, Math.floor((performance.now() - this.shownAt) / CHAR_MS)).join('');
+    wrap(g, shown, W - 48).slice(0, 2).forEach((l, i) => text(g, l, 24, top + 16 + i * 24));
+    text(g, 'A：買う　B：店を出る', W - 20, top + 62, { size: 12, align: 'right', color: COLORS.dim });
+  }
+}

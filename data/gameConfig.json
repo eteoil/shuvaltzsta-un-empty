@@ -21,8 +21,17 @@
   "status": {
     "poison": { "tickBeats": 8, "heroDamage": 3, "enemyDamage": 8, "fieldTickSec": 2, "fieldDamage": 1 }
   },
+  "cheat": {
+    "poisonTicks": 3,
+    "fieldRegenSec": 1,
+    "fieldRegen": 1,
+    "battleRegenBeats": 8,
+    "battleRegen": 4,
+    "attackMultiplier": 2
+  },
   "field": {
-    "moveSecPerTile": 0.2
+    "moveSecPerTile": 0.2,
+    "pickupRespawnSec": 60
   },
   "battle": {
     "arena": {
@@ -56,6 +65,7 @@
       "loopFromBar": 9,
       "loopToBar": 25,
       "outroFromBar": 25,
+      "outroJoinBars": [17, 25],
       "offsetMs": 23
     }
   },

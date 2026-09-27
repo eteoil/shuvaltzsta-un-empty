@@ -1,7 +1,9 @@
 import { STATES } from '../core/constants.js';
 import { loadEnemy, loadJSON } from '../core/Data.js';
-import { COLORS, text, sprite, gauge, isoTop, isoCenter } from '../core/draw.js';
-import { money } from '../core/Items.js';
+import { COLORS, text, panel, sprite, gauge, isoTop, isoCenter } from '../core/draw.js';
+import { loadItems, money, addItem } from '../core/Items.js';
+import { poisonTick, regen } from '../core/Hero.js';
+import { drawPickup } from '../core/icons.js';
 import { DIRS, FACE_STEP } from '../core/grid.js';
 
 // 探索。リズム入力は受け付けない（憲法③）
@@ -16,7 +18,10 @@ export class FieldState {
     this.move = null;
     this.stride = 0;            // 歩いたマス数。歩きのコマ送りに使う（1マスで2コマ）
     this.poisonT = 0;           // 毒のダメージまでの経過秒（AudioContext の時刻から。憲法⑫）
+    this.regenT = 0;            // チートモードの自動回復までの経過秒
     this.hurtAt = -1e9;
+    this.toast = null;          // 拾ったときの一言（演出なので rAF の時刻で消す）
+    this.itemDefs = null;
     this.enemyDefs = {};
     this.npcDefs = {};
   }
@@ -26,6 +31,7 @@ export class FieldState {
   }
 
   enter() {
+    loadItems().then((d) => { this.itemDefs = d; });
     for (const enc of this.map.encounters) {
       loadEnemy(enc.enemy).then(({ def }) => { this.enemyDefs[enc.id] = def; });
     }
@@ -36,6 +42,20 @@ export class FieldState {
 
   npcAt(i, j) {
     return (this.map.npcs ?? []).find((n) => n.at[0] === i && n.at[1] === j);
+  }
+
+  // いま見えている拾い物（拾ってから pickupRespawnSec 秒は消えている）
+  pickupAt(i, j) {
+    return (this.map.pickups ?? []).find((p) => p.at[0] === i && p.at[1] === j && !(this.session.pickups[p.id] > 0));
+  }
+
+  pickUp() {
+    const p = this.pickupAt(this.p.i, this.p.j);
+    if (!p || !this.itemDefs) return;
+    addItem(this.session, p.item);
+    this.session.pickups[p.id] = this.game.config.field.pickupRespawnSec;
+    this.toast = { text: `${this.itemDefs[p.item].name}を拾った`, at: performance.now() };
+    this.game.sfx.play('confirm');
   }
 
   isFloor(i, j) {
@@ -68,6 +88,8 @@ export class FieldState {
     }
 
     this.poisonTick(dt);
+    this.regenTick(dt);
+    for (const id of Object.keys(this.session.pickups)) this.session.pickups[id] -= dt;
 
     if (this.move) {
       const step = dt / this.game.config.field.moveSecPerTile;
@@ -76,6 +98,7 @@ export class FieldState {
       if (this.move.t < 1) return;
       [this.p.i, this.p.j] = this.move.to;
       this.move = null;
+      this.pickUp();
     }
 
     const btn = Object.keys(DIRS).find((b) => this.game.input.isDown(b));
@@ -97,13 +120,24 @@ export class FieldState {
     if (!hero.poisoned) { this.poisonT = 0; return; }
     const { fieldTickSec, fieldDamage } = this.game.config.status.poison;
     this.poisonT += dt;
-    while (this.poisonT >= fieldTickSec) {
+    while (hero.poisoned && this.poisonT >= fieldTickSec) {
       this.poisonT -= fieldTickSec;
-      const n = Math.min(fieldDamage, hero.hp - 1);
-      if (!n) continue;
-      hero.hp -= n;
+      const { damage, cured } = poisonTick(this.game, fieldDamage);
+      if (cured) this.toast = { text: '毒が消えた', at: performance.now() };
+      if (!damage) continue;
       this.hurtAt = performance.now();
       this.game.sfx.play('telegraph');
+    }
+  }
+
+  // チートモードでは fieldRegenSec 秒ごとに HP が戻る
+  regenTick(dt) {
+    if (!this.game.options.cheat) { this.regenT = 0; return; }
+    const { fieldRegenSec, fieldRegen } = this.game.config.cheat;
+    this.regenT += dt;
+    while (this.regenT >= fieldRegenSec) {
+      this.regenT -= fieldRegenSec;
+      regen(this.game, fieldRegen);
     }
   }
 
@@ -144,6 +178,13 @@ export class FieldState {
         if (p.x < -tile[0] || p.x > W + tile[0] || p.y > H || p.y < -floorDef.size[1]) continue;
         sprite(g, floorImg, floorDef, p.x, p.y);
       }
+    }
+
+    // 拾い物は床の上なので、人より先に描く
+    for (const p of this.map.pickups ?? []) {
+      if (this.session.pickups[p.id] > 0) continue;
+      const pos = isoCenter(p.at[0], p.at[1], ox, oy, tile);
+      drawPickup(g, p.item, pos.x, pos.y, performance.now());
     }
 
     const people = [{ sprite: 'player', frame: this.p.dir, anim: this.move ? 'walk' : null, n: Math.floor(this.stride * 2), palette: null, i: pi, j: pj }];
@@ -191,5 +232,12 @@ export class FieldState {
     gauge(g, 262, 9, 90, 9, hero.hp / hero.maxHp, COLORS.signal);
     if (hero.poisoned) text(g, '毒', 358, 5, { color: COLORS.unguard });
     text(g, money(this.session.money), W - 8, 5, { align: 'right', color: COLORS.perfect });
+
+    const age = this.toast ? performance.now() - this.toast.at : Infinity;
+    if (age < 1600) {
+      const w = [...this.toast.text].length * 16 + 32;
+      panel(g, W / 2 - w / 2, 34, w, 32, { alpha: age > 1300 ? (1600 - age) / 300 : 1 });
+      text(g, this.toast.text, W / 2, 42, { align: 'center', alpha: age > 1300 ? (1600 - age) / 300 : 1 });
+    }
   }
 }

@@ -1,6 +1,7 @@
 // 所持品とアイテムの効果。アイテムの中身は data/items.json（憲法⑨）。
 // 効果はデータのフィールドの組み合わせで決まる：heal / damage / poison / cure / buff / outcomes
 import { loadJSON } from './Data.js';
+import { poison, cure } from './Hero.js';
 
 export const loadItems = () => loadJSON('data/items.json');
 
@@ -50,13 +51,13 @@ export function useItem(items, session, id, battle = null) {
     lines.push(`${n}のダメージ！`);
   }
   if (effect.poison && !hero.poisoned) {
-    hero.poisoned = true;
+    poison(hero);
     battle?.startHeroPoison();
     lines.push('毒におかされた');
   }
   if (effect.cure === 'poison') {
     lines.push(hero.poisoned ? '毒が消えた' : 'なにも起きなかった');
-    hero.poisoned = false;
+    cure(hero);
   }
   if (effect.buff) {
     battle.addBuff(effect);

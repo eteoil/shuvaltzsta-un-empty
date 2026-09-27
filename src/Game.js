@@ -12,6 +12,8 @@ import { DialogState } from './states/DialogState.js';
 import { BattleState } from './states/BattleState.js';
 import { MenuState } from './states/MenuState.js';
 import { TalkState } from './states/TalkState.js';
+import { loadOptions } from './core/Options.js';
+import { cure } from './core/Hero.js';
 
 const wait = (ms) => new Promise((ok) => { setTimeout(ok, ms); });
 
@@ -28,6 +30,7 @@ export class Game {
     this.bgm = new Bgm(this.clock, config);
     this.states = new StateMachine();
     this.session = null;
+    this.options = loadOptions();
     this.lastT = 0;
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.pause(); });
   }
@@ -68,10 +71,11 @@ export class Game {
     this.session = {
       map,
       player: { i, j, dir },
-      hero: { hp: maxHp, maxHp, poisoned: false },
+      hero: { hp: maxHp, maxHp, poisoned: false, poisonTicks: 0 },
       money: start.money,
       items: { ...start.items },
       flags: {},
+      pickups: {},        // 拾った物の id → 次に現れるまでの秒
       totalScore: 0,
     };
     this.states.change(new FieldState(this));
@@ -112,7 +116,7 @@ export class Game {
       const [i, j, dir] = s.map.start;
       s.player = { i, j, dir };
       s.hero.hp = s.hero.maxHp;
-      s.hero.poisoned = false;
+      cure(s.hero);
     }
     const dialog = await loadDialog(outcome === 'win' ? enc.dialogWin : enc.dialogLose);
     this.states.change(new FieldState(this));

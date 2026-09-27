@@ -18,6 +18,12 @@
     { "id": "shalvis", "at": [10, 3], "dir": "sw" },
     { "id": "jacuzzi", "at": [9, 7], "dir": "sw" }
   ],
+  "pickups": [
+    { "id": "berry_west", "item": "wild_berry", "at": [2, 3] },
+    { "id": "berry_east", "item": "wild_berry", "at": [10, 5] },
+    { "id": "mushroom_north", "item": "mushroom", "at": [8, 2] },
+    { "id": "mushroom_south", "item": "mushroom", "at": [3, 8] }
+  ],
   "encounters": [
     {
       "id": "ch01_chuck_zipper",

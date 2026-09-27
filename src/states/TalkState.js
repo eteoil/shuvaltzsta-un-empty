@@ -2,10 +2,11 @@ import { STATES } from '../core/constants.js';
 import { COLORS, text, panel, wrap } from '../core/draw.js';
 import { loadItems, money, count, addItem, takeItem } from '../core/Items.js';
 import { CafeJobState } from './CafeJobState.js';
+import { ShopState } from './ShopState.js';
 
 const CHAR_MS = 32;
 
-// NPC との会話。あいさつ → 選択肢 → 世間話・買い物・鑑定・交換・バイト。
+// NPC との会話。あいさつ → 選択肢 → 世間話・買い物（SHOP）・鑑定・交換・バイト（MINIGAME）。
 // 中身は data/npcs/*.json（憲法⑨）。B で選択肢を閉じると会話も終わる
 export class TalkState {
   name = STATES.DIALOG;
@@ -60,18 +61,9 @@ export class TalkState {
     else if (o.job) this.job(o.job);
   }
 
+  // 買い物は専用の State で。店を出たら会話も終わる
   shop(s) {
-    const options = s.items.map(([id, price]) => ({
-      label: `${this.items[id].name}　${money(price)}`,
-      run: () => {
-        if (this.session.money < price) { this.say(s.poor); return; }
-        this.session.money -= price;
-        addItem(this.session, id);
-        this.game.sfx.play('confirm');
-        this.say(s.thanks);
-      },
-    }));
-    this.choose(s.prompt, options);
+    this.game.states.push(new ShopState(this.game, this.npc, s, this.items, () => this.close()));
   }
 
   appraise(a) {
@@ -136,7 +128,8 @@ export class TalkState {
   }
 
   render(g) {
-    if (!this.items) return;
+    // お店の画面の裏に会話のウィンドウが透けないように
+    if (!this.items || this.game.states.top instanceof ShopState) return;
     const W = this.game.config.screen.width;
     const H = this.game.config.screen.height;
     const top = H - 108;

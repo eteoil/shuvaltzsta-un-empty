@@ -63,7 +63,26 @@ export class Bgm {
     return at - startSec;
   }
 
-  // 決着後：at（Beat の格子に乗った時刻）から outroFromBar の頭以降を最後まで流す
+  // 決着後にアウトロへ移ってよい Beat のうち、minBeat 以降で一番早いもの。
+  // 移れるのはループ中の outroJoinBars の頭だけ（その直前の小節が、アウトロの直前の小節と似ている所）。
+  // loopToBar の頭はループの戻り目なので、ループの2周目以降にしか来ない
+  joinBeat(key, minBeat) {
+    const def = this.config.bgm[key];
+    const bpb = this.config.beatsPerBar;
+    const from = (def.loopFromBar - 1) * bpb;
+    const len = (def.loopToBar - def.loopFromBar) * bpb;
+    let best = Infinity;
+    for (const bar of def.outroJoinBars ?? [def.loopToBar]) {
+      const phase = ((bar - def.loopFromBar) * bpb) % len;
+      let b = from + phase + Math.max(0, Math.ceil((minBeat - from - phase) / len - 1e-9)) * len;
+      if (b <= from) b += len;
+      best = Math.min(best, b);
+    }
+    return best;
+  }
+
+  // 決着後：at（Beat の格子に乗った時刻）から outroFromBar の頭以降を最後まで流す。
+  // 予約は1度だけ。2度目以降の呼び出しは何もしない
   outro(at) {
     const cur = this.current;
     if (!cur) return;
