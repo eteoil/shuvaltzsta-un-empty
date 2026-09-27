@@ -49,13 +49,15 @@ export class FieldState {
     return (this.map.pickups ?? []).find((p) => p.at[0] === i && p.at[1] === j && !(this.session.pickups[p.id] > 0));
   }
 
-  pickUp() {
-    const p = this.pickupAt(this.p.i, this.p.j);
-    if (!p || !this.itemDefs) return;
+  // A で拾う。乗っているマスか、向いている1歩先のマスにある物
+  pickUp(fi, fj) {
+    const p = this.pickupAt(this.p.i, this.p.j) ?? this.pickupAt(fi, fj);
+    if (!p || !this.itemDefs) return false;
     addItem(this.session, p.item);
     this.session.pickups[p.id] = this.game.config.field.pickupRespawnSec;
     this.toast = { text: `${this.itemDefs[p.item].name}を拾った`, at: performance.now() };
     this.game.sfx.play('confirm');
+    return true;
   }
 
   isFloor(i, j) {
@@ -84,6 +86,7 @@ export class FieldState {
           this.game.talk(this.npcDefs[npc.id]);
           return;
         }
+        this.pickUp(fi, fj);
       }
     }
 
@@ -98,7 +101,6 @@ export class FieldState {
       if (this.move.t < 1) return;
       [this.p.i, this.p.j] = this.move.to;
       this.move = null;
-      this.pickUp();
     }
 
     const btn = Object.keys(DIRS).find((b) => this.game.input.isDown(b));

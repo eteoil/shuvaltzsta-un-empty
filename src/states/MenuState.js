@@ -1,6 +1,7 @@
 import { STATES } from '../core/constants.js';
 import { COLORS, text, panel, gauge, wrap } from '../core/draw.js';
 import { loadItems, money, useItem } from '../core/Items.js';
+import { saveOptions } from '../core/Options.js';
 
 const ROWS = 7;
 const MESSAGE_MS = 1800;
@@ -21,8 +22,17 @@ export class MenuState {
     this.items = [
       { label: 'さいかい', run: () => this.game.states.pop() },
       { label: 'アイテム', run: () => { this.mode = 'items'; this.itemSel = 0; } },
+      { label: () => `チート：${this.game.options.cheat ? 'ON' : 'OFF'}`, run: () => this.toggleCheat() },
       { label: 'タイトルへ', run: () => this.game.toTitle() },
     ];
+  }
+
+  // タイトルの OPTION と同じ設定。切り替えたらすぐ効き、このブラウザに覚える
+  toggleCheat() {
+    const o = this.game.options;
+    o.cheat = !o.cheat;
+    saveOptions(o);
+    this.game.sfx.play(o.cheat ? 'confirm' : 'select');
   }
 
   enter() {
@@ -108,12 +118,13 @@ export class MenuState {
   }
 
   renderMain(g, W) {
-    panel(g, W / 2 - 90, 84, 180, 150);
+    panel(g, W / 2 - 90, 84, 180, 178);
     text(g, 'PAUSE', W / 2, 98, { size: 24, color: COLORS.brass, align: 'center' });
     this.items.forEach((it, i) => {
       const y = 140 + i * 28;
       if (i === this.sel) text(g, '▶', W / 2 - 62, y, { color: COLORS.signal });
-      text(g, it.label, W / 2 - 40, y, { color: i === this.sel ? COLORS.ink : COLORS.muted });
+      const label = typeof it.label === 'function' ? it.label() : it.label;
+      text(g, label, W / 2 - 40, y, { color: i === this.sel ? COLORS.ink : COLORS.muted });
     });
   }
 

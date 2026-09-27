@@ -103,7 +103,6 @@ export class BattleState {
     this.tracks.system.add({ beat: this.fightBeat - 2 * this.bpb, type: 'system.phase', payload: { phase: 'ready' } });
     this.tracks.system.add({ beat: this.fightBeat, type: 'system.phase', payload: { phase: 'fight' } });
     if (this.hero.poisoned) this.startHeroPoison();
-    if (this.game.options.cheat) this.scheduleTick('regen');
   }
 
   // ---------------------------------------------------------------- 盤面
@@ -152,6 +151,8 @@ export class BattleState {
 
   update(dt, presses) {
     const beat = this.beats.currentBeat;
+    // チートモードの自動回復。ポーズメニューで途中から ON にしても、次の小節から始まる
+    if (this.game.options.cheat && !this.ticking.regen && !this.outcome) this.scheduleTick('regen', Math.max(beat, this.fightBeat));
     this.seq.update(beat, this);
     if (!this.outcome) this.refill(beat);
     for (const p of presses) this.onPress(p);
