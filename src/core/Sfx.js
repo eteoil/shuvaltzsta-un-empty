@@ -80,6 +80,17 @@ export class Sfx {
       case 'heal':
         [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.09, { type: 'triangle', vol: 0.4, when, delay: i * 0.06 }));
         return undefined;
+      // ベッドで休んだとき。ゆっくりした子守歌のような短いメロディ
+      case 'rest': {
+        const notes = [[523, 0.3], [659, 0.3], [784, 0.3], [659, 0.3], [698, 0.3], [587, 0.3], [523, 0.9]];
+        let at = 0;
+        for (const [f, d] of notes) {
+          this.tone(f, d + 0.1, { type: 'triangle', vol: 0.35, when, delay: at });
+          this.tone(f / 2, d + 0.1, { type: 'sine', vol: 0.2, when, delay: at });
+          at += d;
+        }
+        return undefined;
+      }
       case 'levelup':
         [523, 659, 784, 1047, 784, 1047].forEach((f, i) => this.tone(f, i === 5 ? 0.3 : 0.08, { vol: 0.35, when, delay: i * 0.08 }));
         return undefined;

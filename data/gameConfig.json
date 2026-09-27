@@ -22,8 +22,8 @@
     "poison": { "tickBeats": 8, "heroDamage": 3, "enemyDamage": 8, "fieldTickSec": 2, "fieldDamage": 1 }
   },
   "time": {
-    "minutesPerSec": 2,
-    "startMinute": 480,
+    "minutesPerSec": 1,
+    "startMinute": 840,
     "wakeMinute": 360,
     "nightFrom": 1080,
     "nightTo": 360,

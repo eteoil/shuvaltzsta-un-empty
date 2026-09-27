@@ -7,6 +7,8 @@ import { CafeJobState } from './CafeJobState.js';
 import { ShopState } from './ShopState.js';
 
 const CHAR_MS = 32;
+// ベッドで休むときの暗転（秒）。暗くなる → 真っ暗のままメロディ → 明るくなる
+const SLEEP = { out: 0.8, hold: 2.2, in: 0.8 };
 
 // NPC との会話。あいさつ → 選択肢 → 世間話・買い物（SHOP）・鑑定・交換・買い取り・バイト（MINIGAME）・休む。
 // 中身は data/npcs/*.json（憲法⑨）。ベッドのような家具も、選択肢を持つ NPC として同じ仕組みで話しかける
@@ -157,14 +159,38 @@ export class TalkState {
   }
 
   // ベッドで休む。HP が満タンになり毒も消え、次の日になる（バイトがまたできる）
+  // 暗転しているあいだに眠る（回復・日付）。明るくなってから起きたときのセリフ
   rest(r) {
+    this.line = '';
+    this.choices = null;
+    this.next = null;
+    this.sleeping = { t: 0, r, slept: false };
+    this.game.sfx.play('rest');
+  }
+
+  updateSleep(dt) {
+    const z = this.sleeping;
+    z.t += dt;
+    if (!z.slept && z.t >= SLEEP.out) {
+      const s = this.session;
+      s.hero.hp = s.hero.maxHp;
+      cure(s.hero);
+      sleep(s, this.game.config);
+      z.slept = true;
+    }
+    if (z.t < SLEEP.out + SLEEP.hold + SLEEP.in) return;
+    this.sleeping = null;
     const s = this.session;
-    s.hero.hp = s.hero.maxHp;
-    cure(s.hero);
-    sleep(s, this.game.config);
-    this.game.sfx.play('heal');
-    const lines = [r.say.replace('{date}', dateText(this.game.calendar, s.day)), ...eventsOf(this.game.calendar, s.day).wake];
-    this.sayAll(lines);
+    this.sayAll([z.r.say.replace('{date}', dateText(this.game.calendar, s.day)), ...eventsOf(this.game.calendar, s.day).wake]);
+  }
+
+  // 暗さ（0〜1）
+  get darkness() {
+    const z = this.sleeping;
+    if (!z) return 0;
+    if (z.t < SLEEP.out) return z.t / SLEEP.out;
+    if (z.t < SLEEP.out + SLEEP.hold) return 1;
+    return Math.max(0, 1 - (z.t - SLEEP.out - SLEEP.hold) / SLEEP.in);
   }
 
   // 何行かを順に言って終わる
@@ -188,6 +214,7 @@ export class TalkState {
   }
 
   update(dt, presses) {
+    if (this.sleeping) { this.updateSleep(dt); return; }   // 暗転中は入力を受けない
     for (const { btn } of presses) {
       const typing = this.visible() < [...this.line].length;
       if (typing && (btn === 'a' || btn === 'b')) { this.shownAt = -1e9; continue; }
@@ -217,6 +244,11 @@ export class TalkState {
     if (!this.items || this.game.states.top instanceof ShopState) return;
     const W = this.game.config.screen.width;
     const H = this.game.config.screen.height;
+    if (this.sleeping) {
+      g.fillStyle = `rgba(0,0,0,${this.darkness})`;
+      g.fillRect(0, 0, W, H);
+      return;
+    }
     const top = H - 108;
     panel(g, 8, top, W - 16, 100);
     panel(g, 16, top - 26, Math.max(80, [...this.npc.name].length * 16 + 24), 30);
