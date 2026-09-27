@@ -1,0 +1,32 @@
+{
+  "id": "jacuzzi",
+  "name": "ジャグジー",
+  "sprite": "player",
+  "palette": { "id": "jacuzzi", "map": { "#394660": "#7a3f8f", "#187fc4": "#4fae8a", "#801e6b": "#3b2f4a", "#f5c939": "#de7392" } },
+  "greet": "いらっしゃいまセｪ！",
+  "options": [
+    { "label": "世間話", "say": "色々揃えてるヨ" },
+    {
+      "label": "買い物",
+      "shop": {
+        "prompt": "なにが欲しいんだイ？",
+        "items": [["ether_s", 1000], ["ether_l", 3000], ["poison_needle", 2000]],
+        "thanks": "まいどあリ〜",
+        "poor": "お金が足りないヨ（仮）"
+      }
+    },
+    {
+      "label": "毒キノコ",
+      "if": { "has": "poison_mushroom" },
+      "trade": {
+        "prompt": "お、1,000$で毒針にするヨ？",
+        "give": "poison_mushroom",
+        "price": 1000,
+        "get": "poison_needle",
+        "yes": "まいどあリ〜",
+        "poor": "お金が足りないヨ（仮）"
+      }
+    },
+    { "label": "なんでもない", "say": "あれマ。冷やかしかイ？" }
+  ]
+}

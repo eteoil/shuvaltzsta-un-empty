@@ -11,6 +11,7 @@ import { FieldState } from './states/FieldState.js';
 import { DialogState } from './states/DialogState.js';
 import { BattleState } from './states/BattleState.js';
 import { MenuState } from './states/MenuState.js';
+import { TalkState } from './states/TalkState.js';
 
 const wait = (ms) => new Promise((ok) => { setTimeout(ok, ms); });
 
@@ -60,8 +61,19 @@ export class Game {
   async newGame() {
     const map = await loadMap(this.config.startMap);
     const [i, j, dir] = map.start;
-    // totalScore はプロットの「総スコア」（エンディングの分岐に使う）。戦闘ごとのスコアを足していく
-    this.session = { map, player: { i, j, dir }, flags: {}, totalScore: 0 };
+    // totalScore はプロットの「総スコア」（エンディングの分岐に使う）。戦闘ごとのスコアを足していく。
+    // hero の HP と毒は探索と戦闘をまたいで持ち越す
+    const maxHp = this.config.battle.player.hp;
+    const start = this.config.start;
+    this.session = {
+      map,
+      player: { i, j, dir },
+      hero: { hp: maxHp, maxHp, poisoned: false },
+      money: start.money,
+      items: { ...start.items },
+      flags: {},
+      totalScore: 0,
+    };
     this.states.change(new FieldState(this));
   }
 
@@ -86,7 +98,11 @@ export class Game {
     }));
   }
 
-  // 負けたらマップの開始地点からやり直し（仮。セーブポイントができたらそこへ）
+  talk(npc) {
+    this.states.push(new TalkState(this, npc));
+  }
+
+  // 負けたらマップの開始地点から、HP を満タンにしてやり直し（仮。セーブポイントができたらそこへ）
   async afterBattle(enc, outcome, score) {
     const s = this.session;
     s.totalScore += score;
@@ -95,6 +111,8 @@ export class Game {
     } else {
       const [i, j, dir] = s.map.start;
       s.player = { i, j, dir };
+      s.hero.hp = s.hero.maxHp;
+      s.hero.poisoned = false;
     }
     const dialog = await loadDialog(outcome === 'win' ? enc.dialogWin : enc.dialogLose);
     this.states.change(new FieldState(this));

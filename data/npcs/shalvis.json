@@ -1,0 +1,21 @@
+{
+  "id": "shalvis",
+  "name": "シャルヴィス",
+  "sprite": "player",
+  "palette": { "id": "shalvis", "map": { "#394660": "#c9c9d6", "#187fc4": "#2a2a33", "#801e6b": "#5a3a2a", "#f5c939": "#d8ac5a" } },
+  "greet": "どうした？",
+  "options": [
+    { "label": "世間話", "say": "明日の豆は何にしようか……" },
+    {
+      "label": "お弁当",
+      "shop": {
+        "prompt": "どれにするんだ？",
+        "items": [["onigiri", 300], ["ble_sand", 600], ["coffee", 1200]],
+        "thanks": "いってらっしゃい",
+        "poor": "金が足りないみたいだな（仮）"
+      }
+    },
+    { "label": "バイト", "job": { "game": "cafe", "done": "お疲れさま" } },
+    { "label": "なんでもない", "say": "そうか" }
+  ]
+}

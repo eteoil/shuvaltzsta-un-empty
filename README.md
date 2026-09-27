@@ -28,7 +28,7 @@ python3 -m http.server 8000
 | 十字 | 矢印キー / WASD | 移動（上＝北東・右＝南東・下＝南西・左＝北西） | 移動（同じ） |
 | A | X / K / Space | 話す（向き合って押す）・会話を送る | 隣の敵を攻撃 |
 | B | Z / J | 会話を送る | 回避 |
-| PAUSE | P / Esc | ポーズ | ポーズ |
+| PAUSE | P / Esc | ポーズ（アイテム） | ポーズ（アイテム） |
 | START | Enter | ポーズ | ポーズ／結果を閉じる |
 
 ### 戦闘のルール
@@ -45,6 +45,17 @@ python3 -m http.server 8000
 - 下の帯は拍の目安。敵の攻撃が右から流れてきて、左端の線に重なった瞬間が拍。自分が範囲に入っている攻撃は大きく赤く表示される。少し明るい部分は「確定済み区間」（憲法⑮）で、ここに入った行動はもう変わらない。
 - 勝つと「まいった」の会話 → リザルト → 戦闘後の会話、の順に進む。リザルトの SCORE は PERFECT・GOOD・最大コンボ・勝利ボーナス・残りHPから出し、係数は `gameConfig.json` の `battle.score`。戦闘ごとのスコアはプロットの「総スコア」として `session.totalScore` に足していく。
 - 敵は距離と立ち回りを見て行動を変える。遠ければ近づき、張り付かれたら大技、回避ばかりならフェイント、攻撃ばかりならカウンターが増える（憲法⑤⑥）。
+
+## お金・アイテム・NPC
+
+- ポーズメニューの「アイテム」で持ち物を使う。戦闘中に使えば、その戦闘に効果が掛かる。コーヒーと毒針は戦闘中だけ使える。
+- HP と毒は探索と戦闘をまたいで持ち越す。毒は戦闘中、8拍ごとに減る（毒やアイテムでは倒れない）。負けたら HP 満タン・毒なしで開始地点へ戻る（仮）。
+- 毒針を使った敵は毒状態になり、距離を取ろうとする（憲法⑥）。
+- 探索マップの3人に向き合って A で話しかける。
+  - コウ：世間話・鑑定（キノコ → 食用キノコか毒キノコ）
+  - シャルヴィス：世間話・お弁当（おにぎり・BLEサンド・コーヒー）・バイト・なんでもない
+  - ジャグジー：世間話・買い物（エーテル・小・大、毒針）・毒キノコ（持っているときだけ。1,000$ で毒針に）・なんでもない
+- バイトは「カフェバイト」。お客さんの注文（十字・A・B の並び）を覚えて同じ順に入力する。3回戦で、正解数に応じて 500〜2,000$。体力を少し使う。
 
 ## 構成
 
@@ -65,21 +76,26 @@ src/
     Data.js           JSON の読み込み
     draw.js           文字・枠・等角グリッドの描画
     grid.js           十字ボタンと等角グリッドの対応、距離、向き
+    Items.js          所持品とアイテムの効果（data/items.json のフィールドの組み合わせで決まる）
   battle/
     EventTrack.js     「何拍目に何が起きるか」の台帳。確定済み区間への書き込みを拒む（憲法⑭⑮）
     Sequencer.js      Beat を超えたイベントを発火するだけ。補充の条件式はここ（設計案 4）
-    Enemy.js          ルールベースの敵AI（設計案 9-1 の案A）。距離と戦闘傾向で Pattern を選ぶ
+    Enemy.js          ルールベースの敵AI（設計案 9-1 の案A）。距離・毒・戦闘傾向で Pattern を選ぶ
     areas.js          攻撃範囲の形（front1 / front3 / line3 / around / around2）
     PlayerProfile.js  直近の行動の記録。割合は参照のたびに数える（設計案 7）
     Judge.js          判定ウィンドウ（ms）
-  states/             TITLE / FIELD / DIALOG / RHYTHM_BATTLE / MENU
+  states/             TITLE / FIELD / DIALOG / RHYTHM_BATTLE / MENU / MINIGAME
+                      TalkState は NPC との会話（選択肢・買い物・鑑定・交換・バイト）、CafeJobState はカフェバイト
 data/
   gameConfig.json     ゲーム性に関わる定数はすべてここ（憲法⑯）
   sprites.json        ドット絵の大きさ・足元の位置・ファイル
   enemies/*.json      敵（HP・Pattern の一覧・見た目・立ち位置）
   patterns/*.json     敵の行動部品（数拍ぶんのイベント列）
-  maps/*.json         探索マップ（# が床）と遭遇
+  maps/*.json         探索マップ（# が床）・NPC の配置・遭遇
   dialogs/*.json      会話
+  items.json          アイテム（名前・説明・効果）
+  npcs/*.json         NPC（見た目・あいさつ・選択肢と、その中身）
+  minigames/*.json    ミニゲーム（カフェバイトの回数・表示時間・報酬）
 assets/
   img/                ドット絵チップ（1ドット＝1px。表示時はぼかさずに拡大）
   bgm/battle.mp3      戦闘曲
@@ -123,6 +139,8 @@ EventTrack は `enemy` と `system`（`system.*` と `bgm.*`）の2本。`fx.*` 
 ## 足し方
 
 - **敵の行動を増やす**：`data/patterns/` に JSON を足し、敵の `patterns` に id を書く。`tags` の `approach` は3マス以上離れているとき、`basic` は通常、`feint` は回避が多い相手、`counter` は攻撃が多い相手、`rush` は2マス離れているときや敵の HP が少ないときに選ばれやすい。攻撃の範囲は `payload.area` に `front1`（正面1マス）/ `front3`（正面の横3マス）/ `line3`（正面へ3マス）/ `around`（周囲8マス）/ `around2`（周囲2マスまで）で書く。`"dodgeable": false` を付けると B で避けられない攻撃（紫のマス）になる。`tags` の `heavy` は、プレイヤーが隣にいるときに選ばれやすい。
+- **アイテムを増やす**：`data/items.json` に足す。効果は `heal`（最大HPに対する割合 [分子, 分母]）・`damage`・`poison`・`cure`・`buff`（`perfect` / `needle`、`beats` 拍）・`outcomes`（使うまで中身が分からない）の組み合わせ。
+- **NPC を増やす**：`data/npcs/` に JSON を足し、マップの `npcs` に置く。選択肢は `say`・`shop`・`appraise`・`trade`・`job` のどれか。`if.has` で、持ち物があるときだけ出す選択肢にできる。
 - **敵を増やす**：`data/enemies/` に JSON を足し、マップの `encounters` から呼ぶ。見た目は `sprite` と `palette`（色の置き換え表）で決まる。
 - **調整する**：テンポ・判定幅・ダメージ・先読み拍数・戦場の広さ・歩く速さは `data/gameConfig.json`。
 - **モーション**：`tools/animate_sprites.py` が静止チップを上半身・左脚・右脚に割り、ずらして歩き（4コマ）・走り（4コマ）・攻撃（3コマ）・回避（3コマ）のシートを作る。1コマの動きはスクリプト内の `MOTIONS` で調整する。手描きのコマができたら、`assets/img/player_{モーション}_{向き}.png` を同じ並びのシートで置き換えればよい（`data/sprites.json` の `anims`）。

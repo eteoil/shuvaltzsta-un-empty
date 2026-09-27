@@ -43,7 +43,13 @@ export class BattleState {
     this.enemy = new Enemy(this.def, this.patternData);
 
     const [ps, pj] = this.cfg.player.start;
-    this.player = { hp: this.cfg.player.hp, maxHp: this.cfg.player.hp, i: ps, j: pj, dir: 'ne', move: null };
+    this.player = { i: ps, j: pj, dir: 'ne', move: null };
+    // HP と毒は探索と戦闘をまたいで持ち越す（session.hero）
+    this.hero = this.game.session.hero;
+    // buffs：アイテムの一時効果（名前 → { until, def }）。終わりは EventTrack の system.status で知らせる
+    this.buffs = {};
+    this.enemyPoisonUntil = -Infinity;
+    this.ticking = { hero: false, enemy: false };
     // actors は今いるマス。plan は確定済み区間の先頭時点でいる予定のマス（範囲と移動先はこちらで決める）
     // face は向いている方向の1歩。背中や横から殴ると2倍になる
     this.actors = {};
@@ -95,6 +101,7 @@ export class BattleState {
     this.beats.start(bgm.play('battle', clock.now + 0.1));
     this.tracks.system.add({ beat: this.fightBeat - 2 * this.bpb, type: 'system.phase', payload: { phase: 'ready' } });
     this.tracks.system.add({ beat: this.fightBeat, type: 'system.phase', payload: { phase: 'fight' } });
+    if (this.hero.poisoned) this.startHeroPoison();
   }
 
   // ---------------------------------------------------------------- 盤面
@@ -156,7 +163,8 @@ export class BattleState {
     while (this.seq.needsRefill(track, beat)) {
       let start = Math.max(track.endBeat, this.fightBeat);
       if (start < track.lockedUntil) start = ceilTo(track.lockedUntil, this.bpb);
-      track.addPattern(this.enemy.choosePattern(this.profile, { distance: this.nearestDistance() }), start);
+      const poisoned = this.enemyPoisonUntil > beat;
+      track.addPattern(this.enemy.choosePattern(this.profile, { distance: this.nearestDistance(), poisoned }), start);
     }
   }
 
@@ -173,7 +181,7 @@ export class BattleState {
         break;
       case 'enemy.move': {
         const from = this.plan[p.actor];
-        const to = this.planStep(p.actor, from);
+        const to = this.planStep(p.actor, from, p.away);
         this.moves.set(ev.id, to);
         this.plan[p.actor] = to;
         break;
@@ -198,10 +206,11 @@ export class BattleState {
     }
   }
 
-  // プレイヤーへ1歩。塞がっていたらもう一方の軸、それも駄目ならその場
-  planStep(id, from) {
-    const target = this.tile;
-    const taken = (i, j) => (i === target.i && j === target.j)
+  // プレイヤーへ1歩（away なら離れる1歩）。塞がっていたらもう一方の軸、それも駄目ならその場
+  planStep(id, from, away = false) {
+    const me = this.tile;
+    const target = away ? { i: 2 * from.i - me.i, j: 2 * from.j - me.j } : me;
+    const taken = (i, j) => (i === me.i && j === me.j)
       || Object.entries(this.plan).some(([other, q]) => other !== id && q.i === i && q.j === j);
     const di = Math.sign(target.i - from.i);
     const dj = Math.sign(target.j - from.j);
@@ -263,6 +272,9 @@ export class BattleState {
         this.turn(p.actor);
         this.anim(p.actor, 'feint', ev.beat);
         break;
+      case 'system.status':
+        this.onStatus(ev);
+        break;
       case 'fx.flash':
         this.flash = { color: p.color, at: performance.now() };
         break;
@@ -302,10 +314,13 @@ export class BattleState {
     else this.dodge(t, b);
   }
 
-  // 隣（斜めを含む8マス）にいる敵。向いている方を優先する
+  // 隣（斜めを含む8マス）にいる敵。毒針の間は reach マス先まで。向いている方を優先する
   adjacentActor() {
     const me = this.tile;
-    const ids = Object.keys(this.actors).filter((id) => distance(this.actors[id], me) === 1);
+    const reach = this.buffs.needle?.def.reach ?? 1;
+    const ids = Object.keys(this.actors)
+      .filter((id) => distance(this.actors[id], me) <= reach)
+      .sort((x, y) => distance(this.actors[x], me) - distance(this.actors[y], me));
     const facing = ids.find((id) => faceToward(me, this.actors[id]) === this.player.dir);
     return facing ?? ids[0] ?? null;
   }
@@ -314,9 +329,10 @@ export class BattleState {
     const target = this.adjacentActor();
     if (target) this.player.dir = faceToward(this.tile, this.actors[target]);
     this.anim('player', 'attack', b);
-    const grade = this.judge.grade(this.beats.deltaMs(t, slot));
+    let grade = this.judge.grade(this.beats.deltaMs(t, slot));
     if (!grade) return this.fail(b, 'MISS');
     if (!target) return this.fail(b, 'とどかない');
+    if (this.buffs.perfect) grade = 'perfect';
     const back = this.behind(target);
     if (!back && this.spanAt('enemy.guard', slot, target)) {
       this.combo = 0;
@@ -335,6 +351,7 @@ export class BattleState {
     this.success(grade, 'attack', b);
     this.popup(back ? `BACK! ${dmg}` : String(dmg), back ? COLORS.perfect : COLORS.ink, target);
     this.anim(target, 'hurt', b);
+    if (this.buffs.needle) this.poisonEnemy(b, this.buffs.needle.def.poisonBeats);
     if (this.enemy.down) {
       this.game.sfx.play('ko');
       this.decide('win');
@@ -390,13 +407,13 @@ export class BattleState {
   hit(ev) {
     this.results.set(ev.id, 'hit');
     const power = ev.payload.power ?? 10;
-    this.player.hp = Math.max(0, this.player.hp - power);
+    this.hero.hp = Math.max(0, this.hero.hp - power);
     this.stats.damage += power;
     this.fail(ev.beat, 'HIT');
     this.game.sfx.play('hit');
     this.anim('player', 'hurt', ev.beat);
     this.shakeAt = performance.now();
-    if (this.player.hp <= 0) this.decide('lose');
+    if (this.hero.hp <= 0) this.decide('lose');
   }
 
   // 範囲内で拍を迎え、判定ウィンドウのうちに避けも逃げもしなかったら被弾
@@ -424,6 +441,62 @@ export class BattleState {
     this.finishBeat = at;
   }
 
+  // ---------------------------------------------------------------- 状態異常とアイテム効果
+
+  // 確定済み区間の先の小節頭（ここより手前にはイベントを足せない。憲法⑮）
+  nextOpenBar(minBeat = -Infinity) {
+    return ceilTo(Math.max(this.tracks.system.lockedUntil, minBeat), this.bpb);
+  }
+
+  addBuff(def) {
+    const until = this.beats.currentBeat + def.beats;
+    this.buffs[def.buff] = { until, def };
+    this.tracks.system.add({ beat: Math.max(until, this.tracks.system.lockedUntil), type: 'system.status', payload: { action: 'end', buff: def.buff } });
+  }
+
+  startHeroPoison() {
+    this.scheduleTick('hero');
+  }
+
+  poisonEnemy(beat, beats) {
+    const first = this.enemyPoisonUntil <= beat;
+    this.enemyPoisonUntil = Math.max(this.enemyPoisonUntil, beat + beats);
+    if (first) this.popup('毒！', COLORS.unguard, this.def.actors[0].id);
+    this.scheduleTick('enemy');
+  }
+
+  // 毒のダメージは tickBeats 拍ごとの小節頭。次の1回だけを載せ、発火したらまた次を載せる
+  scheduleTick(target, after = this.fightBeat) {
+    if (this.ticking[target]) return;
+    this.ticking[target] = true;
+    this.tracks.system.add({ beat: this.nextOpenBar(after), type: 'system.status', payload: { action: 'tick', target } });
+  }
+
+  onStatus(ev) {
+    const p = ev.payload;
+    if (p.action === 'end') {
+      if (this.buffs[p.buff]?.until <= ev.beat + 1e-6) delete this.buffs[p.buff];
+      return;
+    }
+    this.ticking[p.target] = false;
+    if (this.outcome) return;
+    const poison = this.game.config.status.poison;
+    const next = ev.beat + poison.tickBeats;
+    // 毒では倒れない（HP は 1 残る）
+    if (p.target === 'hero' && this.hero.poisoned) {
+      const n = Math.min(poison.heroDamage, this.hero.hp - 1);
+      this.hero.hp -= n;
+      if (n) this.popup(`毒 ${n}`, COLORS.unguard);
+      this.scheduleTick('hero', next);
+    }
+    if (p.target === 'enemy' && this.enemyPoisonUntil > ev.beat) {
+      const n = Math.min(poison.enemyDamage, this.enemy.hp - 1);
+      this.enemy.hp -= n;
+      if (n) this.popup(`毒 ${n}`, COLORS.unguard, this.def.actors[0].id);
+      this.scheduleTick('enemy', next);
+    }
+  }
+
   showResult(beat) {
     this.phase = 'result';
     this.resultBeat = beat;
@@ -434,7 +507,7 @@ export class BattleState {
   get score() {
     const k = this.cfg.score;
     const base = this.stats.perfect * k.perfect + this.stats.good * k.good + this.maxCombo * k.maxCombo;
-    return this.outcome === 'win' ? base + k.win + this.player.hp * k.hpLeft : base;
+    return this.outcome === 'win' ? base + k.win + this.hero.hp * k.hpLeft : base;
   }
 
   leave() {
@@ -600,7 +673,7 @@ export class BattleState {
 
   drawPeople(g, beat, ox, oy, tile, pp, ap) {
     const { assets } = this.game;
-    const people = [{ id: 'player', sprite: 'player', frame: this.player.dir, palette: null, i: pp.i, j: pp.j, down: this.player.hp <= 0 }];
+    const people = [{ id: 'player', sprite: 'player', frame: this.player.dir, palette: null, i: pp.i, j: pp.j, down: this.hero.hp <= 0 }];
     for (const a of this.def.actors) {
       const pos = ap[a.id];
       people.push({ id: a.id, sprite: a.sprite, frame: frameOf(this.actors[a.id].face), palette: a.palette, i: pos.i, j: pos.j, down: this.enemy.down });
@@ -656,8 +729,14 @@ export class BattleState {
     g.fillRect(0, 0, W, 26);
     text(g, this.def.name, 8, 5);
     gauge(g, 150, 9, 110, 9, this.enemy.hp / this.enemy.maxHp, COLORS.rose);
+    if (this.enemyPoisonUntil > beat) text(g, '毒', 150, 26, { size: 12, color: COLORS.unguard });
+    if (this.hero.poisoned) text(g, '毒', 344, 26, { size: 12, color: COLORS.unguard });
+    const names = { perfect: 'コーヒー', needle: '毒針' };
+    Object.entries(this.buffs).forEach(([k, v], i) => {
+      text(g, `${names[k] ?? k} ${Math.max(0, Math.ceil(v.until - beat))}`, W - 8, 28 + i * 14, { size: 12, align: 'right', color: COLORS.perfect });
+    });
     text(g, 'HP', 318, 5, { color: COLORS.signal });
-    gauge(g, 344, 9, 128, 9, this.player.hp / this.player.maxHp, COLORS.signal);
+    gauge(g, 344, 9, 128, 9, this.hero.hp / this.hero.maxHp, COLORS.signal);
     const inBar = ((Math.floor(beat) % this.bpb) + this.bpb) % this.bpb;
     for (let i = 0; i < this.bpb; i++) {
       g.fillStyle = beat >= 0 && i === inBar ? (i === 0 ? COLORS.brass : COLORS.ink) : COLORS.line;

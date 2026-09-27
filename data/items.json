@@ -1,0 +1,13 @@
+{
+  "wild_berry": { "name": "野イチゴ", "desc": "小さくて甘酸っぱいイチゴ", "heal": [1, 5] },
+  "onigiri": { "name": "おにぎり", "desc": "ツナマヨコンブが入っている", "heal": [1, 3] },
+  "ble_sand": { "name": "BLEサンド", "desc": "ベーコン・レタス・タマゴが入っている", "heal": [1, 2] },
+  "ether_s": { "name": "エーテル・小", "desc": "エーテルを詰めた小瓶", "heal": [3, 5] },
+  "ether_l": { "name": "エーテル・大", "desc": "エーテルを詰めた大瓶", "heal": [1, 1] },
+  "mushroom": { "name": "キノコ", "desc": "食べられそうなキノコ", "outcomes": ["edible_mushroom", "poison_mushroom"] },
+  "edible_mushroom": { "name": "食用キノコ", "desc": "食べられるキノコ", "heal": [2, 3] },
+  "poison_mushroom": { "name": "毒キノコ", "desc": "毒キノコ", "damage": [2, 3], "poison": true },
+  "antidote": { "name": "毒消し草", "desc": "特徴的な形をした薬草", "cure": "poison" },
+  "poison_needle": { "name": "毒針", "desc": "先端に毒が詰められた針", "battleOnly": true, "buff": "needle", "beats": 32, "reach": 2, "poisonBeats": 32 },
+  "coffee": { "name": "コーヒー", "desc": "こだわりの当日焙煎", "battleOnly": true, "buff": "perfect", "beats": 32 }
+}

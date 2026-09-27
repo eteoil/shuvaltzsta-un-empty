@@ -1,0 +1,10 @@
+{
+  "title": "カフェバイト",
+  "rule": "お客さんの注文を覚えて、同じ順に入力！",
+  "rounds": [4, 5, 6],
+  "showSec": 0.5,
+  "gapSec": 0.15,
+  "symbols": ["up", "down", "left", "right", "a", "b"],
+  "reward": { "base": 500, "perRound": 500 },
+  "hpCost": 10
+}

@@ -1,0 +1,11 @@
+{
+  "id": "cz_backstep",
+  "length": 4,
+  "tags": ["retreat"],
+  "events": [
+    {"offset": 0, "type": "enemy.move", "payload": {"actor": "chuck", "away": true}},
+    {"offset": 1, "type": "enemy.move", "payload": {"actor": "zipper", "away": true}},
+    {"offset": 2, "type": "enemy.move", "payload": {"actor": "chuck", "away": true}},
+    {"offset": 3, "type": "enemy.move", "payload": {"actor": "zipper", "away": true}}
+  ]
+}

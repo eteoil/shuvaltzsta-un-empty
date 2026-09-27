@@ -1,15 +1,26 @@
 import { STATES } from '../core/constants.js';
-import { COLORS, text, panel } from '../core/draw.js';
+import { COLORS, text, panel, gauge, wrap } from '../core/draw.js';
+import { loadItems, money, useItem } from '../core/Items.js';
 
-// ポーズ。開いている間は AudioContext ごと止めるので、戦闘の Beat も曲も止まる
+const ROWS = 7;
+const MESSAGE_MS = 1800;
+
+// ポーズ。開いている間は AudioContext ごと止めるので、戦闘の Beat も曲も止まる。
+// アイテムはここから使う。戦闘中なら、その戦闘に効果が掛かる
 export class MenuState {
   name = STATES.MENU;
 
   constructor(game) {
     this.game = game;
     this.sel = 0;
+    this.mode = 'main';
+    this.itemSel = 0;
+    this.defs = null;
+    this.message = null;
+    loadItems().then((d) => { this.defs = d; });
     this.items = [
       { label: 'さいかい', run: () => this.game.states.pop() },
+      { label: 'アイテム', run: () => { this.mode = 'items'; this.itemSel = 0; } },
       { label: 'タイトルへ', run: () => this.game.toTitle() },
     ];
   }
@@ -22,11 +33,45 @@ export class MenuState {
     this.game.clock.resume();
   }
 
+  get session() {
+    return this.game.session;
+  }
+
+  get battle() {
+    return this.game.states.stack.find((s) => s.name === STATES.RHYTHM_BATTLE) ?? null;
+  }
+
+  owned() {
+    return Object.keys(this.defs ?? {}).filter((id) => this.session?.items[id]);
+  }
+
   update(dt, presses) {
     for (const { btn } of presses) {
+      // メッセージは A・B で閉じる（一定時間たてば次の入力で閉じる）
+      if (this.message) {
+        const fresh = performance.now() - this.message.at < MESSAGE_MS;
+        this.message = null;
+        if (fresh || btn === 'a' || btn === 'b') continue;
+      }
+      if (this.mode === 'items') { this.updateItems(btn); continue; }
       if (btn === 'up' || btn === 'down') this.sel = (this.sel + this.items.length + (btn === 'up' ? -1 : 1)) % this.items.length;
       if (btn === 'a') { this.items[this.sel].run(); return; }
       if (btn === 'b' || btn === 'pause' || btn === 'start') { this.game.states.pop(); return; }
+    }
+  }
+
+  updateItems(btn) {
+    const list = this.owned();
+    if (btn === 'b' || btn === 'pause' || btn === 'start') { this.mode = 'main'; return; }
+    if (!list.length) return;
+    if (btn === 'up' || btn === 'down') {
+      this.itemSel = (this.itemSel + list.length + (btn === 'up' ? -1 : 1)) % list.length;
+      this.game.sfx.play('select');
+    }
+    if (btn === 'a') {
+      const r = useItem(this.defs, this.session, list[this.itemSel], this.battle);
+      this.message = { lines: r.lines, at: performance.now() };
+      this.itemSel = Math.min(this.itemSel, Math.max(0, this.owned().length - 1));
     }
   }
 
@@ -35,12 +80,56 @@ export class MenuState {
     const H = this.game.config.screen.height;
     g.fillStyle = 'rgba(11,12,24,0.6)';
     g.fillRect(0, 0, W, H);
-    panel(g, W / 2 - 90, 84, 180, 128);
+    if (this.mode === 'items') this.renderItems(g, W, H);
+    else this.renderMain(g, W);
+    this.renderStatus(g, W);
+    if (this.message) {
+      panel(g, 60, H - 96, W - 120, 84);
+      this.message.lines.slice(-3).forEach((l, i) => text(g, l, 76, H - 84 + i * 22));
+    }
+  }
+
+  renderStatus(g, W) {
+    const s = this.session;
+    if (!s) return;
+    panel(g, W - 176, 8, 168, 64);
+    text(g, 'HP', W - 164, 18, { color: COLORS.signal });
+    gauge(g, W - 136, 23, 90, 8, s.hero.hp / s.hero.maxHp, COLORS.signal);
+    if (s.hero.poisoned) text(g, '毒', W - 40, 18, { color: COLORS.unguard });
+    text(g, `${s.hero.hp} / ${s.hero.maxHp}`, W - 136, 34, { size: 12, color: COLORS.muted });
+    text(g, money(s.money), W - 18, 48, { align: 'right', color: COLORS.perfect });
+  }
+
+  renderMain(g, W) {
+    panel(g, W / 2 - 90, 84, 180, 150);
     text(g, 'PAUSE', W / 2, 98, { size: 24, color: COLORS.brass, align: 'center' });
     this.items.forEach((it, i) => {
       const y = 140 + i * 28;
       if (i === this.sel) text(g, '▶', W / 2 - 62, y, { color: COLORS.signal });
       text(g, it.label, W / 2 - 40, y, { color: i === this.sel ? COLORS.ink : COLORS.muted });
     });
+  }
+
+  renderItems(g, W, H) {
+    panel(g, 12, 8, W - 196, H - 16);
+    text(g, 'アイテム', 28, 20, { color: COLORS.brass });
+    const list = this.owned();
+    if (!list.length) {
+      text(g, 'なにも持っていない', 28, 56, { color: COLORS.muted });
+      return;
+    }
+    const first = Math.max(0, Math.min(this.itemSel - ROWS + 1, list.length - ROWS));
+    list.slice(first, first + ROWS).forEach((id, k) => {
+      const i = first + k;
+      const y = 50 + k * 24;
+      if (i === this.itemSel) text(g, '▶', 26, y, { color: COLORS.signal });
+      text(g, this.defs[id].name, 44, y, { color: i === this.itemSel ? COLORS.ink : COLORS.muted });
+      text(g, `×${this.session.items[id]}`, W - 204, y, { align: 'right', color: COLORS.muted });
+    });
+    const d = this.defs[list[this.itemSel]];
+    g.fillStyle = COLORS.line;
+    g.fillRect(24, 226, W - 220, 1);
+    wrap(g, d.desc, W - 236).slice(0, 2).forEach((l, i) => text(g, l, 28, 236 + i * 22));
+    if (d.battleOnly) text(g, '戦闘中のみ', 28, 282, { size: 12, color: COLORS.brass });
   }
 }

@@ -1,6 +1,7 @@
 import { STATES } from '../core/constants.js';
-import { loadEnemy } from '../core/Data.js';
-import { COLORS, text, sprite, isoTop, isoCenter } from '../core/draw.js';
+import { loadEnemy, loadJSON } from '../core/Data.js';
+import { COLORS, text, sprite, gauge, isoTop, isoCenter } from '../core/draw.js';
+import { money } from '../core/Items.js';
 import { DIRS, FACE_STEP } from '../core/grid.js';
 
 // 探索。リズム入力は受け付けない（憲法③）
@@ -15,6 +16,7 @@ export class FieldState {
     this.move = null;
     this.stride = 0;            // 歩いたマス数。歩きのコマ送りに使う（1マスで2コマ）
     this.enemyDefs = {};
+    this.npcDefs = {};
   }
 
   get p() {
@@ -25,6 +27,13 @@ export class FieldState {
     for (const enc of this.map.encounters) {
       loadEnemy(enc.enemy).then(({ def }) => { this.enemyDefs[enc.id] = def; });
     }
+    for (const n of this.map.npcs ?? []) {
+      loadJSON(`data/npcs/${n.id}.json`).then((def) => { this.npcDefs[n.id] = def; });
+    }
+  }
+
+  npcAt(i, j) {
+    return (this.map.npcs ?? []).find((n) => n.at[0] === i && n.at[1] === j);
   }
 
   isFloor(i, j) {
@@ -36,7 +45,7 @@ export class FieldState {
   }
 
   walkable(i, j) {
-    return this.isFloor(i, j) && !this.encounterAt(i, j);
+    return this.isFloor(i, j) && !this.encounterAt(i, j) && !this.npcAt(i, j);
   }
 
   update(dt, presses) {
@@ -44,8 +53,15 @@ export class FieldState {
       if (btn === 'pause' || btn === 'start') { this.game.pause(); return; }
       if (btn === 'a' && !this.move) {
         const d = FACE_STEP[this.p.dir];
-        const enc = this.encounterAt(this.p.i + d.di, this.p.j + d.dj);
+        const [fi, fj] = [this.p.i + d.di, this.p.j + d.dj];
+        const enc = this.encounterAt(fi, fj);
         if (enc) { this.trigger(enc); return; }
+        const npc = this.npcAt(fi, fj);
+        if (npc && this.npcDefs[npc.id]) {
+          this.game.sfx.play('confirm');
+          this.game.talk(this.npcDefs[npc.id]);
+          return;
+        }
       }
     }
 
@@ -119,6 +135,10 @@ export class FieldState {
         people.push({ sprite: actor.sprite, frame: a.dir, anim: null, n: 0, palette: actor.palette, i: a.at[0], j: a.at[1] });
       }
     }
+    for (const n of this.map.npcs ?? []) {
+      const def = this.npcDefs[n.id];
+      if (def) people.push({ sprite: def.sprite, frame: n.dir, anim: null, n: 0, palette: def.palette, i: n.at[0], j: n.at[1], label: def.name });
+    }
     people.sort((a, b) => a.i + a.j - (b.i + b.j));
     for (const c of people) {
       const pos = isoCenter(c.i, c.j, ox, oy, tile);
@@ -129,10 +149,20 @@ export class FieldState {
       const { img, def } = assets.pose(c.sprite, c.frame, c.anim, c.n, c.palette);
       sprite(g, img, def, pos.x, pos.y);
     }
+    // 名前はほかのキャラに隠れないよう、全員を描いたあとに
+    for (const c of people) {
+      if (!c.label) continue;
+      const pos = isoCenter(c.i, c.j, ox, oy, tile);
+      text(g, c.label, pos.x, pos.y - assets.def(c.sprite).anchor[1] - 16, { size: 12, align: 'center', color: COLORS.brass });
+    }
 
     g.fillStyle = 'rgba(11,12,24,0.55)';
     g.fillRect(0, 0, W, 26);
     text(g, this.map.name, 8, 5);
-    text(g, '十字：いどう　A：はなす', W - 8, 5, { align: 'right', color: COLORS.muted });
+    const hero = this.session.hero;
+    text(g, 'HP', 236, 5, { color: COLORS.signal });
+    gauge(g, 262, 9, 90, 9, hero.hp / hero.maxHp, COLORS.signal);
+    if (hero.poisoned) text(g, '毒', 358, 5, { color: COLORS.unguard });
+    text(g, money(this.session.money), W - 8, 5, { align: 'right', color: COLORS.perfect });
   }
 }

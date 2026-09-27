@@ -13,11 +13,13 @@ export class Enemy {
     return this.hp <= 0;
   }
 
-  // 見るのは HP・プレイヤーとの距離・プレイヤーの戦闘傾向だけ。入力の先読みはしない（憲法⑤⑥）
-  choosePattern(profile, { distance }, random = Math.random) {
+  // 見るのは HP・状態異常・プレイヤーとの距離・プレイヤーの戦闘傾向だけ。入力の先読みはしない（憲法⑤⑥）
+  choosePattern(profile, { distance, poisoned = false }, random = Math.random) {
     if (!this.history.length && this.def.opening) return this.pick(this.find(this.def.opening));
 
     const tagged = (tags) => this.patterns.filter((p) => p.tags.some((t) => tags.includes(t)));
+    // 毒状態 → 距離を取る（憲法⑥）
+    if (poisoned && distance <= 2 && random() < 0.5) return this.pick(this.random(tagged(['retreat']), random));
     if (distance >= 3) return this.pick(this.random(tagged(['approach']), random));
 
     const wants = [];

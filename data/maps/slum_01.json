@@ -2,22 +2,29 @@
   "id": "slum_01",
   "name": "スラム（仮）",
   "floor": [
-    "..#####..",
-    ".#######.",
-    "#########",
-    "####.####",
-    "#########",
-    ".#######.",
-    "..#####.."
+    "....####....",
+    "...######...",
+    "..########..",
+    ".##########.",
+    "############",
+    "############",
+    ".##########.",
+    "..########..",
+    "...######..."
   ],
-  "start": [4, 5, "ne"],
+  "start": [6, 7, "ne"],
+  "npcs": [
+    { "id": "kou", "at": [1, 5], "dir": "se" },
+    { "id": "shalvis", "at": [10, 3], "dir": "sw" },
+    { "id": "jacuzzi", "at": [9, 7], "dir": "sw" }
+  ],
   "encounters": [
     {
       "id": "ch01_chuck_zipper",
       "enemy": "chuck_zipper",
       "actors": [
-        { "id": "chuck", "at": [3, 1], "dir": "sw" },
-        { "id": "zipper", "at": [5, 1], "dir": "sw" }
+        { "id": "chuck", "at": [5, 1], "dir": "sw" },
+        { "id": "zipper", "at": [7, 1], "dir": "sw" }
       ],
       "dialogBefore": "ch01_encounter",
       "dialogGiveUp": "ch01_giveup",
