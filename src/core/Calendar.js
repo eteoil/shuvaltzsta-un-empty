@@ -23,3 +23,22 @@ export function dateText(calendar, n) {
   const d = dateOf(calendar, n);
   return `${d.name}節${d.day}区`;
 }
+
+// その日の行事。labels は画面に出す短い名前、wake はベッドで起きたときの一言。
+// 祭り（festivals）の日、天赦日（区が restDays.fromDay 以降。23区ある節の最後の3区）、忌み月（一言は月の初日だけ）
+export function eventsOf(calendar, n) {
+  const d = dateOf(calendar, n);
+  const labels = [];
+  const wake = [];
+  for (const f of calendar.festivals ?? []) {
+    if (f.month === d.month && f.day === d.day) { labels.push(f.name); wake.push(f.wake); }
+  }
+  const rest = calendar.restDays;
+  if (rest && d.day >= rest.fromDay) { labels.push(rest.name); wake.push(rest.wake); }
+  const taboo = calendar.tabooMonth;
+  if (taboo && d.month === taboo.month) {
+    labels.push(taboo.name);
+    if (d.day === 1) wake.push(taboo.wake);
+  }
+  return { labels, wake };
+}
