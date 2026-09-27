@@ -23,7 +23,7 @@
   },
   "level": {
     "max": 100,
-    "scorePerLevel": 1000,
+    "scorePerLevel": 5000,
     "hpPerLevel": 5,
     "badEndAvoidLevel": 50
   },
