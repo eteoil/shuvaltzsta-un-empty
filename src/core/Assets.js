@@ -202,89 +202,115 @@ function drawSlime(g, w, h, frame) {
   }
 }
 
-// オオカミ（1ドット＝2px）。frame は向き（「se」）か、モーションのコマ（「run_se_2」「attack_nw_1」）。
-// 右向きに組み立て、西向き（nw・sw）は左右を反転する。形は図形を塗ってから、まわりに輪郭を付ける。
-// 脚は「付け根 → 膝 → 足先」の2本の線で、立ちポーズ以外は膝で曲げる（後ろ脚は膝が後ろ、前脚は膝が前）。
+// オオカミ（1ドット＝2px。64×48 ドットで、スライムのおよそ2倍の大きさ）。frame は向き（「se」）か、
+// モーションのコマ（「run_se_2」「attack_nw_1」）。右向きに組み立て、西向き（nw・sw）は左右を反転する。
+// 形は図形を塗ってから、まわりに1ドットの輪郭を付ける。
+// 脚は「付け根 → 膝 → 足先」の2本の線（太さ4ドット）で、立ちポーズ以外は膝で曲げる（後ろ脚は膝が後ろ、前脚は膝が前）。
+// 耳は頭に重ねた三角形なので、頭が動いても離れない。しっぽは付け根から先へ太さを細らせた曲線で、歩くと上下に振る。
 // run：トロット（対角の脚がペアで動く：手前の前脚＋奥の後ろ脚、奥の前脚＋手前の後ろ脚）。
 //   脚はそれぞれ「着く（前へ伸ばして着地）→ 支える（真下）→ 蹴る（後ろへ伸ばす）→ 運ぶ（曲げて持ち上げ、前へ）」を回し、
 //   2つのペアは半周ずれる。2・4コマ目は体が1ドット浮く。
-// attack：0 構え（脚を曲げて沈み、頭を下げる）・1 飛びかかる（前へ2ドット、前脚を前へ・後ろ脚を後ろへ伸ばし、口を開けて牙）・2 噛みつく
+// attack：0 構え（脚を曲げて沈み、頭を下げ、しっぽを下げる）・1 飛びかかる（前へ、前脚を前へ・後ろ脚を後ろへ伸ばし、口を開けて牙）・2 噛みつく
 const WOLF_COLORS = { f: BASE.wolf, d: BASE.wolfDark, l: BASE.wolfLight, o: BASE.line, e: BASE.eye, w: BASE.fang };
+const WOLF_W = 64;
+const WOLF_H = 48;
+const WOLF_GROUND = 43;   // 足の裏の行
 
 function wolfDots(anim, n) {
-  const W = 32;
-  const H = 24;
+  const W = WOLF_W;
+  const H = WOLF_H;
   const m = Array.from({ length: H }, () => Array(W).fill(null));
   const put = (x, y, c) => { if (x >= 0 && x < W && y >= 0 && y < H) m[y][x] = c; };
   const ell = (cx, cy, rx, ry, c) => {
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2 <= 1) put(x, y, c);
   };
   const rect = (x0, y0, x1, y1, c) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) put(x, y, c); };
-  let dx = 0;
-  let dy = 0;
-  let head = 0;
+  const tri = (a, b, c, col) => {
+    const side = (p, q, r) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const pt = [x + 0.5, y + 0.5];
+      const s1 = side(a, b, pt);
+      const s2 = side(b, c, pt);
+      const s3 = side(c, a, pt);
+      if ((s1 >= 0 && s2 >= 0 && s3 >= 0) || (s1 <= 0 && s2 <= 0 && s3 <= 0)) put(x, y, col);
+    }
+  };
+  let dx = 0;      // 体の前後
+  let dy = 0;      // 体の上下
+  let head = 0;    // 頭の下げ
   let open = false;
-  let tail = 0;
+  let wag = 0;     // しっぽの先の上下（+ で下）
   // 脚ごとに [膝のずれ, 足先のずれ, 足先の持ち上げ]（右向きで前が +）。並びは 手前の後ろ脚・奥の後ろ脚・手前の前脚・奥の前脚
   const STAND = [0, 0, 0];
   let legs = [STAND, STAND, STAND, STAND];
   if (anim === 'run') {
     const k = n % 4;
     dy = k % 2 ? -1 : 0;
-    tail = k % 2;
-    // 脚の1周ぶんの形 [膝, 足先, 持ち上げ]。0 着く・1 支える・2 蹴る・3 運ぶ
-    const FRONT = [[1, 2, 0], [0, 0, 0], [-1, -2, 0], [1, -1, 3]];   // 運ぶときは手首を後ろへ折る
-    const HIND = [[1, 1, 0], [-1, 0, 0], [-1, -2, 0], [1, 0, 3]];    // 支えるときは膝が後ろ（かかと）
+    wag = [-4, 0, 4, 0][k];
+    // 脚の1周ぶんの形。0 着く・1 支える・2 蹴る・3 運ぶ
+    const FRONT = [[2, 4, 0], [0, 0, 0], [-2, -4, 0], [3, -1, 6]];   // 運ぶときは手首を後ろへ折る
+    const HIND = [[2, 3, 0], [-2, 0, 0], [-2, -4, 0], [2, 0, 6]];    // 支えるときは膝が後ろ（かかと）
     const a = k;             // 手前の前脚・奥の後ろ脚
     const b = (k + 2) % 4;   // 奥の前脚・手前の後ろ脚
     legs = [HIND[b], HIND[a], FRONT[a], FRONT[b]];
   } else if (anim === 'attack') {
-    if (n === 0) { dx = -1; dy = 1; head = 1; tail = 1; legs = [[-2, -1, 0], [-2, 0, 0], [1, 0, 0], [1, 1, 0]]; }
-    if (n === 1) { dx = 2; open = true; legs = [[-2, -4, 1], [-1, -3, 0], [2, 3, 1], [1, 3, 0]]; }
-    if (n === 2) { dx = 1; open = true; legs = [[-1, -2, 0], [-1, -1, 0], [1, 1, 0], [0, 1, 0]]; }
+    if (n === 0) { dx = -2; dy = 2; head = 2; wag = 6; legs = [[-4, -2, 0], [-4, 0, 0], [2, 0, 0], [2, 2, 0]]; }
+    if (n === 1) { dx = 4; open = true; wag = -2; legs = [[-4, -8, 2], [-2, -6, 0], [4, 6, 2], [2, 6, 0]]; }
+    if (n === 2) { dx = 2; open = true; wag = 0; legs = [[-2, -4, 0], [-2, -2, 0], [2, 2, 0], [0, 2, 0]]; }
   }
-  // 太さ2ドットの線を上から下へ（1行ごとに横へずらす）
+  // 太さ4ドットの線を上から下へ（1行ごとに横へずらす）
   const line = (x0, y0, x1, y1, c) => {
     for (let y = y0; y <= y1; y++) {
       const x = Math.round(x0 + ((x1 - x0) * (y - y0)) / Math.max(1, y1 - y0));
-      rect(x, y, x + 1, y, c);
+      rect(x, y, x + 3, y, c);
     }
   };
-  // 脚（奥の脚を先に、暗く描く）
+  // 脚（奥の脚を先に、暗く描く）。足先は1ドット前へ出す
   [1, 3, 0, 2].forEach((k) => {
-    const x = [8, 11, 19, 22][k] + dx;
+    const x = [15, 21, 37, 43][k] + dx;
     const [knee, paw, lift] = legs[k];
-    const top = 13 + dy;
-    const bottom = 21 - lift;
-    const kneeY = Math.min(17, bottom - 2);
+    const top = 26 + dy;
+    const bottom = WOLF_GROUND - lift;
+    const kneeY = Math.min(35, bottom - 4);
     const c = k % 2 ? 'd' : 'f';
     line(x, top, x + knee, kneeY, c);
     line(x + knee, kneeY, x + paw, bottom, c);
+    rect(x + paw, bottom, x + paw + 4, bottom, c);
   });
-  // ふさふさのしっぽ（胴から左上へ）
-  for (const [x, y, r] of [[8, 9.5, 1.8], [6.5, 8.5, 2], [5, 7.5, 2], [3.5, 6.5, 1.7], [2.3, 5.8, 1.2]]) ell(x + dx, y + dy + tail, r, r * 0.85, 'f');
-  ell(15 + dx, 11 + dy, 8.5, 4.2, 'f');          // 胴
-  ell(21 + dx, 9 + dy + head, 3.6, 4.2, 'f');    // 胸と首
-  const hy = 6 + dy + head;
-  ell(24 + dx, hy, 3.6, 3.0, 'f');               // 頭
-  rect(26 + dx, hy - 1, 29 + dx, hy + 1, 'f');   // 口先
-  if (open) {
-    rect(26 + dx, hy + 1, 29 + dx, hy + 1, null);
-    rect(27 + dx, hy + 2, 29 + dx, hy + 2, 'f');
+  // しっぽ：付け根から後ろ下がりに、ふさふさの円を並べる（先は wag で上下に振る）
+  const base = [16 + dx, 18 + dy];
+  const ctrl = [8 + dx, 17 + dy + wag / 2];
+  const tip = [3 + dx, 25 + dy + wag];
+  for (let t = 0; t <= 1.001; t += 0.05) {
+    const x = (1 - t) ** 2 * base[0] + 2 * (1 - t) * t * ctrl[0] + t * t * tip[0];
+    const y = (1 - t) ** 2 * base[1] + 2 * (1 - t) * t * ctrl[1] + t * t * tip[1];
+    const r = 3.6 + 1.2 * Math.sin(Math.PI * t) - 1.6 * t;   // 真ん中がふくらみ、先は細い
+    ell(x, y, r, r * 0.9, 'f');
   }
-  rect(22 + dx, hy - 4, 22 + dx, hy - 2, 'f');   // 耳
-  rect(23 + dx, hy - 3, 23 + dx, hy - 2, 'f');
-  rect(24 + dx, hy - 5, 24 + dx, hy - 2, 'f');
-  rect(25 + dx, hy - 4, 25 + dx, hy - 2, 'f');
-  // 胴の下の影と、喉の明るいところ
+  ell(30 + dx, 22 + dy, 17, 8.5, 'f');           // 胴
+  ell(42 + dx, 18 + dy + head, 7.2, 8.4, 'f');   // 胸と首
+  const hy = 12 + dy + head;
+  const hx = 48 + dx;
+  ell(hx, hy, 7.2, 6, 'f');                      // 頭
+  rect(hx + 4, hy - 2, hx + 10, hy + 2, 'f');    // 口先
+  // 耳（頭に重ねた三角形）
+  tri([hx - 6, hy - 2], [hx - 1, hy - 3], [hx - 4, hy - 11], 'f');
+  tri([hx - 2, hy - 3], [hx + 3, hy - 3], [hx, hy - 12], 'f');
+  if (open) {
+    rect(hx + 4, hy + 1, hx + 10, hy + 2, null);   // 上あごと下あごのすき間
+    rect(hx + 5, hy + 3, hx + 10, hy + 4, 'f');    // 下あご
+  }
+  // 胴の下の影と、喉の明るいところ、耳の内側
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     if (m[y][x] !== 'f') continue;
-    if (y >= 14 + dy && y <= 15 + dy && x >= 9 + dx && x <= 21 + dx) m[y][x] = 'd';
-    else if (((x + 0.5 - (23 + dx)) / 1.8) ** 2 + ((y + 0.5 - (10 + dy + head)) / 2.2) ** 2 <= 1) m[y][x] = 'l';
+    if (y >= 28 + dy && y <= 30 + dy && x >= 17 + dx && x <= 42 + dx) m[y][x] = 'd';
+    else if (((x + 0.5 - (46 + dx)) / 3.6) ** 2 + ((y + 0.5 - (21 + dy + head)) / 4.4) ** 2 <= 1) m[y][x] = 'l';
   }
-  put(29 + dx, hy - 1, 'o');   // 鼻
-  put(25 + dx, hy - 1, 'e');   // 目
-  if (open) { put(27 + dx, hy + 1, 'w'); put(29 + dx, hy + 1, 'w'); }   // 牙
+  rect(hx - 1, hy - 8, hx, hy - 4, 'd');         // 耳の内側
+  rect(hx + 9, hy - 2, hx + 10, hy - 1, 'o');    // 鼻
+  rect(hx + 1, hy - 3, hx + 2, hy - 2, 'e');     // 目
+  put(hx + 2, hy - 3, 'o');
+  if (open) { rect(hx + 6, hy + 1, hx + 6, hy + 2, 'w'); rect(hx + 9, hy + 1, hx + 9, hy + 2, 'w'); }   // 牙
   // 輪郭：塗った所の上下左右にある空きを線にする（牙のまわりは線にしない）
   const out = m.map((r) => r.slice());
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
@@ -299,13 +325,12 @@ function drawWolf(g, w, h, frame) {
   const [anim, dir, n] = parts.length === 3 ? [parts[0], parts[1], Number(parts[2])] : [null, frame, 0];
   const dots = wolfDots(anim, n);
   const scale = 2;
-  const cols = dots[0].length;
-  const left = Math.round(w / 2 - (cols * scale) / 2);
-  const top = h - 8 - 22 * scale;   // 足の裏（22行目）が画像の下から8pxのところ
+  const left = Math.round(w / 2 - (WOLF_W * scale) / 2);
+  const top = h - 8 - (WOLF_GROUND + 1) * scale;   // 足の裏が画像の下から8pxのところ
   const flip = dir.endsWith('w');
   dots.forEach((row, j) => row.forEach((c, i) => {
     if (!c) return;
     g.fillStyle = WOLF_COLORS[c];
-    g.fillRect(left + (flip ? cols - 1 - i : i) * scale, top + j * scale, scale, scale);
+    g.fillRect(left + (flip ? WOLF_W - 1 - i : i) * scale, top + j * scale, scale, scale);
   }));
 }
