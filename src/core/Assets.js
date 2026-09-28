@@ -338,10 +338,10 @@ function wolfDots(anim, n) {
     rect(hx + 4, hy + 1, hx + 10, hy + 2, null);   // 上あごと下あごのすき間
     rect(hx + 5, hy + 3, hx + 10, hy + 4, 'f');    // 下あご
   }
-  // 胴の下の影と、喉の明るいところ、耳の内側
+  // 胴の下の影と、喉の明るいところ、耳の内側。影の後ろの端は左下を削って斜めにする（下の行ほど右から始まる）
   each((x, y) => {
     if (get(x, y) !== 'f') return;
-    if (y >= 28 + dy && y <= 30 + dy && x >= 17 + dx && x <= 42 + dx) put(x, y, 'd');
+    if (y >= 28 + dy && y <= 30 + dy && x >= 17 + dx + (y - 28 - dy) * 2 && x <= 42 + dx) put(x, y, 'd');
     else if (((x + 0.5 - (46 + dx)) / 3.6) ** 2 + ((y + 0.5 - (21 + dy + head)) / 4.4) ** 2 <= 1) put(x, y, 'l');
   });
   rect(hx - 1, hy - 8, hx, hy - 4, 'd');         // 耳の内側
