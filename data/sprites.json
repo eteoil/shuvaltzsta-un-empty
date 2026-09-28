@@ -60,13 +60,13 @@
     "frames": { "ne": null, "nw": null, "se": null, "sw": null }
   },
   "wolf": {
-    "size": [136, 104],
-    "anchor": [68, 96],
+    "size": [160, 128],
+    "anchor": [80, 120],
     "placeholder": "wolf",
     "frames": { "ne": null, "nw": null, "se": null, "sw": null },
     "anims": {
-      "run": { "count": 4, "size": [136, 104], "anchor": [68, 96] },
-      "attack": { "count": 3, "size": [136, 104], "anchor": [68, 96] }
+      "run": { "count": 4, "size": [160, 128], "anchor": [80, 120] },
+      "attack": { "count": 3, "size": [160, 128], "anchor": [80, 120] }
     }
   }
 }
