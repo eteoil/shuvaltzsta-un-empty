@@ -46,7 +46,7 @@
         "no": "そうか"
       }
     },
-    { "label": "バイト", "closedOnRestDay": true, "job": { "game": "cafe", "done": "お疲れさま", "tired": "働き過ぎだ。また明日頼む" } },
+    { "label": "バイト", "closedOnRestDay": true, "job": { "game": "cafe", "done": "お疲れさま", "tired": "働き過ぎだ。また明日頼む", "tiredBeforeRest": "働き過ぎだ。今日はもうゆっくり休め" } },
     { "label": "なんでもない", "say": "そうか", "cancel": true }
   ]
 }

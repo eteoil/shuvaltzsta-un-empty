@@ -312,9 +312,13 @@ export class TalkState {
     this.say(lines[k], k + 1 < lines.length ? () => this.sayAll(lines, k + 1) : undefined);
   }
 
-  // バイトは1日1回（ベッドで休むと次の日）
+  // バイトは1日1回（ベッドで休むと次の日）。もうした日は tired、翌日が天赦日なら tiredBeforeRest
   job(j) {
-    if (this.session.worked[j.game] === this.session.day) { this.say(j.tired); return; }
+    if (this.session.worked[j.game] === this.session.day) {
+      const restTomorrow = eventsOf(this.game.calendar, this.session.day + 1).rest;
+      this.say(restTomorrow && j.tiredBeforeRest ? j.tiredBeforeRest : j.tired);
+      return;
+    }
     this.session.worked[j.game] = this.session.day;
     passTime(this.session, this.game.config.time.jobMinutes);
     this.game.states.push(new CafeJobState(this.game, j.game, (reward) => {
