@@ -5,7 +5,7 @@
   "greet": "どちらまで行きますか？（仮）",
   "options": [
     { "label": "スラム", "travel": { "to": "station_01", "spawn": [3, 2, "ne"], "say": "スラム行き、発車しまーす！（仮）" } },
-    { "label": "ラボ", "travel": { "to": "lab_01", "spawn": [3, 2, "ne"], "say": "ラボ行き、発車しまーす！（仮）" } },
+    { "label": "白夜砂漠の村", "travel": { "to": "desert_01", "spawn": [4, 2, "ne"], "say": "白夜砂漠の村行き、発車しまーす！（仮）" } },
     { "label": "なんでもない", "say": "またのご利用をお待ちしてます（仮）", "cancel": true }
   ]
 }

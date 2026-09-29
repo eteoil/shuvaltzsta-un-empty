@@ -16,7 +16,7 @@
   "start": [4, 2, "ne"],
   "exits": [],
   "npcs": [
-    { "id": "doru", "at": [4, 1], "dir": "sw" }
+    { "id": "deru", "at": [4, 1], "dir": "sw" }
   ],
   "encounters": []
 }

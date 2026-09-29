@@ -12,7 +12,7 @@
   "start": [3, 2, "ne"],
   "exits": [],
   "npcs": [
-    { "id": "deru", "at": [3, 1], "dir": "sw" }
+    { "id": "doru", "at": [3, 1], "dir": "sw" }
   ],
   "encounters": []
 }

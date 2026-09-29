@@ -1,5 +1,6 @@
 // コードで描くドット絵の道具（1ドット＝1px、線も1ドット）。バニーキャットや銀行の出納機が使う。
 // 形（(x, y) → 真偽）を奥から順にパーツとして塗り、finish() で外側と、奥のパーツとの境目に1ドットの線を引く。
+// 同じ group のパーツ同士の境目には線を引かない（袖と上着のように、色の違いだけで分ける）。
 // 光は左上からで、各パーツの右と下の縁（shade ドット）を影の色にできる。
 
 export const LINE = '#231815';
@@ -9,14 +10,16 @@ export function createDots(W, H, { shade = 2 } = {}) {
   const part = Array.from({ length: H }, () => Array(W).fill(0));   // パーツの番号（0 は空き）
   const color = Array.from({ length: H }, () => Array(W).fill(null));
   const lines = [null];   // 番号 → そのパーツの縁に線を引くか
+  const groups = [null];  // 番号 → まとまり（同じまとまりの境目には線を引かない）
   const each = (f) => { for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) f(x, y); };
   const inside = (x, y) => x >= 0 && x < W && y >= 0 && y < H;
   let out = null;
 
   return {
     // paint(x, y, edge) で色を決める。edge は右か下の縁（影）
-    fill(shape, paint, { line = true } = {}) {
+    fill(shape, paint, { line = true, group = null } = {}) {
       const id = lines.push(line) - 1;
+      groups.push(group ?? `#${id}`);
       const mine = [];
       each((x, y) => { if (shape(x + 0.5, y + 0.5)) { part[y][x] = id; mine.push([x, y]); } });
       const has = (x, y) => inside(x, y) && part[y][x] === id;
@@ -29,10 +32,14 @@ export function createDots(W, H, { shade = 2 } = {}) {
         const p = part[y][x];
         const near = N4.map(([a, b]) => (inside(x + a, y + b) ? part[y + b][x + a] : 0));
         if (!p) { if (near.some((q) => q)) out[y][x] = LINE; return; }
-        if (lines[p] && near.some((q) => q && q < p && lines[q])) out[y][x] = LINE;
+        if (lines[p] && near.some((q) => q && q < p && lines[q] && groups[q] !== groups[p])) out[y][x] = LINE;
       });
     },
     put(x, y, c) { if (out && inside(x, y)) out[y][x] = c; },
+    // 1文字＝1ドットの絵を (x0, y0) に押す。'.' は何もしない。colors は文字 → 色
+    stamp(rows, x0, y0, colors) {
+      rows.forEach((row, j) => [...row].forEach((ch, i) => { if (ch !== '.') this.put(x0 + i, y0 + j, colors[ch]); }));
+    },
     rect(x0, y0, x1, y1, c) { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) this.put(x, y, c); },
     // 左右反転して返す
     result(flip = false) { return flip ? out.map((r) => r.slice().reverse()) : out; },
