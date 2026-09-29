@@ -40,10 +40,8 @@
         "prices": { "edible_mushroom": 30, "wolf_meat": 50 },
         "which": "どれをくれるんだ？",
         "howMany": "いくつくれるんだ？",
-        "prompt": "くれるのか",
         "yes": "ありがとう、少ないが持っていけ",
-        "got": "{price}手に入れた！",
-        "no": "そうか"
+        "got": "{price}手に入れた！"
       }
     },
     { "label": "バイト", "closedOnRestDay": true, "job": { "game": "cafe", "done": "お疲れさま", "tired": "働き過ぎだ。また明日頼む", "tiredBeforeRest": "働き過ぎだ。今日はもうゆっくり休め" } },

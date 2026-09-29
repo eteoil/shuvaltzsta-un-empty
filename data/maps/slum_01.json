@@ -17,7 +17,7 @@
   "exits": [
     { "at": [0, 5], "to": "cafe_01", "spawn": [3, 4, "ne"], "label": "カフェ", "nightLabel": "バー" },
     { "at": [8, 8], "to": "drugstore_01", "spawn": [2, 3, "ne"], "label": "薬屋", "closedText": "薬屋は閉まっている（仮）" },
-    { "at": [11, 5], "to": "forest_01", "spawn": [3, 11, "ne"], "label": "森", "requires": "ch01_chuck_zipper", "locked": "この先は森だ。今はまだ通れない（仮）" }
+    { "at": [11, 5], "to": "forest_01", "spawn": [3, 11, "ne"], "label": "森" }
   ],
   "npcs": [
     { "id": "kou", "at": [10, 6], "dir": "sw", "restDay": true }

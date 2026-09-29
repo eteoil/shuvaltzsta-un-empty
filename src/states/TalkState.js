@@ -240,10 +240,11 @@ export class TalkState {
 
   // 持っている売れる物を買い取る（ジャグジーの鑑定・シャルヴィスの食材）。1種類でも、どれを見せるか選んでもらう。
   // 2個以上あれば howMany で売る個数を選び（最初は全部）、値段はその個数ぶんの合計。
-  // 売ったら yes のセリフ、got があれば続けて名前札なしで「○○$手に入れた！」。「いいえ」と B は no のセリフで終わる
+  // prompt があれば値段を見せて「はい」「いいえ」を聞き（ジャグジーの鑑定）、無ければ個数を決めたところで売る（シャルヴィスの食材）。
+  // 売ったら yes のセリフ、got があれば続けて名前札なしで「○○$手に入れた！」。「いいえ」と B は no のセリフ、no が無ければそのまま終わる
   buy(b) {
     const list = this.sellables(b);
-    const no = () => this.say(b.no);
+    const no = () => (b.no ? this.say(b.no) : this.close());
     this.choose(b.which, list.map((id) => ({ label: `${this.items[id].name}×${count(this.session, id)}`, run: () => this.pickCount(b, id, no) })), no);
   }
 
@@ -256,18 +257,17 @@ export class TalkState {
 
   offer(b, id, n) {
     const price = this.priceOf(b, id) * n;
-    const no = () => this.say(b.no);
+    const sell = () => {
+      for (let k = 0; k < n; k++) takeItem(this.session, id);
+      this.session.money += price;
+      this.game.sfx.play('confirm');
+      if (b.got) this.sayLines([{ text: b.yes }, { speaker: '', text: b.got.replace('{price}', money(price)) }]);
+      else this.say(b.yes);
+    };
+    if (!b.prompt) { sell(); return; }
+    const no = () => (b.no ? this.say(b.no) : this.close());
     this.choose(b.prompt.replace('{price}', money(price)), [
-      {
-        label: 'はい',
-        run: () => {
-          for (let k = 0; k < n; k++) takeItem(this.session, id);
-          this.session.money += price;
-          this.game.sfx.play('confirm');
-          if (b.got) this.sayLines([{ text: b.yes }, { speaker: '', text: b.got.replace('{price}', money(price)) }]);
-          else this.say(b.yes);
-        },
-      },
+      { label: 'はい', run: sell },
       { label: 'いいえ', run: no },
     ], no);
   }
