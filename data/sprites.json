@@ -70,17 +70,24 @@
     }
   },
   "cheru": {
-    "size": [112, 208],
-    "anchor": [56, 199],
+    "size": [96, 144],
+    "anchor": [48, 136],
     "placeholder": "bunnyCat",
     "style": "cheru",
     "frames": { "ne": null, "nw": null, "se": null, "sw": null }
   },
   "doru": {
-    "size": [112, 208],
-    "anchor": [56, 199],
+    "size": [96, 144],
+    "anchor": [48, 136],
     "placeholder": "bunnyCat",
     "style": "doru",
+    "frames": { "ne": null, "nw": null, "se": null, "sw": null }
+  },
+  "deru": {
+    "size": [96, 144],
+    "anchor": [48, 136],
+    "placeholder": "bunnyCat",
+    "style": "deru",
     "frames": { "ne": null, "nw": null, "se": null, "sw": null }
   }
 }

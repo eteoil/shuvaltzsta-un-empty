@@ -1,4 +1,5 @@
 import { COLORS, text } from './draw.js';
+import { ATM, atmDots } from './objectArt.js';
 
 // マップに置く物のドット絵。画像ファイルは使わずコードで描く（落ちている物はこれが本番の絵）。
 // 1文字＝1ドット、'.' は透明。落ちている物は2倍、家具は3倍で表示
@@ -10,7 +11,6 @@ const PALETTE = {
   c: '#c9e6f0', j: '#5fbf5a', J: '#d8f5c8',
   o: '#231815', n: '#8a5a3a', p: '#f3e6cf', q: '#5a7fc4', Q: '#8fb0e6',
   m: '#b5523b', M: '#e08a6a',
-  a: '#7d8a99', A: '#aab6c2', d: '#4f5a6c', k: '#7bd8c9', y: '#d8ac5a',
 };
 const ICONS = {
   slime_jelly: [
@@ -129,27 +129,37 @@ const OBJECTS = {
     'on............no',
     'oo............oo',
   ],
-  // 銀行の出納機（画面とボタンと、お金の出し入れ口）
-  atm: [
-    '.oooooooooo.',
-    'oAAAAAAAAAAo',
-    'oAddddddddAo',
-    'oAdkkkkkkdAo',
-    'oAdkkkkkkdAo',
-    'oAddddddddAo',
-    'oAAAAAAAAAAo',
-    'oayayaaddaao',
-    'oaaaaaaaaaao',
-    'oayayaaooaao',
-    'oaaaaaaaaaao',
-    'oaaaaaaaaaao',
-    'oaaaaaaaaaao',
-    'oooooooooooo',
-  ],
 };
+
+// クォータービューでコードで描く物（core/objectArt.js）。{ size, anchor, dots } と、一度描いた絵
+const ART = { atm: { ...ATM, dots: atmDots } };
+const artCache = new Map();
+
+function artImage(kind) {
+  if (!artCache.has(kind)) {
+    const a = ART[kind];
+    const rows = a.dots();
+    const c = document.createElement('canvas');
+    [c.width, c.height] = a.size;
+    const g = c.getContext('2d');
+    rows.forEach((row, j) => row.forEach((col, i) => {
+      if (!col) return;
+      g.fillStyle = col;
+      g.fillRect(i, j, 1, 1);
+    }));
+    const top = rows.findIndex((row) => row.some((col) => col));
+    artCache.set(kind, { img: c, height: a.anchor[1] - top });
+  }
+  return artCache.get(kind);
+}
 
 // (x, y) は置いてあるマスの中心
 export function drawObject(g, kind, x, y) {
+  if (ART[kind]) {
+    const { anchor } = ART[kind];
+    g.drawImage(artImage(kind).img, Math.round(x - anchor[0]), Math.round(y - anchor[1]));
+    return;
+  }
   const rows = OBJECTS[kind];
   if (!rows) return;
   const scale = 3;
@@ -164,5 +174,6 @@ export function drawObject(g, kind, x, y) {
 
 // 家具の高さ（名前を上に出すため）
 export function objectHeight(kind) {
+  if (ART[kind]) return artImage(kind).height;
   return (OBJECTS[kind]?.length ?? 0) * 3;
 }

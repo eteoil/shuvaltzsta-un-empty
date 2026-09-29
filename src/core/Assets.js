@@ -60,6 +60,22 @@ export class Assets {
     return { img: this.get(key, dir, palette), def };
   }
 
+  // 足元から、絵に描いてある一番上の点までの高さ（名前を頭の上に出すため）。絵の箱の上には余白があることがある
+  height(key, frame, palette = null) {
+    const id = `height/${key}/${frame}`;
+    if (!this.cache.has(id)) {
+      const img = this.get(key, frame, palette);
+      const c = canvasOf(img.width, img.height);
+      const g = c.getContext('2d');
+      g.drawImage(img, 0, 0);
+      const d = g.getImageData(0, 0, c.width, c.height).data;
+      let top = 0;
+      while (top < c.height && !d.slice(top * c.width * 4, (top + 1) * c.width * 4).some((v, i) => i % 4 === 3 && v > 0)) top++;
+      this.cache.set(id, this.defs[key].anchor[1] - top);
+    }
+    return this.cache.get(id);
+  }
+
   frameCount(key, anim) {
     return this.defs[key].anims?.[anim]?.count ?? 1;
   }

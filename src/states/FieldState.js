@@ -339,7 +339,7 @@ export class FieldState {
     for (const c of people) {
       if (!c.label) continue;
       const pos = isoCenter(c.i, c.j, ox, oy, tile);
-      const height = c.object ? objectHeight(c.object) : assets.def(c.sprite).anchor[1];
+      const height = c.object ? objectHeight(c.object) : assets.height(c.sprite, c.frame, c.palette);
       // 奥にいる人の名前が上の帯（HP・所持金）に重ならないよう、帯より下に収める
       text(g, c.label, pos.x, Math.max(30, pos.y - height - 16), { size: 12, align: 'center', color: COLORS.brass });
     }

@@ -1,186 +1,171 @@
-// バニーキャット（ウサギの耳の二足歩行の猫。駅員のチェルーとドルー）のドット絵。1ドット＝1px、線も1ドット。
+// バニーキャット（ウサギの耳の二足歩行の猫。駅員のチェルー・ドルー・デルー）のドット絵。1ドット＝1px、線も1ドット。
 // 図形を奥から順に塗り、パーツの境目と外側に1ドットの線を引く。
-// 高さは耳の先から足の裏まで約 190 ドットで、主人公（約 130 ドット）の 3/2 くらい。
-// 南西（sw）は正面で、顔を少し左へ寄せる。南東（se）はその左右反転。北東（ne）は背中で、北西（nw）はその左右反転。
-// 手は下ろし、口は閉じている。帽子・襟・ネクタイ・ボタンは参考画像（チェルー）から、画像に無い脚・しっぽ・背中は想像
+//
+// 大きさ：耳を除いた帽子のてっぺんから足の裏まで約 88 ドットで、主人公（約 132 ドット）の 2/3。耳はその上に立つ。
+// 骨格：頭が大きい2頭身の猫。耳は頭のてっぺんの左右から生え、帽子の後ろを通って後ろへ少し倒れる。
+//   首は短く頭に隠れる。胴は洋なし形。腕は肩から下ろし、先に丸い手。脚は短く、足先は向いている方へ出る。
+//   しっぽは腰の後ろ（背骨の端）から出る。
+// 向き（クォータービュー）：南西（sw）は体を左下へ向けた斜め前。顔と胸は左へ寄り、遠い側（左）の目は細く小さく、
+//   遠い側の腕は胴の後ろに半分隠れ、手前の足は少し下。しっぽは右の後ろからのぞく。南東（se）はその左右反転。
+//   北東（ne）は右上へ向けた斜め後ろ（背中・帽子の後ろ・しっぽ）。北西（nw）はその左右反転。
+// 手は下ろし、口は閉じている。帽子・襟・ネクタイ・ボタン・目は参考画像（チェルー）から、画像に無い脚・しっぽ・背中は想像
 
-export const BUNNY_CAT_SIZE = [112, 208];
-export const BUNNY_CAT_ANCHOR = [56, 199];
+import { createDots, flat, ellipse, poly, any, capsule, tube, rotate, LINE } from './dotArt.js';
 
-const LINE = '#231815';
+export const BUNNY_CAT_SIZE = [96, 144];
+export const BUNNY_CAT_ANCHOR = [48, 136];
 
-// style ごとの違い。ear は耳の長さを足すドット数（ドルーはチェルーより少し長い）
+
+// ear は耳の長さ（根元から先まで）。チェルーはドルーの半分
 export const BUNNY_CAT_STYLES = {
-  cheru: {
-    ear: 0,
-    fur: '#8e9a90', furDark: '#6a756d', earIn: '#c9a7b9',
-  },
-  doru: {
-    ear: 10,
-    fur: '#c8b48c', furDark: '#9c8a66', earIn: '#e0b0a8',
-  },
+  cheru: { ear: 30, fur: '#9aa39c', furDark: '#78817b', earIn: '#d4aec2' },
+  doru: { ear: 60, fur: '#9aa39c', furDark: '#78817b', earIn: '#d4aec2' },
+  deru: { ear: 30, fur: '#c8b48c', furDark: '#9c8a66', earIn: '#e6b4ac' },
 };
 
-const UNIFORM = {
-  cap: '#b3c3d0', capDark: '#8a9cad', capTop: '#d5e0e8',
-  band: '#4f5a6c', visor: '#3a4254', visorLight: '#6a768c',
-  gold: '#d8ac5a', goldDark: '#9a6f2e',
-  jacket: '#8fa9b4', jacketDark: '#6b8490',
-  shirt: '#f3eee6', shirtDark: '#cfc6cf',
-  tie: '#c86a78', tieDark: '#8e3f52',
-  pants: '#56657a', pantsDark: '#414d60',
-  eye: '#d6dc4a', eyeDark: '#9ca232', white: '#ffffff', nose: '#c9848e',
+const C = {
+  cap: '#bccad6', capDark: '#93a4b4', capTop: '#dde6ee',
+  band: '#4f5a6c', visor: '#3a4254', visorLight: '#66728a',
+  gold: '#e0b660', goldDark: '#a0742e',
+  jacket: '#9db6bd', jacketDark: '#7892a0',
+  shirt: '#f6f2ea', shirtDark: '#d2cad4',
+  tie: '#d2848e', tieDark: '#9a4c5e',
+  pants: '#5d6c80', pantsDark: '#475467',
+  eye: '#dfe35a', eyeDark: '#a3a938', white: '#ffffff', nose: '#d58a96', blush: '#e6a4ae',
 };
 
-// 1枚ぶんのドット（[y][x] に色か null）を返す
 export function bunnyCatDots(styleId, frame) {
   const st = BUNNY_CAT_STYLES[styleId] ?? BUNNY_CAT_STYLES.cheru;
   const [W, H] = BUNNY_CAT_SIZE;
   const back = frame.startsWith('n');
-  const part = Array.from({ length: H }, () => Array(W).fill(0));   // パーツの番号（0 は空き）
-  const color = Array.from({ length: H }, () => Array(W).fill(null));
-  const parts = [null];   // 番号 → { line }
-  const each = (f) => { for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) f(x, y); };
-  const inside = (x, y) => x >= 0 && x < W && y >= 0 && y < H;
-
-  // 形（(x, y) → 真偽）を1つのパーツとして塗る。paint(x, y, isEdge) で色を決める
-  const fill = (shape, paint, { line = true } = {}) => {
-    const id = parts.push({ line }) - 1;
-    const mine = [];
-    each((x, y) => { if (shape(x + 0.5, y + 0.5)) { part[y][x] = id; mine.push([x, y]); } });
-    const has = (x, y) => inside(x, y) && part[y][x] === id;
-    // 光は左上から。右と下の縁（3ドット）を影にする
-    for (const [x, y] of mine) color[y][x] = paint(x, y, !has(x + 3, y) || !has(x, y + 3));
-  };
-  const flat = (c, dark = c) => (x, y, edge) => (edge ? dark : c);
-
-  const ellipse = (cx, cy, rx, ry, deg = 0) => {
+  const d = createDots(W, H);
+  const { fill } = d;
+  // 耳：根元 (x, y) から、傾き deg（0 で真上、+ で右へ倒れる）に長さ len。幅は根元で細く、真ん中が広い
+  const ear = (x, y, len, deg, w) => {
     const r = (deg * Math.PI) / 180;
-    const cos = Math.cos(r);
-    const sin = Math.sin(r);
-    return (x, y) => {
-      const dx = x - cx;
-      const dy = y - cy;
-      const u = dx * cos + dy * sin;
-      const v = -dx * sin + dy * cos;
-      return (u / rx) ** 2 + (v / ry) ** 2 <= 1;
-    };
-  };
-  const poly = (pts) => (x, y) => {
-    let inPoly = false;
-    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
-      const [xi, yi] = pts[i];
-      const [xj, yj] = pts[j];
-      if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inPoly = !inPoly;
-    }
-    return inPoly;
-  };
-  const any = (...shapes) => (x, y) => shapes.some((s) => s(x, y));
-  // 太さ w の線分（腕・しっぽ）
-  const capsule = ([x0, y0], [x1, y1], w) => (x, y) => {
-    const vx = x1 - x0;
-    const vy = y1 - y0;
-    const t = Math.max(0, Math.min(1, ((x - x0) * vx + (y - y0) * vy) / (vx * vx + vy * vy)));
-    return Math.hypot(x - (x0 + vx * t), y - (y0 + vy * t)) <= w / 2;
+    const cx = x + Math.sin(r) * (len / 2);
+    const cy = y - Math.cos(r) * (len / 2);
+    return { outer: ellipse(cx, cy, w, len / 2 + 1, deg), inner: ellipse(cx + Math.sin(r) * 1.5, cy - Math.cos(r) * 1.5 + 2, w * 0.45, len / 2 - 3, deg) };
   };
 
-  // ---- 耳（帽子と頭の後ろから立つ。内側は薄い色）
-  const e = st.ear;
-  for (const [cx, deg] of [[38, -12], [76, 14]]) {
-    const cy = 46 - e / 2;
-    const outer = ellipse(cx, cy, 10, 36 + e / 2, deg);
-    const inner = ellipse(cx + (deg < 0 ? 1 : -1), cy + 4, 4.5, 27 + e / 2, deg);
-    fill(outer, (x, y, edge) => (!back && inner(x + 0.5, y + 0.5) ? st.earIn : edge ? st.furDark : st.fur));
-  }
-
-  // ---- 脚（ズボン）と足（毛の色）
-  fill(any(poly([[38, 174], [53, 174], [52, 192], [39, 192]]), poly([[59, 174], [74, 174], [73, 192], [60, 192]])), flat(UNIFORM.pants, UNIFORM.pantsDark));
-  fill(any(ellipse(44, 195, 9, 5), ellipse(68, 195, 9, 5)), flat(st.fur, st.furDark));
-
-  // ---- 胴（上着）
-  fill((x, y) => ellipse(56, 154, 27, 28)(x, y) && y < 181, flat(UNIFORM.jacket, UNIFORM.jacketDark));
+  const L = st.ear;
+  // 帽子：上から見下ろすので、てっぺんは広い楕円。胴は下へ少しすぼまり、下に濃い帯。つばは向いている側（左下）へ出る
+  // 帽子は頭に合わせて少し傾ける（前＝つばの側が下がる）。南西では前が左なので、左下がり
+  const tilt = (shape, deg) => rotate(shape, deg, 47, 62);
+  const capDeg = back ? 6 : -7;
+  const capTop = tilt(ellipse(47, 54, 16.5, 5.5), capDeg);
+  const capShape = tilt(poly([[30.5, 54], [63.5, 54], [62.5, 67], [31.5, 67]]), capDeg);
+  const bandShape = tilt(poly([[31, 62], [63, 62], [62.5, 67.5], [31.5, 67.5]]), capDeg);
+  // ---------------------------------------------------------------- 斜め前（南西）
   if (!back) {
-    // 白いシャツの V 字と、赤いネクタイ（蝶結び）
-    fill(poly([[43, 128], [69, 128], [56, 162]]), flat(UNIFORM.shirt, UNIFORM.shirtDark));
-    fill(any(poly([[44, 131], [56, 136], [44, 142]]), poly([[68, 131], [56, 136], [68, 142]])), flat(UNIFORM.tie, UNIFORM.tieDark));
-    fill(any(ellipse(56, 136, 3.5, 3.5), poly([[53, 138], [59, 138], [60, 150], [56, 154], [52, 150]])), flat(UNIFORM.tie, UNIFORM.tieDark));
+    // 耳（奥・手前とも帽子の後ろ。後ろ＝右へ倒れる。奥の耳は細く、内側はほとんど見えない）
+    const far = ear(38, 60, L, 4, 5);
+    fill(far.outer, flat(st.fur, st.furDark));
+    const near = ear(56, 61, L, 14, 6);
+    fill(near.outer, (x, y, edge) => (near.inner(x + 0.5, y + 0.5) ? st.earIn : edge ? st.furDark : st.fur));
+    // しっぽ（右の後ろ、腰から出て上へ巻く）
+    fill(tube([58, 122], [74, 125], [73, 108], 3, 2.2), flat(st.fur, st.furDark));
+    // 奥の腕（胴の後ろ。先の手だけ見える）
+    fill(capsule([33, 105], [29, 120], 8), flat(C.jacket, C.jacketDark));
+    fill(ellipse(29, 123, 4, 3.8), flat(st.fur, st.furDark));
+    // 脚（ズボン）と足。足先は左下へ出る。手前（右）の足が少し下
+    fill(any(poly([[36, 124], [45, 124], [44, 132], [37, 132]]), poly([[48, 124], [57, 124], [56, 133], [49, 133]])), flat(C.pants, C.pantsDark));
+    fill(ellipse(38, 133.5, 6, 3), flat(st.fur, st.furDark));
+    fill(ellipse(50, 134.5, 6.5, 3.2), flat(st.fur, st.furDark));
+    // 胴（上着。洋なし形）
+    fill((x, y) => ellipse(46, 113, 16, 15)(x, y) && y < 127, flat(C.jacket, C.jacketDark));
+    // 白い襟（胸の真ん中は左へ寄る）とネクタイ
+    fill(poly([[33, 99], [53, 99], [41, 116]]), flat(C.shirt, C.shirtDark));
+    fill(any(poly([[35, 102], [41, 104], [35, 107]]), poly([[47, 102], [41, 104], [47, 107]])), flat(C.tie, C.tieDark));
+    fill(any(ellipse(41, 104.5, 2, 2), poly([[40, 106], [42.5, 106], [43, 112], [41, 114], [39.5, 112]])), flat(C.tie, C.tieDark));
+    // 手前の腕（胴の前、少し前へ。先に丸い手）
+    fill(capsule([58, 104], [61, 118], 8.5), flat(C.jacket, C.jacketDark));
+    fill(ellipse(61, 121.5, 4.5, 4.2), flat(st.fur, st.furDark));
+    // 頭（丸く大きい。ほおの毛の房は左右に。顔は左へ寄る）
+    const tufts = [poly([[23, 86], [22, 96], [16, 93]]), poly([[25, 94], [27, 101], [18, 99]]), poly([[69, 86], [70, 96], [75, 92]]), poly([[67, 94], [65, 100], [73, 98]])];
+    fill(any(ellipse(46, 81, 25, 20.5), ellipse(35, 91, 11, 8), ...tufts), flat(st.fur, st.furDark));
+    // 帽子（てっぺんの楕円・胴・帯・左下へ出るつば・金の記章）
+    fill(capShape, (x, y, edge) => (edge ? C.capDark : C.cap));
+    fill(capTop, flat(C.capTop));
+    fill(bandShape, flat(C.band));
+    fill(tilt((x, y) => ellipse(37, 67.5, 15, 5)(x, y) && y > 66.5, capDeg), (x, y) => (y < 70 && x < 44 ? C.visorLight : C.visor));
+  } else {
+    // ---------------------------------------------------------------- 斜め後ろ（北東）
+    // しっぽ（腰の後ろ＝こちら側から出て、左下へ垂れて先を上げる。胴より手前）
+    // 奥の腕
+    fill(capsule([31, 105], [28, 120], 8), flat(C.jacket, C.jacketDark));
+    fill(ellipse(28, 123, 4, 3.8), flat(st.fur, st.furDark));
+    // 脚と足（かかと側。手前（右）の足が少し下）
+    fill(any(poly([[37, 124], [46, 124], [45, 132], [38, 132]]), poly([[49, 124], [58, 124], [57, 133], [50, 133]])), flat(C.pants, C.pantsDark));
+    fill(ellipse(42, 133.5, 5.5, 3), flat(st.fur, st.furDark));
+    fill(ellipse(54, 134.5, 5.5, 3.2), flat(st.fur, st.furDark));
+    // 胴（上着の背中）
+    fill((x, y) => ellipse(48, 113, 16, 15)(x, y) && y < 127, flat(C.jacket, C.jacketDark));
+    // 手前の腕
+    fill(capsule([62, 104], [65, 118], 8.5), flat(C.jacket, C.jacketDark));
+    fill(ellipse(65, 121.5, 4.5, 4.2), flat(st.fur, st.furDark));
+    fill(tube([44, 121], [29, 128], [27, 113], 3.2, 2.2), flat(st.fur, st.furDark));
+    // 頭の後ろ（右のほおの房だけ見える）
+    const tufts = [poly([[71, 86], [72, 96], [77, 92]]), poly([[69, 94], [67, 100], [75, 98]]), poly([[42, 99], [48, 99], [45, 104]]), poly([[48, 99], [54, 99], [51, 103]])];
+    fill(any(ellipse(48, 81, 25, 20.5), ...tufts), flat(st.fur, st.furDark));
+    // 帽子の後ろ（つばは奥なので見えない）
+    fill(capShape, (x, y, edge) => (edge ? C.capDark : C.cap));
+    fill(capTop, flat(C.capTop));
+    fill(bandShape, flat(C.band));
+    // 耳（後ろからは帽子より手前。帽子の後ろの縁から立ち、こちらへ少し倒れる）
+    const far = ear(38, 64, L, -8, 5);
+    fill(far.outer, flat(st.fur, st.furDark));
+    const near = ear(57, 65, L, 6, 6);
+    fill(near.outer, flat(st.fur, st.furDark));
   }
 
-  // ---- 腕（袖は上着の色。手は下ろして、先に毛の色の手）
-  fill(any(capsule([33, 136], [27, 166], 13), capsule([79, 136], [85, 166], 13)), flat(UNIFORM.jacket, UNIFORM.jacketDark));
-  fill(any(ellipse(27, 171, 7, 6.5), ellipse(85, 171, 7, 6.5)), flat(st.fur, st.furDark));
-  if (back) {
-    // しっぽ（背中の下から横へ出て、先を上げる。背中では腕より手前）
-    const tail = [];
-    for (let t = 0; t <= 1.001; t += 0.05) {
-      const x = (1 - t) ** 2 * 60 + 2 * (1 - t) * t * 100 + t * t * 96;
-      const y = (1 - t) ** 2 * 172 + 2 * (1 - t) * t * 176 + t * t * 140;
-      tail.push(ellipse(x, y, 5.5, 5.5));
-    }
-    fill(any(...tail), flat(st.fur, st.furDark));
-  }
-
-  // ---- 頭（丸く、ほおの横に毛の房）
-  const tufts = [
-    poly([[25, 104], [25, 118], [15, 114]]), poly([[27, 116], [31, 128], [18, 124]]),
-    poly([[87, 104], [87, 118], [97, 114]]), poly([[85, 116], [81, 128], [94, 124]]),
-  ];
-  fill(any(ellipse(56, 104, 34, 28), ...tufts), flat(st.fur, st.furDark));
-
-  // ---- 帽子（駅員の帽子。少し右へ傾く。帯・つば・金の記章）
-  fill(poly([[36, 55], [78, 50], [82, 80], [32, 82]]), (x, y, edge) => (y < 57 ? UNIFORM.capTop : edge ? UNIFORM.capDark : UNIFORM.cap));
-  fill(poly([[32, 76], [81, 73], [82, 81], [32, 83]]), flat(UNIFORM.band));
-  if (!back) fill((x, y) => ellipse(57, 83, 27, 6)(x, y) && y > 82, (x, y) => (y < 85 && x > 40 && x < 70 ? UNIFORM.visorLight : UNIFORM.visor));
-
-  // ---- 線：外側の空きと、奥のパーツとの境目（手前のパーツの縁）に1ドット
-  const out = color.map((r) => r.slice());
+  // ---------------------------------------------------------------- 線と、線の上に描く細かいところ
+  d.finish();
+  const put = (x, y, c) => d.put(x, y, c);
+  const rect = (x0, y0, x1, y1, c) => d.rect(x0, y0, x1, y1, c);
   const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-  each((x, y) => {
-    const p = part[y][x];
-    if (!p) {
-      if (N4.some(([a, b]) => inside(x + a, y + b) && part[y + b][x + a])) out[y][x] = LINE;
-      return;
-    }
-    if (!parts[p].line) return;
-    if (N4.some(([a, b]) => inside(x + a, y + b) && part[y + b][x + a] && part[y + b][x + a] < p && parts[part[y + b][x + a]].line)) out[y][x] = LINE;
-  });
-  const put = (x, y, c) => { if (inside(x, y)) out[y][x] = c; };
-  const rect = (x0, y0, x1, y1, c) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) put(x, y, c); };
 
   if (!back) {
-    // 帽子の記章（金のひし形）
-    for (let d = 0; d <= 4; d++) { rect(57 - (4 - d), 62 + d, 57 + (4 - d), 62 + d, UNIFORM.gold); rect(57 - d, 66 + d, 57 + d, 66 + d, UNIFORM.gold); }
-    rect(56, 65, 58, 67, UNIFORM.goldDark);
-    // 上着の金ボタン（左右に2つずつ）
-    for (const [bx, by] of [[46, 163], [64, 163], [47, 172], [63, 172]]) { rect(bx, by, bx + 2, by + 2, UNIFORM.gold); put(bx + 2, by + 2, UNIFORM.goldDark); }
-    // 顔。目は大きな黄緑、瞳は縦長、白い光。鼻は小さく、口は閉じた「ω」
-    const s = -3;   // 顔を向いている側（左）へ寄せる
-    for (const ex of [43 + s, 68 + s]) {
-      const cy = 104;
-      const eye = ellipse(ex, cy, 8, 9.5);
-      for (let y = 92; y <= 116; y++) {
-        for (let x = ex - 10; x <= ex + 10; x++) {
-          const inEye = eye(x + 0.5, y + 0.5);
-          const edge = inEye && N4.some(([a, b]) => !eye(x + a + 0.5, y + b + 0.5));
-          const r = Math.hypot((x + 0.5 - ex) / 8, (y + 0.5 - cy) / 9.5);
-          if (edge) put(x, y, LINE);
-          else if (inEye) put(x, y, r > 0.52 && r < 0.68 ? UNIFORM.eyeDark : y >= cy + 5 ? UNIFORM.eyeDark : UNIFORM.eye);
+    // 記章（金のひし形。帽子の前＝左寄り）
+    for (const [dx, dy] of [[0, -2], [-1, -1], [0, -1], [1, -1], [-2, 0], [-1, 0], [1, 0], [2, 0], [-1, 1], [0, 1], [1, 1], [0, 2]]) put(40 + dx, 60 + dy, C.gold);
+    put(40, 60, C.goldDark);
+    // 上着の金ボタン（2列。前の合わせが左寄りなので、奥の列は詰まる）
+    for (const [bx, by] of [[36, 112], [45, 112], [37, 119], [45, 119]]) { put(bx, by, C.gold); put(bx + 1, by, C.gold); put(bx + 1, by + 1, C.goldDark); put(bx, by + 1, C.gold); }
+    // 目（大きな黄緑。手前（右）の目は大きく、奥（左）の目は細い。濃い輪と、右上に白い光）
+    const eye = (cx, cy, rx, ry) => {
+      const inE = (x, y) => ((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2 <= 1;
+      for (let y = Math.floor(cy - ry - 1); y <= cy + ry + 1; y++) {
+        for (let x = Math.floor(cx - rx - 1); x <= cx + rx + 1; x++) {
+          if (!inE(x, y)) continue;
+          const edge = N4.some(([a, b]) => !inE(x + a, y + b));
+          const r = Math.hypot((x + 0.5 - cx) / rx, (y + 0.5 - cy) / ry);
+          put(x, y, edge ? LINE : r > 0.62 ? C.eyeDark : C.eye);
         }
       }
-      rect(ex - 1, cy - 1, ex, cy, LINE);            // 瞳（小さく）
-      rect(ex + 2, cy - 6, ex + 4, cy - 4, UNIFORM.white);   // 光
-      rect(ex - 5, cy - 10, ex + 4, cy - 10, LINE);  // まぶたの線を太めに
-    }
-    const nx = 55 + s;
-    rect(nx - 1, 114, nx + 2, 115, UNIFORM.nose);
-    rect(nx - 1, 116, nx + 2, 116, LINE);
-    put(nx, 117, LINE); put(nx + 1, 117, LINE);
-    for (const [dx, dy] of [[-1, 118], [-2, 119], [-3, 119], [-4, 118], [2, 118], [3, 119], [4, 119], [5, 118]]) put(nx + dx, dy, LINE);
+      // 瞳は大きめで少し下。光は右上に大きく、左下に小さく
+      const px = Math.round(cx - 0.5);
+      const py = Math.round(cy);
+      rect(px - 1, py - 1, px + 1, py + 2, LINE);
+      rect(px - (rx > 5 ? 2 : 1), py, px + (rx > 5 ? 2 : 1), py + 1, LINE);
+      rect(Math.round(cx + rx * 0.2), Math.round(cy - ry * 0.55), Math.round(cx + rx * 0.2) + 1, Math.round(cy - ry * 0.55) + 1, C.white);
+      put(px - 1, py + 3, C.white);
+      for (let x = Math.floor(cx - rx); x <= cx + rx; x++) { let y = Math.floor(cy - ry); while (y < cy && !inE(x, y)) y++; if (y < cy) put(x, y + 1, LINE); }   // まぶた（上の縁を内側へ1ドット太く）
+    };
+    eye(32.5, 85, 4.5, 6.5);
+    eye(50, 85, 6.5, 7);
+    // ほおの赤み
+    rect(55, 94, 58, 95, C.blush);
+    rect(26, 94, 27, 95, C.blush);
+    // 鼻と、閉じた口（ω）
+    rect(38, 92, 40, 93, C.nose);
+    put(38, 92, LINE); put(40, 92, LINE);
+    put(39, 94, LINE);
+    for (const [x, y] of [[38, 95], [37, 96], [36, 96], [35, 95], [40, 95], [41, 96], [42, 96], [43, 95]]) put(x, y, LINE);
   } else {
-    // 背中：上着の真ん中の縫い目と、帽子の後ろの記章は無し
-    rect(56, 132, 56, 166, UNIFORM.jacketDark);
+    // 背中：上着の真ん中の縫い目
+    rect(50, 101, 50, 120, C.jacketDark);
   }
 
-  const flip = frame.endsWith('e') !== back;   // se は正面の反転、nw は背中の反転
-  return flip ? out.map((r) => r.slice().reverse()) : out;
+  const flip = frame.endsWith('e') !== back;   // se は sw の反転、nw は ne の反転
+  return d.result(flip);
 }
