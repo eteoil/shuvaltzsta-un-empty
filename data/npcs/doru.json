@@ -1,0 +1,11 @@
+{
+  "id": "doru",
+  "name": "ドルー",
+  "sprite": "doru",
+  "greet": "どちらまで行きますか？（仮）",
+  "options": [
+    { "label": "スラム", "travel": { "to": "station_01", "spawn": [3, 2, "ne"], "say": "スラム行き、発車しまーす！（仮）" } },
+    { "label": "ラボ", "travel": { "to": "lab_01", "spawn": [3, 4, "ne"], "say": "ラボ行き、発車しまーす！（仮）" } },
+    { "label": "なんでもない", "say": "またのご利用をお待ちしてます（仮）", "cancel": true }
+  ]
+}

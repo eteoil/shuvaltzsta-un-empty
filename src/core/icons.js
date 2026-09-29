@@ -10,6 +10,7 @@ const PALETTE = {
   c: '#c9e6f0', j: '#5fbf5a', J: '#d8f5c8',
   o: '#231815', n: '#8a5a3a', p: '#f3e6cf', q: '#5a7fc4', Q: '#8fb0e6',
   m: '#b5523b', M: '#e08a6a',
+  a: '#7d8a99', A: '#aab6c2', d: '#4f5a6c', k: '#7bd8c9', y: '#d8ac5a',
 };
 const ICONS = {
   slime_jelly: [
@@ -127,6 +128,23 @@ const OBJECTS = {
     'onnnnnnnnnnnnnno',
     'on............no',
     'oo............oo',
+  ],
+  // 銀行の出納機（画面とボタンと、お金の出し入れ口）
+  atm: [
+    '.oooooooooo.',
+    'oAAAAAAAAAAo',
+    'oAddddddddAo',
+    'oAdkkkkkkdAo',
+    'oAdkkkkkkdAo',
+    'oAddddddddAo',
+    'oAAAAAAAAAAo',
+    'oayayaaddaao',
+    'oaaaaaaaaaao',
+    'oayayaaooaao',
+    'oaaaaaaaaaao',
+    'oaaaaaaaaaao',
+    'oaaaaaaaaaao',
+    'oooooooooooo',
   ],
 };
 

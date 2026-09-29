@@ -17,6 +17,8 @@ import { loadOptions } from './core/Options.js';
 import { cure } from './core/Hero.js';
 import { maxHpOf, setTotalScore } from './core/Level.js';
 import { loadCalendar } from './core/Calendar.js';
+import { faint } from './core/Bank.js';
+import { money } from './core/Items.js';
 
 const wait = (ms) => new Promise((ok) => { setTimeout(ok, ms); });
 
@@ -86,6 +88,7 @@ export class Game {
       worked: {},
       quests: {},         // クエストの id → 'active'（受注中）か 'done'（完了）         // バイトの id → 最後にした日（1日1回）
       pickups: {},        // マップの id → 落ちている物と、次に現れるまでの秒（FieldState）
+      bank: { balance: 0, day: 1 },   // 銀行の預金と、最後に利息を付けた日（core/Bank.js）
       totalScore: 0,
     };
     this.states.change(new FieldState(this));
@@ -115,7 +118,7 @@ export class Game {
     }));
   }
 
-  // 出口から出たら行き先の町へ。倒れたら最初の町の開始地点から、HP を満タンにしてやり直し（仮）
+  // 出口から出たら行き先の町へ。倒れたら持っているお金が半分になり、最初の町の開始地点から、HP を満タンにしてやり直し（仮）
   async afterDungeon(outcome, score, exit) {
     const s = this.session;
     const { from, to } = setTotalScore(this, s.totalScore + score);
@@ -123,7 +126,9 @@ export class Game {
     if (outcome === 'lose') {
       s.hero.hp = s.hero.maxHp;
       cure(s.hero);
-      await this.enterMap(this.config.startMap, null, arrive);
+      const lines = this.faintLines();
+      const onLose = lines.length ? () => this.states.push(new DialogState(this, { lines }, arrive ?? undefined)) : arrive;
+      await this.enterMap(this.config.startMap, null, onLose);
     } else {
       await this.enterMap(exit.to, exit.spawn, arrive);
     }
@@ -154,10 +159,11 @@ export class Game {
     this.states.push(new TalkState(this, npc));
   }
 
-  // 負けたらマップの開始地点から、HP を満タンにしてやり直し（仮。セーブポイントができたらそこへ）
+  // 負けたら持っているお金が半分になり、マップの開始地点から、HP を満タンにしてやり直し（仮。セーブポイントができたらそこへ）
   async afterBattle(enc, outcome, score) {
     const s = this.session;
     const { from, to } = setTotalScore(this, s.totalScore + score);
+    let lost = [];
     if (outcome === 'win') {
       s.flags[enc.id] = true;
     } else {
@@ -165,12 +171,20 @@ export class Game {
       s.player = { i, j, dir };
       s.hero.hp = s.hero.maxHp;
       cure(s.hero);
+      lost = this.faintLines();
     }
-    const dialog = await loadDialog(outcome === 'win' ? enc.dialogWin : enc.dialogLose);
+    const base = await loadDialog(outcome === 'win' ? enc.dialogWin : enc.dialogLose);
+    const dialog = { ...base, lines: [...base.lines, ...lost] };
     // 会話は町が明るくなりきってから
     const field = new FieldState(this);
     field.onArrive = () => this.states.push(new DialogState(this, dialog, () => { if (to > from) this.levelUp(to); }));
     this.states.change(field);
+  }
+
+  // 倒れた（HP 0）ときに持っているお金を減らし、知らせる行を返す（お金が無くて減らなければ無し）
+  faintLines() {
+    const lost = faint(this.session, this.config);
+    return lost > 0 ? [{ speaker: '', text: `お金を半分なくした……（${money(lost)}）` }] : [];
   }
 
   levelUp(level) {

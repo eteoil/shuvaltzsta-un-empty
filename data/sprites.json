@@ -68,5 +68,19 @@
       "run": { "count": 4, "size": [160, 128], "anchor": [80, 120] },
       "attack": { "count": 3, "size": [160, 128], "anchor": [80, 120] }
     }
+  },
+  "cheru": {
+    "size": [112, 208],
+    "anchor": [56, 199],
+    "placeholder": "bunnyCat",
+    "style": "cheru",
+    "frames": { "ne": null, "nw": null, "se": null, "sw": null }
+  },
+  "doru": {
+    "size": [112, 208],
+    "anchor": [56, 199],
+    "placeholder": "bunnyCat",
+    "style": "doru",
+    "frames": { "ne": null, "nw": null, "se": null, "sw": null }
   }
 }

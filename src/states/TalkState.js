@@ -7,6 +7,7 @@ import { cure } from '../core/Hero.js';
 import { dateText, eventsOf, isNight, isMapOpen, passTime, sleep } from '../core/Calendar.js';
 import { CafeJobState } from './CafeJobState.js';
 import { ShopState } from './ShopState.js';
+import { settle } from '../core/Bank.js';
 
 const CHAR_MS = 32;
 const DPAD_STEP = { up: 1, right: 1, down: -1, left: -1 };
@@ -26,7 +27,7 @@ export class TalkState {
     this.line = '';
     this.shownAt = 0;
     this.choices = null;     // { options: [{ label, run }], sel, cancel }
-    this.counter = null;     // 個数を選ぶ窓 { n, max, price, run, cancel }
+    this.counter = null;     // 個数を選ぶ窓 { n, max, price, run, cancel }。money なら金額を選ぶ窓（銀行の出納機）
     this.next = null;        // セリフを読み終えて A を押したら呼ぶ
     this.speaker = null;     // 名前札に出す名前（null なら話しかけた相手、'' なら名前札なし）
   }
@@ -165,20 +166,29 @@ export class TalkState {
     const main = shown.filter((o) => !o.cancel);
     if (main.length === 1) { this.act(main[0]); return; }
     const cancel = shown.find((o) => o.cancel);
-    const greet = this.night && this.npc.nightGreet ? this.npc.nightGreet : this.npc.greet;
+    let greet = this.night && this.npc.nightGreet ? this.npc.nightGreet : this.npc.greet;
+    // 出納機のあいさつの {balance} は預金の残高（利息はここで付ける）
+    if (this.npc.bank) greet = greet.replace('{balance}', money(settle(s, this.game.config).balance));
     this.choose(greet, shown.map((o) => ({ label: o.label, run: () => this.act(o) })), cancel ? () => this.act(cancel) : undefined);
   }
 
   // sayOnFestival があれば祭りの日は、sayBeforeRest があれば翌日が天赦日の日は、say の代わりにそちらを言う
   // （ジャグジーとシャルヴィスの世間話）
+  // say が並び（プレストの説明）なら、順に言って終わる
   act(o) {
-    if (o.say) this.say(this.smallTalk(o));
+    if (o.say) {
+      const line = this.smallTalk(o);
+      if (Array.isArray(line)) this.sayAll(line);
+      else this.say(line);
+    }
     else if (o.shop) this.shop(o.shop);
     else if (o.appraise) this.appraise(o.appraise);
     else if (o.trade) this.trade(o.trade);
     else if (o.job) this.job(o.job);
     else if (o.buy) this.buy(o.buy);
     else if (o.rest) this.rest(o.rest);
+    else if (o.travel) this.travel(o.travel);
+    else if (o.bank) this.bank(o.bank);
     else this.close();
   }
 
@@ -272,6 +282,38 @@ export class TalkState {
     ], no);
   }
 
+  // 電車で別の町へ（駅員のチェルーとドルー）。say を言ってから、会話を閉じて暗転し、to のマップの spawn へ
+  travel(t) {
+    const go = () => {
+      this.close();
+      this.game.states.top?.depart?.({ to: t.to, spawn: t.spawn });
+    };
+    if (t.say) this.say(t.say, go);
+    else go();
+  }
+
+  // 銀行の出納機。mode は deposit（預ける）か withdraw（引き出す）。セリフは NPC の bank
+  // 金額は十字で選ぶ（最初は全部。上下で bank.step、左右で bank.bigStep ずつ）。B ではそのまま終わる
+  bank(mode) {
+    const b = settle(this.session, this.game.config);
+    const t = this.npc.bank[mode];
+    const deposit = mode === 'deposit';
+    const max = deposit ? this.session.money : b.balance;
+    if (max <= 0) { this.say(t.none); return; }
+    const { step, bigStep } = this.game.config.bank;
+    this.say(t.ask.replace('{step}', money(step)).replace('{bigStep}', money(bigStep)), null);
+    this.counter = {
+      n: max, max, money: true, step, bigStep,
+      run: (n) => {
+        this.session.money += deposit ? -n : n;
+        b.balance += deposit ? n : -n;
+        this.game.sfx.play('confirm');
+        this.say(t.done.replace('{amount}', money(n)).replace('{balance}', money(b.balance)));
+      },
+      cancel: () => this.close(),
+    };
+  }
+
   // ベッドで休む。HP が満タンになり毒も消え、次の日になる（バイトがまたできる）
   // 暗転しているあいだに眠る（回復・日付）。明るくなってから起きたときのセリフ
   rest(r) {
@@ -338,8 +380,13 @@ export class TalkState {
       if (typing && (btn === 'a' || btn === 'b')) { this.shownAt = -1e9; continue; }
       const k = this.counter;
       if (k) {
+        // 金額：上下で step、左右で bigStep ずつ。1〜max で止まる
+        if (k.money && DPAD_STEP[btn]) {
+          const d = btn === 'up' ? k.step : btn === 'down' ? -k.step : btn === 'right' ? k.bigStep : -k.bigStep;
+          k.n = Math.max(1, Math.min(k.max, k.n + d));
+          this.game.sfx.play('select');
         // 上・右で1個増やし、下・左で1個減らす（端まで行くと反対の端へ）
-        if (DPAD_STEP[btn]) {
+        } else if (DPAD_STEP[btn]) {
           k.n = ((k.n - 1 + DPAD_STEP[btn] + k.max) % k.max) + 1;
           this.game.sfx.play('select');
         } else if (btn === 'a') {
@@ -395,7 +442,7 @@ export class TalkState {
 
     const k = this.counter;
     if (k && this.visible() >= [...this.line].length) {
-      const label = `${k.n}個（${money(k.n * k.price)}）`;
+      const label = k.money ? money(k.n) : `${k.n}個（${money(k.n * k.price)}）`;
       const w = [...label].length * 12 + 64;
       const x = W - 12 - w;
       const y = top - 34 - 40;

@@ -118,9 +118,14 @@ export class FieldState {
       this.game.sfx.play('miss');
       return false;
     }
+    this.depart(exit);
+    return true;
+  }
+
+  // 暗くしてから exit.to のマップの exit.spawn へ（出口と、駅員に話しかけたときの電車）
+  depart(exit) {
     this.game.sfx.play('steps');
     this.leaving = { exit, t: 0, gone: false };
-    return true;
   }
 
   // 暗くなりきったら次のマップへ
@@ -287,6 +292,11 @@ export class FieldState {
         sprite(g, floorImg, floorDef, p.x, p.y);
       }
     }
+    // マップの色味（砂漠の村）。床だけに掛ける（人より先に描く）
+    if (this.map.tint) {
+      g.fillStyle = this.map.tint;
+      g.fillRect(0, 0, W, H);
+    }
 
     // 出口と拾い物は床の上なので、人より先に描く
     for (const e of this.map.exits ?? []) {
@@ -311,7 +321,7 @@ export class FieldState {
     }
     for (const n of this.presentNpcs()) {
       const def = this.npcDefs[n.id];
-      if (def) people.push({ sprite: def.sprite, object: def.object, frame: n.dir, anim: null, n: 0, palette: def.palette, i: n.at[0], j: n.at[1], label: def.name });
+      if (def) people.push({ sprite: def.sprite, object: def.object, frame: n.dir, anim: null, n: 0, palette: def.palette, i: n.at[0], j: n.at[1], label: def.hideName ? null : def.name });
     }
     people.sort((a, b) => a.i + a.j - (b.i + b.j));
     for (const c of people) {
@@ -325,7 +335,7 @@ export class FieldState {
       const { img, def } = assets.pose(c.sprite, c.frame, c.anim, c.n, c.palette);
       sprite(g, img, def, pos.x, pos.y);
     }
-    // 名前はほかのキャラに隠れないよう、全員を描いたあとに
+    // 名前はほかのキャラに隠れないよう、全員を描いたあとに（hideName の NPC は出さない。並んだ出納機）
     for (const c of people) {
       if (!c.label) continue;
       const pos = isoCenter(c.i, c.j, ox, oy, tile);

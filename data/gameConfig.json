@@ -68,6 +68,14 @@
     "pickupRespawnSec": 60,
     "fadeSec": 0.4
   },
+  "bank": {
+    "interestPerDay": 0.005,
+    "step": 100,
+    "bigStep": 1000
+  },
+  "faint": {
+    "moneyKeepRate": 0.5
+  },
   "battle": {
     "arena": {
       "cols": 8,

@@ -1,4 +1,5 @@
 import { loadJSON } from './Data.js';
+import { bunnyCatDots } from './bunnyCat.js';
 
 export const WHITE = { id: '__white', all: '#ffffff' };
 
@@ -119,7 +120,17 @@ function placeholder(def, frame) {
   else if (def.placeholder === 'figure') drawFigure(g, w, h, frame);
   else if (def.placeholder === 'slime') drawSlime(g, w, h, frame);
   else if (def.placeholder === 'wolf') drawWolf(g, w, h, frame);
+  else if (def.placeholder === 'bunnyCat') drawDots(g, bunnyCatDots(def.style, frame));
   return c;
+}
+
+// 色の2次元配列（null は透明）を1ドット＝1px で描く
+function drawDots(g, dots) {
+  dots.forEach((row, y) => row.forEach((c, x) => {
+    if (!c) return;
+    g.fillStyle = c;
+    g.fillRect(x, y, 1, 1);
+  }));
 }
 
 function drawBlock(g, w, h) {

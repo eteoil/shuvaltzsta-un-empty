@@ -1,0 +1,24 @@
+{
+  "id": "bank_atm",
+  "name": "出納機",
+  "object": "atm",
+  "hideName": true,
+  "greet": "預金残高：{balance}",
+  "options": [
+    { "label": "預ける", "bank": "deposit" },
+    { "label": "引き出す", "bank": "withdraw" },
+    { "label": "やめる", "cancel": true }
+  ],
+  "bank": {
+    "deposit": {
+      "ask": "いくら預けますか？（▲▼：{step}　◀▶：{bigStep}）",
+      "done": "{amount}を預けた（残高 {balance}）",
+      "none": "預けるお金を持っていない"
+    },
+    "withdraw": {
+      "ask": "いくら引き出しますか？（▲▼：{step}　◀▶：{bigStep}）",
+      "done": "{amount}を引き出した（残高 {balance}）",
+      "none": "預金がない"
+    }
+  }
+}
