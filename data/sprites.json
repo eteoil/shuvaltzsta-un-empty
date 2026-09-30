@@ -70,24 +70,39 @@
     }
   },
   "cheru": {
-    "size": [96, 144],
-    "anchor": [48, 136],
+    "size": [64, 96],
+    "anchor": [32, 88],
     "placeholder": "bunnyCat",
     "style": "cheru",
-    "frames": { "ne": null, "nw": null, "se": null, "sw": null }
+    "frames": {
+      "ne": "assets/img/cheru_ne.png",
+      "nw": "assets/img/cheru_nw.png",
+      "se": "assets/img/cheru_se.png",
+      "sw": "assets/img/cheru_sw.png"
+    }
   },
   "doru": {
-    "size": [96, 144],
-    "anchor": [48, 136],
+    "size": [64, 96],
+    "anchor": [32, 88],
     "placeholder": "bunnyCat",
     "style": "doru",
-    "frames": { "ne": null, "nw": null, "se": null, "sw": null }
+    "frames": {
+      "ne": "assets/img/doru_ne.png",
+      "nw": "assets/img/doru_nw.png",
+      "se": "assets/img/doru_se.png",
+      "sw": "assets/img/doru_sw.png"
+    }
   },
   "deru": {
-    "size": [96, 144],
-    "anchor": [48, 136],
+    "size": [64, 96],
+    "anchor": [32, 88],
     "placeholder": "bunnyCat",
     "style": "deru",
-    "frames": { "ne": null, "nw": null, "se": null, "sw": null }
+    "frames": {
+      "ne": "assets/img/deru_ne.png",
+      "nw": "assets/img/deru_nw.png",
+      "se": "assets/img/deru_se.png",
+      "sw": "assets/img/deru_sw.png"
+    }
   }
 }
