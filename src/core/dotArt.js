@@ -11,19 +11,27 @@ export function createDots(W, H, { shade = 2 } = {}) {
   const color = Array.from({ length: H }, () => Array(W).fill(null));
   const lines = [null];   // 番号 → そのパーツの縁に線を引くか
   const groups = [null];  // 番号 → まとまり（同じまとまりの境目には線を引かない）
+  const tags = [null];    // 番号 → 名前（stamp で、その上には押さない所を選ぶため）
   const each = (f) => { for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) f(x, y); };
   const inside = (x, y) => x >= 0 && x < W && y >= 0 && y < H;
   let out = null;
 
   return {
     // paint(x, y, edge) で色を決める。edge は右か下の縁（影）
-    fill(shape, paint, { line = true, group = null } = {}) {
+    fill(shape, paint, { line = true, group = null, tag = null } = {}) {
       const id = lines.push(line) - 1;
       groups.push(group ?? `#${id}`);
+      tags.push(tag);
       const mine = [];
       each((x, y) => { if (shape(x + 0.5, y + 0.5)) { part[y][x] = id; mine.push([x, y]); } });
       const has = (x, y) => inside(x, y) && part[y][x] === id;
       for (const [x, y] of mine) color[y][x] = paint(x, y, !has(x + shade, y) || !has(x, y + shade));
+    },
+    // 手で描いたドット（1文字＝1ドット）を1つのパーツとして塗る。'.' と 'o' は塗らない（'o' の所には finish が線を引く）
+    fillStamp(rows, x0, y0, colors, opts = {}) {
+      const at = (x, y) => rows[y - y0]?.[x - x0];
+      this.fill((x, y) => { const ch = at(Math.floor(x), Math.floor(y)); return !!ch && ch !== '.' && ch !== 'o'; },
+        (x, y) => colors[at(x, y)], opts);
     },
     // 線を引いて、あとから点を描き足せるようにする
     finish() {
@@ -36,9 +44,14 @@ export function createDots(W, H, { shade = 2 } = {}) {
       });
     },
     put(x, y, c) { if (out && inside(x, y)) out[y][x] = c; },
-    // 1文字＝1ドットの絵を (x0, y0) に押す。'.' は何もしない。colors は文字 → 色
-    stamp(rows, x0, y0, colors) {
-      rows.forEach((row, j) => [...row].forEach((ch, i) => { if (ch !== '.') this.put(x0 + i, y0 + j, colors[ch]); }));
+    // 1文字＝1ドットの絵を (x0, y0) に押す。'.' は何もしない。colors は文字 → 色。skip の名前（tag）のパーツの上には押さない
+    stamp(rows, x0, y0, colors, { skip = null } = {}) {
+      rows.forEach((row, j) => [...row].forEach((ch, i) => {
+        const x = x0 + i;
+        const y = y0 + j;
+        if (ch === '.' || (skip && inside(x, y) && tags[part[y][x]] === skip)) return;
+        this.put(x, y, colors[ch]);
+      }));
     },
     rect(x0, y0, x1, y1, c) { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) this.put(x, y, c); },
     // 左右反転して返す
@@ -97,4 +110,22 @@ export const rotate = (shape, deg, ox, oy) => {
   const cos = Math.cos(r);
   const sin = Math.sin(r);
   return (x, y) => shape(ox + (x - ox) * cos + (y - oy) * sin, oy - (x - ox) * sin + (y - oy) * cos);
+};
+
+// 手で打った輪郭の点を、角を切って滑らかにする（Chaikin 法を times 回）。
+// 点は [x, y] か [x, y, 1]。3つ目が 1 の点は尖ったまま残す（毛先・つま先）
+export const smooth = (pts, times = 2) => {
+  let p = pts;
+  for (let k = 0; k < times; k++) {
+    const next = [];
+    p.forEach((v, i) => {
+      if (v[2]) { next.push(v); return; }
+      const a = p[(i - 1 + p.length) % p.length];
+      const b = p[(i + 1) % p.length];
+      next.push([v[0] * 0.75 + a[0] * 0.25, v[1] * 0.75 + a[1] * 0.25]);
+      next.push([v[0] * 0.75 + b[0] * 0.25, v[1] * 0.75 + b[1] * 0.25]);
+    });
+    p = next;
+  }
+  return poly(p);
 };
