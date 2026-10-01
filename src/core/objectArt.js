@@ -134,7 +134,7 @@ export function atmDots() {
   // 正面：圧力計（真鍮の縁の丸い文字盤）。冠より先に描き、冠との間にすき間をあける
   const GZ = 70;
   const outer = faceDisc(0, GZ, 8);
-  const dial = faceDisc(0, GZ, 6.5);
+  const dial = faceDisc(0, GZ, 5.5);
   d.fill(outer, flat(COL.brass), plain);
   rim(outer);
   d.fill(dial, flat(COL.dial), plain);
