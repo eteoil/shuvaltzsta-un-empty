@@ -1,7 +1,7 @@
 // マップに置く物の、コードで描くドット絵（クォータービュー）。1ドット＝1px、線も1ドット。
 // 床のマス（80×40 のひし形）と同じ角度の箱として組み立てる。iso(i, j, z) はマスの中心からのずれ
 // （i・j はマス単位、z は高さのドット）を絵の中の座標にする。i は右下（南東）、j は左下（南西）へ伸びる。
-import { createDots, flat, poly, ellipse, any, linePoints, arcPoints, LINE } from './dotArt.js';
+import { createDots, flat, poly, ellipse, any, linePoints, LINE } from './dotArt.js';
 
 const TILE_HALF = [40, 20];   // マスの半分の幅と高さ（data/sprites.json の floor.tile の半分）
 
