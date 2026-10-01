@@ -72,9 +72,9 @@ export function atmDots() {
   d.fill(onLeft(J, I0, I0 + 0.05, 7, 82), flat(COL.brass), trim);
   d.fill(onFront(I1, -J, J, 7, 10), flat(COL.brassDark), trim);
   d.fill(onLeft(J, I0, I1, 7, 10), flat(COL.brass), trim);
-  // 左の面：床から上へ登る銅の管と、バルブの輪。左の面の真ん中に立て、本体の角や縁取りの線から離す
-  const PI = 0.05;
-  const PJ = J + 0.1;
+  // 左の面：床から上へ登る銅の管と、バルブの輪。左の面の角寄りに立てる
+  const PI = -0.05;
+  const PJ = J + 0.05;
   const copper = { base: COL.copper, light: COL.copperLight, dark: COL.copperDark };
   const brassRing = { base: COL.brass, light: COL.brassLight, dark: COL.brassDark };
   // 下から順に、輪（鉄の台の上の台座と留め輪）→ その上の管、と重ねる。管は輪の上面の楕円から出る
@@ -88,10 +88,12 @@ export function atmDots() {
   // 上の真鍮の冠（少し張り出す）と、その上の段
   box(I0 - 0.05, I1 + 0.05, -J - 0.05, J + 0.05, 82, 89, brass);
   box(I0 + 0.05, I1 - 0.05, -J + 0.1, J - 0.1, 89, 93, { left: COL.woodLight, front: COL.wood, top: COL.brassLight });
-  // 煙突：上の段の上面（z 93）の真ん中に真鍮の台座の輪を乗せ、銅の管はその上から立てる。段の縁の線から離す
-  cylinder(-0.05, 0, 93, 95, 5, brassRing, { top: true, topLine: false, topColor: COL.brass, group: 'chimney' });
-  cylinder(-0.05, 0, 95, 105, 2.5, copper, { group: 'chimney' });
-  cylinder(-0.05, 0, 104, 108, 4, brassRing, { top: true, hole: true });   // 頭の輪と、中の暗い穴
+  // 煙突：上の段の上面（z 93）の奥寄りに真鍮の台座の輪を乗せ、銅の管はその上から立てる。
+  // 台座は段の奥の縁の線に触れない太さにする（触れると線がくっついて段々の塊になる）
+  const [CI, CJ] = [-0.1, 0.15];   // 画面の横の位置は前と同じで、段の縁から 0.15 マス離れる
+  cylinder(CI, CJ, 93, 95, 4, brassRing, { top: true, topLine: false, topColor: COL.brass, group: 'chimney' });
+  cylinder(CI, CJ, 95, 105, 2.5, copper, { group: 'chimney' });
+  cylinder(CI, CJ, 104, 108, 4, brassRing, { top: true, hole: true });   // 頭の輪と、中の暗い穴
 
   // 正面：圧力計（真鍮の縁の丸い文字盤）
   d.fill(frontDisc(I1, 0, 72, 0.2, 8), flat(COL.brass, COL.brassDark));
