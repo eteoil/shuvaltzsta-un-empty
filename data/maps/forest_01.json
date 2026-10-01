@@ -21,7 +21,8 @@
   ],
   "start": [3, 11, "ne"],
   "exits": [
-    { "at": [1, 12], "to": "library_road_01", "spawn": [18, 3, "nw"], "label": "道へ" }
+    { "at": [1, 12], "to": "library_road_01", "spawn": [18, 3, "nw"], "label": "道へ" },
+    { "at": [27, 3], "to": "deep_forest_01", "spawn": [1, 1, "se"], "label": "崖", "hole": true }
   ],
   "spawns": [
     { "enemy": "slime", "at": [5, 1] },

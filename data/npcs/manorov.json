@@ -1,0 +1,9 @@
+{
+  "id": "manorov",
+  "name": "マノロフ",
+  "sprite": "player",
+  "palette": { "id": "manorov", "map": { "#394660": "#1c1c24", "#187fc4": "#6a1a2a", "#801e6b": "#2a1a3a", "#f5c939": "#d8b04a" } },
+  "options": [
+    { "label": "話す", "say": "……この城まで辿り着くとはな（仮）" }
+  ]
+}
