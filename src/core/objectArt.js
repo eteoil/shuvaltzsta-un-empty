@@ -370,7 +370,7 @@ export function bankWallDots(side, style, { start = false, end = false, run = [0
     rim(opening);
     // 格子は 4 ドットおき（明るい1本と暗い1本）。真ん中の下は受け取り窓口なので格子を抜く
     const SLOT = 7;
-    const SC = -3;   // 受け取り口の真ん中。壁が斜めなので、窓の真ん中より少し左奥に置くと真ん中に見える
+    const SC = -2;   // 受け取り口の真ん中。壁が斜めなので、窓の真ん中より少し左奥に置くと真ん中に見える
     const SLOT_TOP = RAIL + 20;
     const bars = [];
     const shades = [];
