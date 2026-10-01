@@ -11,7 +11,7 @@
   ],
   "start": [3, 1, "sw"],
   "exits": [
-    { "at": [3, 0], "to": "slum_01", "spawn": [4, 7, "ne"], "label": "フェスト" },
+    { "at": [3, 0], "to": "fest_01", "spawn": [4, 7, "ne"], "label": "フェスト" },
     { "at": [3, 4], "to": "slum_dungeon_01", "spawn": [2, 1, "sw"], "label": "スラム" }
   ],
   "npcs": [],

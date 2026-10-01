@@ -11,7 +11,7 @@
   ],
   "start": [1, 2, "se"],
   "exits": [
-    { "at": [0, 2], "to": "slum_01", "spawn": [10, 5, "sw"], "label": "フェスト" },
+    { "at": [0, 2], "to": "fest_01", "spawn": [10, 5, "sw"], "label": "フェスト" },
     { "at": [7, 0], "to": "library_01", "spawn": [3, 4, "ne"], "label": "図書館" },
     { "at": [19, 3], "to": "forest_01", "spawn": [3, 11, "ne"], "label": "森" }
   ],

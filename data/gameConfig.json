@@ -13,7 +13,7 @@
     "width": 480,
     "height": 320
   },
-  "startMap": "slum_01",
+  "startMap": "fest_01",
   "start": {
     "money": 1000,
     "items": { "wild_berry": 2, "mushroom": 2, "antidote": 1 }

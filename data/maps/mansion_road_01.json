@@ -12,7 +12,7 @@
   "start": [3, 3, "ne"],
   "exits": [
     { "at": [3, 0], "to": "mansion_01", "spawn": [3, 4, "ne"], "label": "屋敷" },
-    { "at": [3, 4], "to": "slum_01", "spawn": [2, 3, "se"], "label": "フェスト" }
+    { "at": [3, 4], "to": "fest_01", "spawn": [2, 3, "se"], "label": "フェスト" }
   ],
   "npcs": [],
   "encounters": []
