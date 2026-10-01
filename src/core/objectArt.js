@@ -1,7 +1,7 @@
 // マップに置く物の、コードで描くドット絵（クォータービュー）。1ドット＝1px、線も1ドット。
 // 床のマス（80×40 のひし形）と同じ角度の箱として組み立てる。iso(i, j, z) はマスの中心からのずれ
 // （i・j はマス単位、z は高さのドット）を絵の中の座標にする。i は右下（南東）、j は左下（南西）へ伸びる。
-import { createDots, flat, poly } from './dotArt.js';
+import { createDots, flat, poly, ellipse, any } from './dotArt.js';
 
 const TILE_HALF = [40, 20];   // マスの半分の幅と高さ（data/sprites.json の floor.tile の半分）
 
@@ -41,13 +41,16 @@ export function atmDots() {
   }));
   // 左の面（j = j1 の面）の上の四角
   const onLeft = (j1, i0, i1, z0, z1) => poly([iso(i0, j1, z0), iso(i1, j1, z0), iso(i1, j1, z1), iso(i0, j1, z1)]);
-  // 立てた管（(i, j) に立つ太さ w の筒。z0〜z1）
-  const pipe = (i, j, z0, z1, w) => {
-    const [x0, y0] = iso(i, j, z0);
+  // 立てた円柱（(i, j) に立つ半径 r ドットの筒。z0〜z1）。クォータービューでは、上と下の切り口は横長の楕円（高さは幅の半分）。
+  // 横の面は左が明るく右が暗い。top があれば上の切り口を明るい楕円の面として描き、hole なら中に暗い穴をあける
+  const cylinder = (i, j, z0, z1, r, c, { top = false, hole = false } = {}) => {
+    const [x, y0] = iso(i, j, z0);
     const [, y1] = iso(i, j, z1);
-    return poly([[x0 - w / 2, y0], [x0 + w / 2, y0], [x0 + w / 2, y1], [x0 - w / 2, y1]]);
+    const side = any(poly([[x - r, y1], [x + r, y1], [x + r, y0], [x - r, y0]]), ellipse(x, y0, r, r / 2), ellipse(x, y1, r, r / 2));
+    d.fill(side, (px) => (px + 0.5 < x - r * 0.35 ? c.light : px + 0.5 > x + r * 0.35 ? c.dark : c.base));
+    if (top) d.fill(ellipse(x, y1, r, r / 2), flat(c.light));
+    if (hole) d.fill(ellipse(x, y1, r * 0.6, r * 0.3), flat(COL.slot), { line: false });
   };
-  const metal = (c, light, dark, x0) => (x) => (x < x0 ? light : x > x0 + 1 ? dark : c);
 
   const I0 = -0.3;
   const I1 = 0.2;
@@ -69,16 +72,22 @@ export function atmDots() {
   // 左の面：床から上へ登る銅の管と、バルブの輪
   const PI = -0.06;
   const PJ = J + 0.05;
-  const px = Math.round(iso(PI, PJ, 0)[0]);
-  d.fill(pipe(PI, PJ, 4, 86, 6), metal(COL.copper, COL.copperLight, COL.copperDark, px - 1));
-  for (const z of [16, 38, 66]) d.fill(pipe(PI, PJ, z, z + 3, 8), metal(COL.brass, COL.brassLight, COL.brassDark, px - 2));
+  const copper = { base: COL.copper, light: COL.copperLight, dark: COL.copperDark };
+  const brassRing = { base: COL.brass, light: COL.brassLight, dark: COL.brassDark };
+  // 下から順に、輪（床の台座と留め輪）→ その上の管、と重ねる。管は輪の上面の楕円から出る
+  let z = 0;
+  for (const ring of [0, 16, 38, 66]) {
+    if (ring > z) cylinder(PI, PJ, z, ring, 3, copper);
+    cylinder(PI, PJ, ring, ring + 3, 4.5, brassRing, { top: true });
+    z = ring + 3;
+  }
+  cylinder(PI, PJ, z, 86, 3, copper);
   // 上の真鍮の冠（少し張り出す）と、その上の段
   box(I0 - 0.03, I1 + 0.03, -J - 0.03, J + 0.03, 82, 89, brass);
   box(I0 + 0.05, I1 - 0.04, -J + 0.08, J - 0.08, 89, 93, { left: COL.woodLight, front: COL.wood, top: COL.brassLight });
   // 煙突（奥から立つ銅の管と、頭の輪）
-  const [cx] = iso(-0.16, 0.12, 0);
-  d.fill(pipe(-0.16, 0.12, 92, 106, 5), metal(COL.copper, COL.copperLight, COL.copperDark, Math.round(cx) - 1));
-  d.fill(pipe(-0.16, 0.12, 106, 109, 7), metal(COL.brass, COL.brassLight, COL.brassDark, Math.round(cx) - 2));
+  cylinder(-0.16, 0.12, 92, 105, 2.5, copper);
+  cylinder(-0.16, 0.12, 104, 108, 4, brassRing, { top: true, hole: true });   // 頭の輪と、中の暗い穴
 
   // 正面：圧力計（真鍮の縁の丸い文字盤）
   d.fill(frontDisc(I1, 0, 72, 0.2, 8), flat(COL.brass, COL.brassDark));
