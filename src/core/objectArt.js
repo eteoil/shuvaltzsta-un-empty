@@ -1,7 +1,7 @@
 // マップに置く物の、コードで描くドット絵（クォータービュー）。1ドット＝1px、線も1ドット。
 // 床のマス（80×40 のひし形）と同じ角度の箱として組み立てる。iso(i, j, z) はマスの中心からのずれ
 // （i・j はマス単位、z は高さのドット）を絵の中の座標にする。i は右下（南東）、j は左下（南西）へ伸びる。
-import { createDots, flat, poly, ellipse, any, linePoints, arcPoints, thin } from './dotArt.js';
+import { createDots, flat, poly, ellipse, any, linePoints, arcPoints, LINE } from './dotArt.js';
 
 const TILE_HALF = [40, 20];   // マスの半分の幅と高さ（data/sprites.json の floor.tile の半分）
 
@@ -51,12 +51,30 @@ export function atmDots() {
     d.fill(poly(pts), paint, plain);
     if (framed) edges(pts);
   };
-  // 正面の上の円（面に沿ってつぶれる）と、その縁の線
-  const discPoint = (i1, jc, zc, rj, rz, a) => iso(i1, jc + Math.cos(a) * rj, zc + Math.sin(a) * rz);
-  const frontDisc = (i1, jc, zc, rj, rz, paint) => {
-    d.fill(poly(Array.from({ length: 32 }, (_, k) => discPoint(i1, jc, zc, rj, rz, (k / 32) * Math.PI * 2))), paint, plain);
-    const ring = Array.from({ length: 97 }, (_, k) => discPoint(i1, jc, zc, rj + 0.0125, rz + 0.5, (k / 96) * Math.PI * 2));
-    d.stroke(thin(ring.map(([x, y]) => [Math.floor(x), Math.floor(y)])));
+  // 正面（i = I1 の面）に貼りついた円。面は南東を向いていて、横の向きは画面で 2:1 に傾く。
+  // 面の上の横の長さ h と高さ z は、画面のずれ (dx, dy) から h = -dx × √5 / 2、z = -dx / 2 - dy で出る。
+  // その円（h² + z² ≤ R²）で塗り、縁の線は塗った形の内側の縁（上下左右のどれかが外のドット）にする。左右対称で、角に余分な点が出ない
+  const SQ5 = Math.sqrt(5) / 2;
+  const onFace = (dx, dy) => [-dx * SQ5, -dx / 2 - dy];
+  const faceDisc = (jc, zc, R) => {
+    const [cx, cy] = iso(I1, jc, zc);
+    return (x, y) => { const [h, v] = onFace(x - cx, y - cy); return h * h + v * v <= R * R; };
+  };
+  const rim = (shape, c = LINE) => {
+    const pts = [];
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        if (!shape(x + 0.5, y + 0.5)) continue;
+        if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => !shape(x + a + 0.5, y + b + 0.5))) pts.push([x, y]);
+      }
+    }
+    d.stroke(pts, c);
+  };
+  // 面の上の (h, z)（中心からの横と高さのずれ）→ 画面の点
+  const facePoint = (jc, zc, h, z) => {
+    const [cx, cy] = iso(I1, jc, zc);
+    const dx = -h / SQ5;
+    return [Math.round(cx + dx - 0.5), Math.round(cy - dx / 2 - z - 0.5)];
   };
   // 左の面（j = j1 の面）の上の四角（飾りの帯。線は引かない）
   const onLeft = (j1, i0, i1, z0, z1) => poly([iso(i0, j1, z0), iso(i1, j1, z0), iso(i1, j1, z1), iso(i0, j1, z1)]);
@@ -113,18 +131,14 @@ export function atmDots() {
     z = ring + 3;
   }
   cylinder(PI, PJ, z, 86, 3, copper);
-  // 上の真鍮の冠（少し張り出す）と、その上の段
-  box(I0 - 0.05, I1 + 0.05, -J - 0.05, J + 0.05, 82, 89, brass);
-  box(I0 + 0.05, I1 - 0.05, -J + 0.1, J - 0.1, 89, 93, { left: COL.woodLight, front: COL.wood, top: COL.brassLight });
-  // 煙突：上の段の上面（z 93）の奥寄りに真鍮の台座の輪を乗せ、銅の管はその上から立てる
-  const [CI, CJ] = [-0.1, 0.15];
-  cylinder(CI, CJ, 93, 95, 4, brassRing, { top: true, topColor: COL.brass });
-  cylinder(CI, CJ, 95, 105, 2.5, copper);
-  cylinder(CI, CJ, 104, 108, 4, brassRing, { top: true, hole: true });   // 頭の輪と、中の暗い穴
-
-  // 正面：圧力計（真鍮の縁の丸い文字盤）
-  frontDisc(I1, 0, 72, 0.2, 8, flat(COL.brass, COL.brassDark));
-  frontDisc(I1, 0, 72, 0.15, 6, flat(COL.dial));
+  // 正面：圧力計（真鍮の縁の丸い文字盤）。冠より先に描き、冠との間にすき間をあける
+  const GZ = 70;
+  const outer = faceDisc(0, GZ, 8.5);
+  const dial = faceDisc(0, GZ, 5.5);
+  d.fill(outer, flat(COL.brass), plain);
+  rim(outer);
+  d.fill(dial, flat(COL.dial), plain);
+  rim(dial, COL.brassDark);
   // 正面：琥珀色に光るガラス窓（真鍮の枠）
   frontRect(I1, -0.25, 0.25, 50, 62, flat(COL.brassDark));
   frontRect(I1, -0.2, 0.2, 52, 60, (x, y) => (y % 3 === 0 ? COL.glassLight : COL.glass));
@@ -135,6 +149,16 @@ export function atmDots() {
   frontRect(I1, 0.05, 0.25, 25, 30, flat(COL.brass));
   // 引き出し（お金の出し入れ口。取っ手は真鍮）
   frontRect(I1, -0.25, 0.25, 12, 22, flat(COL.woodDark));
+  // 冠・上の段・煙突は正面の飾りより後に描く（張り出した冠が、正面の上の端を隠す）
+  // 上の真鍮の冠（少し張り出す）と、その上の段
+  box(I0 - 0.05, I1 + 0.05, -J - 0.05, J + 0.05, 82, 89, brass);
+  box(I0 + 0.05, I1 - 0.05, -J + 0.1, J - 0.1, 89, 93, { left: COL.woodLight, front: COL.wood, top: COL.brassLight });
+  // 煙突：上の段の上面（z 93）の奥寄りに真鍮の台座の輪を乗せ、銅の管はその上から立てる
+  const [CI, CJ] = [-0.1, 0.15];
+  cylinder(CI, CJ, 93, 95, 4, brassRing, { top: true, topColor: COL.brass });
+  cylinder(CI, CJ, 95, 105, 2.5, copper);
+  cylinder(CI, CJ, 104, 108, 4, brassRing, { top: true, hole: true });   // 頭の輪と、中の暗い穴
+
   d.finish({ outline: false });
 
   // 鋲（真鍮の縁と冠に、一定の間隔で光る点）
@@ -148,12 +172,12 @@ export function atmDots() {
   // カードの差し込み口の細い穴（縁取りの真ん中を、面に沿って1ドットの線で）
   for (let j = 0.1; j <= 0.2001; j += 0.025) d.put(...round(iso(I1, j, 27.5)), COL.slot);
   // 圧力計の目盛りと針（左上を指す）
-  for (let k = 0; k < 8; k++) {
-    const a = Math.PI * (0.75 + (k / 7) * 1.5);
-    d.put(...round(iso(I1, Math.cos(a) * 0.13, 72 + Math.sin(a) * 5)), COL.tick);
+  for (let k = 0; k < 7; k++) {
+    const a = Math.PI * (1.25 - (k / 6) * 1.5);   // 左下から上を回って右下まで
+    d.put(...facePoint(0, GZ, Math.cos(a) * 4, Math.sin(a) * 4), COL.tick);
   }
-  for (let t = 0; t <= 1; t += 0.2) d.put(...round(iso(I1, 0.1 * t, 72 + 3.5 * t)), COL.needle);
-  d.put(...round(iso(I1, 0, 72)), COL.tick);
+  for (let t = 0; t <= 3; t += 0.5) d.put(...facePoint(0, GZ, -t * 0.7, t * 0.7), COL.needle);   // 針は左上を指す
+  d.put(...facePoint(0, GZ, 0, 0), COL.tick);
   // ガラス窓の中の数字の影（2行）
   for (const [z, j0, j1] of [[57, -0.16, 0.16], [54, -0.16, 0.06]]) {
     for (let j = j0; j <= j1; j += 0.05) d.put(...round(iso(I1, -j, z)), COL.glassDark);
