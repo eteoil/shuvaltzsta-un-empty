@@ -291,7 +291,7 @@ export function bankFloorDots() {
 //   'teller'（窓口。腰の高さのカウンターの上に、真鍮の格子のはまったアーチの窓。奥は明かりのついた事務室で、棚の影が見える）。
 // start・end：壁の端（と、左右の壁が出会う角）に縦の線を引く。
 // 絵の左上は、ne ならマスの上の頂点から (-1, -WALL_H-1)、nw ならマスの上の頂点から (-41, -WALL_H-1) の所
-export const WALL_H = 112;
+export const WALL_H = 160;   // 主人公（約 132 ドット）の頭の上に、頭ひとつ分ほどゆとりがある高さ
 const WALL_COL = {
   ne: { paper: '#3b5e4c', paperDark: '#33503f', stripe: '#7f7a3c', wood: '#7a4530', woodDark: '#5e3322', panel: '#5a311f' },
   nw: { paper: '#2c4739', paperDark: '#263d31', stripe: '#6a6532', wood: '#5e3322', woodDark: '#48271a', panel: '#422316' },
@@ -335,9 +335,10 @@ export function bankWallDots(side, style, { start = false, end = false } = {}) {
     d.fill(band(0, 1, 0, 5), flat(C.woodDark), plain);
     d.fill(band(0.12, 0.88, 10, 32), flat(C.panel), plain);
     rim(band(0.12, 0.88, 10, 32), COL.brassDark);
-    d.fill(band(0, 1, 38, 43), (x, y) => (onWall(x + 0.5, y + 0.5)[1] > 41 ? COL.brassLight : COL.brass), plain);
+    // カウンターの上の真鍮の縁は、ふつうの壁の手すりと同じ太さにし、窓の枠との間に壁紙をのぞかせる
+    d.fill(band(0, 1, 38, 41), (x, y) => (onWall(x + 0.5, y + 0.5)[1] > 39.5 ? COL.brassLight : COL.brass), plain);
     line(0, 38, 1, 38);
-    line(0, 43, 1, 43);
+    line(0, 41, 1, 41);
     // アーチの窓：真鍮の枠、奥は明かりのついた事務室（上ほど明るい）、棚の影、真鍮の格子
     const archTop = (t, w) => 88 + 9 * Math.sqrt(Math.max(0, 1 - ((t - 0.5) / w) ** 2));
     const frame = region((t, z) => t >= 0.08 && t <= 0.92 && z >= 44 && z <= archTop(t, 0.42) + 2);
