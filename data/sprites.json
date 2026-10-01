@@ -104,5 +104,12 @@
       "se": "assets/img/deru_se.png",
       "sw": "assets/img/deru_sw.png"
     }
+  },
+  "floor_bank": {
+    "size": [80, 80],
+    "anchor": [40, 0],
+    "tile": [80, 40],
+    "placeholder": "bankFloor",
+    "frames": { "default": null }
   }
 }

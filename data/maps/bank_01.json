@@ -2,6 +2,7 @@
   "id": "bank_01",
   "kind": "town",
   "name": "銀行（仮）",
+  "floorSprite": "floor_bank",
   "floor": [
     "#######",
     "#######",

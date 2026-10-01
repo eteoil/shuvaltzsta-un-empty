@@ -263,8 +263,10 @@ export class FieldState {
     const { config, assets } = this.game;
     const W = config.screen.width;
     const H = config.screen.height;
-    const floorDef = assets.def('floor');
-    const floorImg = assets.get('floor', 'default');
+    // 床の絵はマップの floorSprite（無ければふつうの floor）。銀行は floor_bank
+    const floorKey = this.map.floorSprite ?? 'floor';
+    const floorDef = assets.def(floorKey);
+    const floorImg = assets.get(floorKey, 'default');
     const tile = floorDef.tile;
 
     let pi = this.p.i;

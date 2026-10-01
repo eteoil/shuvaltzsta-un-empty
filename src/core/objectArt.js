@@ -140,3 +140,66 @@ export function atmDots() {
   d.put(vx, vy, COL.brassLight);
   return d.result();
 }
+
+// 銀行の床（data/sprites.json の floor_bank）。出納機に合わせた、クルミ材の寄木張りに真鍮の象嵌。
+// 形はふつうの床（floor_block.png）と同じ 80×80：上の 80×40 のひし形が床の面、その下が厚み（マップの縁で見える）。
+// 床の面は 2×2 の区画に分け、区画ごとに板の向きを互い違いにする（バスケット編み）。板は1区画に3枚で、色を少しずつ変える。
+// マスの継ぎ目には真鍮の線（隣のマスと二重にならないよう、北東と北西の2辺だけに引く）、真ん中に小さな真鍮のひし形。
+// 厚みはマホガニーで、上の縁は真鍮。左（南西向き）は明るく、右（南東向き）は暗い
+const FLOOR_COL = {
+  planks: ['#5e3a26', '#52321f', '#6a4430'], seam: '#2e1a10', grain: '#46291a',
+  brass: '#c9a14a', brassLight: '#ecd08a', brassDark: '#8a6a2a',
+  left: '#6e3b26', right: '#4e2a1b', leftDark: '#5a3020', rightDark: '#3e2015',
+};
+
+export function bankFloorDots() {
+  const W = 80;
+  const H = 80;
+  const out = Array.from({ length: H }, () => Array(W).fill(null));
+  // 床の面の (x, y) → マスの中の位置 (u, v)。u は北西の辺から南東へ、v は北東の辺から南西へ、どちらも 0〜1
+  const uv = (x, y) => [((x + 0.5 - 40) / 40 + (y + 0.5) / 20) / 2, (-(x + 0.5 - 40) / 40 + (y + 0.5) / 20) / 2];
+  // 板の番号（区画と、区画の中の何枚目か）。区画は u・v の半分ずつ、板の向きは区画ごとに互い違い
+  const plank = (u, v) => {
+    const qu = u < 0.5 ? 0 : 1;
+    const qv = v < 0.5 ? 0 : 1;
+    const alongU = qu === qv;
+    const across = (alongU ? v : u) * 2 % 1;
+    return { id: qu * 2 + qv, n: Math.min(2, Math.floor(across * 3)), alongU, along: (alongU ? u : v) * 2 % 1 };
+  };
+  for (let y = 0; y < 40; y++) {
+    for (let x = 0; x < W; x++) {
+      const [u, v] = uv(x, y);
+      if (u < 0 || v < 0 || u > 1 || v > 1) continue;
+      const p = plank(u, v);
+      let c = FLOOR_COL.planks[(p.id + p.n) % 3];
+      // 木目（板の向きに沿った、ところどころの濃い筋）
+      if (Math.floor(p.along * 9 + p.n * 3 + p.id) % 4 === 0 && (x + y) % 3 === 0) c = FLOOR_COL.grain;
+      // 板の継ぎ目：右か下の隣が別の板なら濃い線
+      const [ru, rv] = uv(x + 1, y);
+      const [du, dv] = uv(x, y + 1);
+      const q = plank(ru, rv);
+      const r = plank(du, dv);
+      if ((q.id !== p.id || q.n !== p.n) || (r.id !== p.id || r.n !== p.n)) c = FLOOR_COL.seam;
+      // 北東・北西の辺に真鍮の象嵌（明るい線と、その内側の影）
+      if (u < 0.026 || v < 0.026) c = FLOOR_COL.brassLight;
+      else if (u < 0.05 || v < 0.05) c = FLOOR_COL.brassDark;
+      // 真ん中の真鍮のひし形
+      const m = Math.abs(u - 0.5) + Math.abs(v - 0.5);
+      if (m < 0.07) c = m < 0.035 ? FLOOR_COL.brassLight : FLOOR_COL.brass;
+      out[y][x] = c;
+    }
+  }
+  // 厚み：左（南西向き）と右（南東向き）の面。上の縁 2 ドットは真鍮、下へ行くほど暗い
+  for (let y = 20; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const left = x < 40;
+      const topY = left ? 20 + x / 2 : 20 + (80 - x) / 2;   // その列の面の上の縁
+      if (y + 0.5 < topY || y + 0.5 > topY + 40 || out[y][x]) continue;
+      const depth = y + 0.5 - topY;
+      if (depth < 2) out[y][x] = left ? FLOOR_COL.brass : FLOOR_COL.brassDark;
+      else if (depth > 30) out[y][x] = left ? FLOOR_COL.leftDark : FLOOR_COL.rightDark;
+      else out[y][x] = left ? FLOOR_COL.left : FLOOR_COL.right;
+    }
+  }
+  return out;
+}

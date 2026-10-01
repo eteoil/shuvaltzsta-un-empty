@@ -1,5 +1,6 @@
 import { loadJSON } from './Data.js';
 import { bunnyCatDots, BUNNY_CAT_ANCHOR } from './bunnyCat.js';
+import { bankFloorDots } from './objectArt.js';
 
 export const WHITE = { id: '__white', all: '#ffffff' };
 
@@ -136,6 +137,7 @@ function placeholder(def, frame) {
   else if (def.placeholder === 'figure') drawFigure(g, w, h, frame);
   else if (def.placeholder === 'slime') drawSlime(g, w, h, frame);
   else if (def.placeholder === 'wolf') drawWolf(g, w, h, frame);
+  else if (def.placeholder === 'bankFloor') drawDots(g, bankFloorDots());   // 銀行の床（core/objectArt.js）
   // バニーキャットは画像（assets/img/{名前}_{向き}.png）が無いときだけ、コードの絵を足元の位置を合わせて描く
   else if (def.placeholder === 'bunnyCat') drawDots(g, bunnyCatDots(def.style, frame), def.anchor[0] - BUNNY_CAT_ANCHOR[0], def.anchor[1] - BUNNY_CAT_ANCHOR[1]);
   return c;
