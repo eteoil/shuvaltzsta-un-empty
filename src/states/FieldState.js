@@ -297,14 +297,22 @@ export class FieldState {
     // 奥の壁（マップの walls）。ne は1行目の各マスの右奥の縁、nw は1列目の各マスの左奥の縁に立つ。床のあと、人より先に描く。
     // 右奥の壁の右端・左奥の壁の手前の端・2つの壁が出会う角に、縦の線を引く
     const walls = this.map.walls;
+    // 同じ種類が続く中での [何番目, 何マス]（窓口の窓は、続いたマス全体に等間隔に並ぶ）
+    const runOf = (list, k) => {
+      let a = k;
+      let b = k;
+      while (a > 0 && list[a - 1] === list[k]) a--;
+      while (b < list.length - 1 && list[b + 1] === list[k]) b++;
+      return [k - a, b - a + 1];
+    };
     if (walls) {
       (walls.nw ?? []).forEach((style, j) => {
         const p = isoTop(0, j, ox, oy, tile);
-        drawWall(g, 'nw', style, p.x, p.y, { start: j === walls.nw.length - 1, end: j === 0 });
+        drawWall(g, 'nw', style, p.x, p.y, { start: j === walls.nw.length - 1, end: j === 0, run: runOf(walls.nw, j) });
       });
       (walls.ne ?? []).forEach((style, i) => {
         const p = isoTop(i, 0, ox, oy, tile);
-        drawWall(g, 'ne', style, p.x, p.y, { end: i === walls.ne.length - 1 });
+        drawWall(g, 'ne', style, p.x, p.y, { end: i === walls.ne.length - 1, run: runOf(walls.ne, i) });
       });
     }
     // マップの色味（砂漠の村）。床だけに掛ける（人より先に描く）
