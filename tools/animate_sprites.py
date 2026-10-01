@@ -3,8 +3,8 @@
     pip install pillow
     python3 tools/animate_sprites.py
 
-入力: assets/img/player_{向き}.png（64×136）
-出力: assets/img/player_{モーション}_{向き}.png（横にコマを並べたシート。1コマ 64×FRAME_H）
+入力: assets/img/an_{向き}.png（64×136）
+出力: assets/img/an_{モーション}_{向き}.png（横にコマを並べたシート。1コマ 64×FRAME_H）
 
 手描きのコマができたら、同じ名前・同じ並びのシートで置き換えればよい。
 """
@@ -158,13 +158,13 @@ def frame(img: Image.Image, face: str, pose) -> Image.Image:
 
 def main() -> None:
     for face in FORWARD:
-        img = Image.open(IMG / f"player_{face}.png").convert("RGBA")
+        img = Image.open(IMG / f"an_{face}.png").convert("RGBA")
         for name, poses in MOTIONS.items():
             sheet = Image.new("RGBA", (W * len(poses), FRAME_H))
             for n, pose in enumerate(poses):
                 sheet.alpha_composite(frame(img, face, pose), (W * n, 0))
-            sheet.save(IMG / f"player_{name}_{face}.png", optimize=True)
-        print(f"player_*_{face}.png  split at x={split_x(img)}")
+            sheet.save(IMG / f"an_{name}_{face}.png", optimize=True)
+        print(f"an_*_{face}.png  split at x={split_x(img)}")
 
 
 if __name__ == "__main__":

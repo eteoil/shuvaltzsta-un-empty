@@ -4,35 +4,35 @@
     "anchor": [32, 128],
     "placeholder": "figure",
     "frames": {
-      "ne": "assets/img/player_ne.png",
-      "nw": "assets/img/player_nw.png",
-      "se": "assets/img/player_se.png",
-      "sw": "assets/img/player_sw.png"
+      "ne": "assets/img/an_ne.png",
+      "nw": "assets/img/an_nw.png",
+      "se": "assets/img/an_se.png",
+      "sw": "assets/img/an_sw.png"
     },
     "anims": {
       "walk": {
         "count": 4,
         "size": [64, 152],
         "anchor": [32, 144],
-        "src": "assets/img/player_walk_{dir}.png"
+        "src": "assets/img/an_walk_{dir}.png"
       },
       "run": {
         "count": 4,
         "size": [64, 152],
         "anchor": [32, 144],
-        "src": "assets/img/player_run_{dir}.png"
+        "src": "assets/img/an_run_{dir}.png"
       },
       "attack": {
         "count": 3,
         "size": [64, 152],
         "anchor": [32, 144],
-        "src": "assets/img/player_attack_{dir}.png"
+        "src": "assets/img/an_attack_{dir}.png"
       },
       "dodge": {
         "count": 3,
         "size": [64, 152],
         "anchor": [32, 144],
-        "src": "assets/img/player_dodge_{dir}.png"
+        "src": "assets/img/an_dodge_{dir}.png"
       }
     }
   },

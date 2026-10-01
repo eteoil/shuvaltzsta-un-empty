@@ -238,7 +238,7 @@ EventTrack は `system`（`system.*` と `bgm.*`）が1本と、敵の一団ご�
 - **NPC を増やす**：`data/npcs/` に JSON を足し、マップの `npcs` に置く。選択肢は `say`・`shop`・`appraise`・`trade`・`buy`（買い取り。`prompt` の `{price}` が値段になる）・`job`（`tired` は同じ日の2回目のセリフ）・`rest`（ベッド。`say` の `{date}` が日付になる）のどれか。どれも無い選択肢は会話を終える。`if.has`（と `if.count`）で持ち物がその数以上あるとき、`if.sellable` で売れる物を持っているときだけ出す選択肢にできる。`sprite` の代わりに `object`（いまは `bed` と `atm`）を書くと家具になる。`hideName` を付けると頭の上に名前を出さない（並んだ出納機）。`say` を文字の並びにすると順に言う（プレストの説明）。`travel`（`to`・`spawn`・`say`）で電車に乗って別のマップへ行ける。`bank`（`deposit` か `withdraw`）で出納機になる（セリフは NPC の `bank`。`ask` の `{step}`・`{bigStep}` は金額の刻み、`done` の `{amount}`・`{balance}` は動かした額と残高、あいさつの `{balance}` は残高）。出せる選択肢が1つだけなら、話しかけるとすぐそれが始まる。`trade.giveCount` で渡す個数を決められる。`trade.prompt` の `{price}` は値段になる。
 - **敵を増やす**：`data/enemies/` に JSON を足し、町のマップの `encounters`（1対1の戦闘）か、ダンジョンの `spawns` から呼ぶ。見た目は `sprite` と `palette`（色の置き換え表）で決まる。`"boss": true` なら毒でも逃げない。`aggro` を書くとザコになり、その距離より遠いとうろつく。
 - **調整する**：テンポ・判定幅・ダメージ・先読み拍数・戦場の広さ・歩く速さは `data/gameConfig.json`。
-- **モーション**：`tools/animate_sprites.py` が静止チップを上半身・左脚・右脚に割り、ずらして歩き（4コマ）・走り（4コマ）・攻撃（3コマ）・回避（3コマ）のシートを作る。1コマの動きはスクリプト内の `MOTIONS` で調整する。手描きのコマができたら、`assets/img/player_{モーション}_{向き}.png` を同じ並びのシートで置き換えればよい（`data/sprites.json` の `anims`）。
+- **モーション**：`tools/animate_sprites.py` が静止チップを上半身・左脚・右脚に割り、ずらして歩き（4コマ）・走り（4コマ）・攻撃（3コマ）・回避（3コマ）のシートを作る。1コマの動きはスクリプト内の `MOTIONS` で調整する。手描きのコマができたら、`assets/img/an_{モーション}_{向き}.png` を同じ並びのシートで置き換えればよい（`data/sprites.json` の `anims`）。
 - **ドット絵を差し替える**：`art/reference/` の画像を差し替えて `python3 tools/extract_sprites.py`（要 Pillow）。画像が無い間は仮の絵で動く。タイトルの線画（`title.png`）は、縮小率・2値化の濃さ・消す範囲（手描きのメニュー文字）をスクリプト内の `TITLE` で調整する。
 
 ブラウザのコンソールで `game` を見ると、今の State・EventTrack・敵AIの選択履歴を覗ける。
