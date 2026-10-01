@@ -1,0 +1,24 @@
+{
+  "id": "bank_teller",
+  "name": "バニーキャット",
+  "hidden": true,
+  "hideName": true,
+  "greet": "いらっしゃいニャ。預金は {balance}ニャ",
+  "options": [
+    { "label": "預ける", "bank": "deposit" },
+    { "label": "引き出す", "bank": "withdraw" },
+    { "label": "やめる", "say": "またどうぞニャ", "cancel": true }
+  ],
+  "bank": {
+    "deposit": {
+      "ask": "いくら預けるニャ？（▲▼：{step}　◀▶：{bigStep}）",
+      "done": "{amount} たしかに預かったニャ（残高 {balance}）",
+      "none": "お金を持ってないみたいニャ……"
+    },
+    "withdraw": {
+      "ask": "いくら引き出すニャ？（▲▼：{step}　◀▶：{bigStep}）",
+      "done": "{amount} どうぞニャ（残高 {balance}）",
+      "none": "預金がないニャ"
+    }
+  }
+}

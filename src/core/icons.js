@@ -179,12 +179,12 @@ export function objectHeight(kind) {
 }
 
 // 壁（マップの walls）。side は 'ne'（右奥）か 'nw'（左奥）、style は 'plain' か 'teller'（窓口）。
-// (x, y) はその壁が立つマスの上の頂点。start・end は壁の端に縦の線を引くか。run は同じ種類が続く中での [何番目, 何マス]
+// (x, y) はその壁が立つマスの上の頂点。start・end は壁の端に縦の線を引くか。near はこのマスにかかる窓口の窓のずれ（マス）
 const wallCache = new Map();
-export function drawWall(g, side, style, x, y, { start = false, end = false, run = [0, 1] } = {}) {
-  const key = `${side}/${style}/${start}/${end}/${run}`;
+export function drawWall(g, side, style, x, y, { start = false, end = false, near = [] } = {}) {
+  const key = `${side}/${style}/${start}/${end}/${near}`;
   if (!wallCache.has(key)) {
-    const rows = bankWallDots(side, style, { start, end, run });
+    const rows = bankWallDots(side, style, { start, end, near });
     const c = document.createElement('canvas');
     c.width = rows[0].length;
     c.height = rows.length;

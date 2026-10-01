@@ -289,7 +289,7 @@ export function bankFloorDots() {
 // side：'ne'（右奥の壁。マスの上の頂点から右の頂点へ。南西を向くので明るい）か 'nw'（左奥の壁。左の頂点から上の頂点へ。暗い）。
 // style：'plain'（下から幅木・腰板・真鍮の手すり・深い緑の壁紙に金の細い縦じま・真鍮の飾り縁）か
 //   'teller'（窓口。カウンターの上に、真鍮の格子のはまったアーチの窓。奥は明かりのついた事務室で、棚の影が見える。格子の下の真ん中に受け取り窓口）。
-// run：[k, n]。続いた teller の n マスのうち k 番目（0 から）。窓は n マスの真ん中に 3n/4 個（切り捨て。1マスなら1個）並ぶ。
+// near：このマスにかかる窓口の窓の、このマスからのずれ（マス。-1・0・1）。窓は窓口のマスの真ん中に立ち、マスより少し広いので隣のマスにもはみ出す。
 // start・end：壁の端（と、左右の壁が出会う角）に縦の線を引く。
 // 絵の左上は、ne ならマスの上の頂点から (-1, -WALL_H-1)、nw ならマスの上の頂点から (-41, -WALL_H-1) の所
 export const WALL_H = 160;   // 主人公（約 132 ドット）の頭の上に、頭ひとつ分ほどゆとりがある高さ
@@ -298,7 +298,7 @@ const WALL_COL = {
   nw: { paper: '#2c4739', paperDark: '#263d31', stripe: '#6a6532', wood: '#5e3322', woodDark: '#48271a', panel: '#422316' },
 };
 
-export function bankWallDots(side, style, { start = false, end = false, run = [0, 1] } = {}) {
+export function bankWallDots(side, style, { start = false, end = false, near = style === 'teller' ? [0] : [] } = {}) {
   const W = 42;
   const H = WALL_H + 22;
   const d = createDots(W, H, { shade: 0 });
@@ -345,15 +345,13 @@ export function bankWallDots(side, style, { start = false, end = false, run = [0
   d.fill(band(0, 1, RAIL, RAIL + 3), (x, y) => (onWall(x + 0.5, y + 0.5)[1] > RAIL + 1.5 ? COL.brassLight : COL.brass), plain);
   line(0, RAIL, 1, RAIL);
   line(0, RAIL + 3, 1, RAIL + 3);
-  if (style === 'teller') {
-    // 続いた窓口の壁（run の n マス）の真ん中に、窓を n の 3/4 個（切り捨て。1マスなら1個）、L ドットおきに並べる。
-    // 窓はマスの境目をまたいでよい。u は、いちばん近い窓の真ん中からの横のずれ（ドット）
-    const [k, n] = run;
-    const m = Math.max(1, Math.floor((3 * n) / 4));
-    const L = Math.min((40 * n) / m, 160 / 3);
-    const O = (40 * n - m * L) / 2;   // 窓の並びの左の余白
-    const win = (t) => Math.min(m - 1, Math.max(0, Math.floor((40 * (k + t) - O) / L)));
-    const uOf = (t) => 40 * (k + t) - O - L * (win(t) + 0.5);
+  if (near.length) {
+    // 窓は窓口のマスの真ん中に1つずつ（L ドット幅のぶん。マスより広いので、隣のマスにはみ出す）。
+    // u は、いちばん近い窓の真ん中からの横のずれ（ドット）
+    const L = 160 / 3;
+    const centers = near.map((c) => 40 * (c + 0.5));
+    const nearest = (t) => centers.reduce((a, c) => (Math.abs(40 * t - c) < Math.abs(40 * t - a) ? c : a));
+    const uOf = (t) => 40 * t - nearest(t);
     const FH = L / 2 - 4;     // 枠の半分の幅
     const OH = FH - 2.4;      // 窓の穴の半分の幅
     const archTop = (u, h) => 122 + 14 * Math.sqrt(Math.max(0, 1 - (u / h) ** 2));
@@ -382,7 +380,7 @@ export function bankWallDots(side, style, { start = false, end = false, run = [0
         const u = uOf(t);
         if (Math.abs(u) > OH - 3) continue;
         if (Math.abs(u - SC) <= SLOT + 2 && z <= SLOT_TOP + 2) continue;
-        const ub = Math.floor(40 * (k + t)) - Math.round(O + L * (win(t) + 0.5));
+        const ub = Math.floor(40 * t) - Math.round(nearest(t));
         const r = (((ub + 2) % 4) + 4) % 4;
         if (r === 0) bars.push([x, y]);
         else if (r === 1) shades.push([x, y]);
