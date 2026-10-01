@@ -14,7 +14,7 @@
   ],
   "start": [3, 4, "ne"],
   "exits": [
-    { "at": [3, 5], "to": "fest_01", "spawn": [1, 5, "se"], "label": "フェストへ" }
+    { "at": [3, 5], "to": "fest_01", "spawn": [5, 5, "se"], "label": "フェストへ" }
   ],
   "npcs": [
     { "id": "shalvis", "at": [3, 0], "dir": "sw", "staff": true },

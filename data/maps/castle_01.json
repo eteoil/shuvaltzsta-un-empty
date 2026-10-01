@@ -13,7 +13,7 @@
   ],
   "start": [4, 5, "ne"],
   "exits": [
-    { "at": [4, 6], "to": "deep_forest_01", "spawn": [7, 11, "ne"], "label": "外へ" }
+    { "at": [4, 6], "to": "forest_01", "spawn": [43, 1, "sw"], "label": "外へ" }
   ],
   "npcs": [
     { "id": "manorov", "at": [5, 1], "dir": "sw" }

@@ -12,7 +12,7 @@
   ],
   "start": [3, 4, "ne"],
   "exits": [
-    { "at": [3, 5], "to": "mansion_road_01", "spawn": [3, 1, "sw"], "label": "外へ" }
+    { "at": [3, 5], "to": "fest_01", "spawn": [2, 3, "se"], "label": "フェストへ" }
   ],
   "npcs": [
     { "id": "delacroix", "at": [4, 1], "dir": "sw" }

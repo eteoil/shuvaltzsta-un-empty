@@ -12,7 +12,7 @@
   ],
   "start": [3, 4, "ne"],
   "exits": [
-    { "at": [3, 5], "to": "fest_01", "spawn": [9, 3, "sw"], "label": "フェストへ" }
+    { "at": [3, 5], "to": "fest_01", "spawn": [13, 3, "sw"], "label": "フェストへ" }
   ],
   "npcs": [
     { "id": "al_b_berry", "at": [4, 1], "dir": "sw" }

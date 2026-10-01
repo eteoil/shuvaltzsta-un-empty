@@ -18,9 +18,14 @@ import { BattleState } from './BattleState.js';
 //   話しかけると、NPC が先に立って出口へ歩き、主人公はその後ろをついて歩く（その間は操作できない）。
 //   NPC は出口の手前で脇へよけ、主人公が出口に乗って終わる。歩く間は escort.sound の音を鳴らし続ける
 // - 出口の hole は穴（奈落へ落ちる）。マップの fallIn は、主人公が上から落ちてきて始まる
+// - マップの warps は、同じマップの中の別の場所へ移るマス（森の崖）。乗ると暗くなって to のマスへ移り、
+//   fall なら上から落ちてくる、slide なら崖を滑り落ちてくる。ダンジョンは続くので、リザルトもスコアも分かれない
+// - マップの areas（from〜to の四角）ごとに、名前（左上の帯）と色味（tint）を変えられる（森と深い森）
 const ESCORT_SEC = 0.34;         // 鬼灯と歩く1マスの秒数
 const ESCORT_SOUND_SEC = 1.3;    // 歩く間に音を鳴らす間隔
 const FALL_SEC = 0.7;            // 落ちてくる秒数
+const WARP_SEC = 0.3;            // 崖へ乗ってから暗くなるまで（と、明るくなるまで）の秒数
+const SLIDE_SEC = 0.6;           // 崖を滑り落ちてくる秒数
 
 export class DungeonState extends BattleState {
   name = STATES.DUNGEON;
@@ -39,6 +44,8 @@ export class DungeonState extends BattleState {
     for (const n of this.npcs) loadJSON(`data/npcs/${n.id}.json`).then((def) => { n.def = def; });
     this.escort = null;
     this.fall = map.fallIn ? { t: -game.config.field.fadeSec } : null;   // 暗い画面が明けてから落ち始める
+    this.warp = null;
+    this.slide = null;
   }
 
   setupStage() {
@@ -61,15 +68,47 @@ export class DungeonState extends BattleState {
     const { clock, bgm, config } = this.game;
     this.beats.start(bgm.play('battle', clock.now + 0.1, config.bgm.battle.loopFromBar));
     this.phase = 'fight';
-    this.banner = { text: this.map.name, beat: this.fightBeat, steady: true };
+    this.banner = { text: this.areaName(), beat: this.fightBeat, steady: true };
   }
 
-  // 主人公・生きている敵・出口のそばには物を置かない
+  // 主人公・生きている敵・出口・崖のそばには物を置かない
   nearSomeone(i, j) {
     const near = ([a, b]) => Math.abs(a - i) <= 1 && Math.abs(b - j) <= 1;
     return near([this.player.i, this.player.j])
       || Object.values(this.actors).some((a) => !a.unit.dead && near([a.i, a.j]))
-      || (this.map.exits ?? []).some((e) => near(e.at));
+      || (this.map.exits ?? []).some((e) => near(e.at))
+      || (this.map.warps ?? []).some((w) => near(w.at));
+  }
+
+  // 主人公のいる場所（マップの areas）。無ければ null
+  area() {
+    const { i, j } = this.tile;
+    return (this.map.areas ?? []).find((a) => i >= a.from[0] && i <= a.to[0] && j >= a.from[1] && j <= a.to[1]) ?? null;
+  }
+
+  areaName() {
+    return this.area()?.name ?? this.map.name;
+  }
+
+  warpAt(i, j) {
+    return (this.map.warps ?? []).find((w) => w.at[0] === i && w.at[1] === j) ?? null;
+  }
+
+  // 崖に乗った。暗くなりきったら to のマスへ移し、落ちてくる（fall）か滑り落ちてくる（slide）
+  updateWarp(dt) {
+    const w = this.warp;
+    w.t += dt;
+    if (!w.moved && w.t >= WARP_SEC) {
+      w.moved = true;
+      const before = this.areaName();
+      const [i, j, dir] = w.to.to;
+      Object.assign(this.player, { i, j, dir, move: null });
+      this.cam = null;
+      if (w.to.fall) this.fall = { t: 0 };
+      if (w.to.slide) this.slide = { t: 0 };
+      if (this.areaName() !== before) this.banner = { text: this.areaName(), beat: this.beats.currentBeat, steady: true };
+    }
+    if (w.t >= WARP_SEC * 2) this.warp = null;
   }
 
   exitAt(i, j) {
@@ -78,6 +117,11 @@ export class DungeonState extends BattleState {
 
   update(dt, presses) {
     this.fadeIn = Math.max(0, this.fadeIn - dt);
+    if (this.warp) this.updateWarp(dt);
+    if (this.slide) {
+      this.slide.t += dt;
+      if (this.slide.t >= SLIDE_SEC) { this.slide = null; this.game.sfx.play('step'); }
+    }
     if (this.fall) {
       this.fall.t += dt;
       if (this.fall.t >= FALL_SEC) { this.fall = null; this.game.sfx.play('block'); this.shakeAt = performance.now(); }
@@ -98,6 +142,12 @@ export class DungeonState extends BattleState {
   }
 
   onStep() {
+    const warp = this.warpAt(this.player.i, this.player.j);
+    if (warp && !this.outcome) {
+      this.warp = { to: warp, t: 0, moved: false };
+      this.game.sfx.play(warp.slide ? 'dodge' : 'miss');
+      return;
+    }
     const exit = this.exitAt(this.player.i, this.player.j);
     if (!exit || this.outcome) return;
     this.exitTaken = exit;
@@ -226,17 +276,28 @@ export class DungeonState extends BattleState {
 
   // 鬼灯と歩いている間と、落ちてくる間は操作できない
   walk(dt) {
-    if (this.fall) return;
+    if (this.fall || this.warp || this.slide) return;
     if (this.escort) { this.stepEscort(dt); return; }
     super.walk(dt);
   }
 
   onPress(press) {
-    if ((this.escort || this.fall) && press.btn !== 'pause' && press.btn !== 'start' && this.phase !== 'result') return;
+    if ((this.escort || this.fall || this.warp || this.slide) && press.btn !== 'pause' && press.btn !== 'start' && this.phase !== 'result') return;
     super.onPress(press);
   }
 
+  // 滑り落ちてくる：左上（崖の上）から斜めに
+  playerShift() {
+    if (!this.slide) return 0;
+    const k = 1 - this.slide.t / SLIDE_SEC;
+    return -Math.round(90 * k);
+  }
+
   playerLift() {
+    if (this.slide) {
+      const k = 1 - this.slide.t / SLIDE_SEC;
+      return -Math.round(120 * k);
+    }
     if (!this.fall) return 0;
     const k = 1 - Math.max(0, this.fall.t) / FALL_SEC;
     return -Math.round(260 * k * k);
@@ -269,9 +330,11 @@ export class DungeonState extends BattleState {
 
   render(g) {
     super.render(g);
-    if (this.fadeIn <= 0) return;
     const { width: W, height: H } = this.game.config.screen;
-    g.fillStyle = `rgba(0,0,0,${this.fadeIn / this.game.config.field.fadeSec})`;
+    const w = this.warp;
+    const dark = Math.max(this.fadeIn / this.game.config.field.fadeSec, w ? (w.t < WARP_SEC ? w.t / WARP_SEC : 2 - w.t / WARP_SEC) : 0);
+    if (dark <= 0) return;
+    g.fillStyle = `rgba(0,0,0,${Math.min(1, dark)})`;
     g.fillRect(0, 0, W, H);
   }
 
@@ -296,16 +359,17 @@ export class DungeonState extends BattleState {
   }
 
   hudTitle(unit) {
-    return unit ? unit.def.name : this.map.name;
+    return unit ? unit.def.name : this.areaName();
   }
 
   drawArena(g, ox, oy, tile, floorDef) {
     super.drawArena(g, ox, oy, tile, floorDef);
     const W = this.game.config.screen.width;
     const H = this.game.config.screen.height;
-    // 森の色味は床だけに掛ける（人より先に描く）
-    if (this.map.tint) {
-      g.fillStyle = this.map.tint;
+    // 森の色味は床だけに掛ける（人より先に描く）。areas があれば、主人公のいる場所の色味
+    const tint = this.area()?.tint ?? this.map.tint;
+    if (tint) {
+      g.fillStyle = tint;
       g.fillRect(-4, -4, W + 8, H + 8);
     }
     const ms = performance.now();
@@ -313,6 +377,10 @@ export class DungeonState extends BattleState {
       const pos = isoCenter(e.at[0], e.at[1], ox, oy, tile);
       if (e.hole) drawHole(g, pos.x, pos.y, e.label, ms);
       else drawExit(g, pos.x, pos.y, e.label, ms);
+    }
+    for (const w of this.map.warps ?? []) {
+      const pos = isoCenter(w.at[0], w.at[1], ox, oy, tile);
+      drawHole(g, pos.x, pos.y, w.label, ms);
     }
     for (const p of this.drops.spots) {
       const pos = isoCenter(p.at[0], p.at[1], ox, oy, tile);
