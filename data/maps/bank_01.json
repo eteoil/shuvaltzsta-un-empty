@@ -4,30 +4,30 @@
   "name": "銀行（仮）",
   "floorSprite": "floor_bank",
   "walls": {
-    "ne": ["plain", "plain", "teller", "plain", "teller", "plain", "teller", "plain"],
+    "ne": ["plain", "plain", "plain", "teller", "plain", "teller", "plain", "teller", "plain"],
     "nw": ["plain", "plain", "plain", "plain", "plain"]
   },
   "floor": [
-    "########",
-    "########",
-    "########",
-    "########",
-    "########",
-    "...#...."
+    "#########",
+    "#########",
+    "#########",
+    "#########",
+    "#########",
+    "....#...."
   ],
-  "start": [3, 4, "ne"],
+  "start": [4, 4, "ne"],
   "exits": [
-    { "at": [3, 5], "to": "slum_01", "spawn": [3, 7, "ne"], "label": "スラムへ" }
+    { "at": [4, 5], "to": "slum_01", "spawn": [3, 7, "ne"], "label": "スラムへ" }
   ],
   "npcs": [
     { "id": "presto", "at": [1, 0], "dir": "sw" },
     { "id": "bank_atm", "at": [0, 1], "dir": "se" },
     { "id": "bank_atm", "at": [0, 2], "dir": "se" },
     { "id": "bank_atm", "at": [0, 3], "dir": "se" },
-    { "id": "bank_teller", "at": [2, -1], "dir": "sw" },
-    { "id": "bank_teller", "at": [4, -1], "dir": "sw" },
-    { "id": "bank_teller", "at": [6, -1], "dir": "sw" },
-    { "id": "banker", "at": [7, 1], "dir": "sw" }
+    { "id": "bank_teller", "at": [3, -1], "dir": "sw" },
+    { "id": "bank_teller", "at": [5, -1], "dir": "sw" },
+    { "id": "bank_teller", "at": [7, -1], "dir": "sw" },
+    { "id": "banker", "at": [8, 1], "dir": "sw" }
   ],
   "encounters": []
 }
