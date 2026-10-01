@@ -160,6 +160,10 @@ export function atmDots() {
   cylinder(CI, CJ, 104, 108, 4, brassRing, { top: true, hole: true });   // 頭の輪と、中の暗い穴
 
   d.finish({ outline: false });
+  // 計器の縁の、外へ1ドット飛び出して見える右上と左下の角を内側へ寄せる（中心からのずれで書く）
+  const [gx, gy] = round(iso(I1, 0, GZ));
+  for (const [dx, dy] of [[5, -7], [-6, 6]]) d.put(gx + dx, gy + dy, LINE);
+  for (const [dx, dy] of [[5, -8], [6, -7], [-7, 6]]) d.put(gx + dx, gy + dy, COL.wood);
 
   // 鋲（真鍮の縁と冠に、一定の間隔で光る点）
   for (let z = 14; z <= 78; z += 10) {
