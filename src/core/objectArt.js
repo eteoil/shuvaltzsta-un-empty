@@ -370,6 +370,7 @@ export function bankWallDots(side, style, { start = false, end = false, run = [0
     rim(opening);
     // 格子は 4 ドットおき（明るい1本と暗い1本）。真ん中の下は受け取り窓口なので格子を抜く
     const SLOT = 7;
+    const SC = -3;   // 受け取り口の真ん中。壁が斜めなので、窓の真ん中より少し左奥に置くと真ん中に見える
     const SLOT_TOP = RAIL + 20;
     const bars = [];
     const shades = [];
@@ -380,7 +381,7 @@ export function bankWallDots(side, style, { start = false, end = false, run = [0
         const [t, z] = onWall(x + 0.5, y + 0.5);
         const u = uOf(t);
         if (Math.abs(u) > OH - 3) continue;
-        if (Math.abs(u) <= SLOT + 2 && z <= SLOT_TOP + 2) continue;
+        if (Math.abs(u - SC) <= SLOT + 2 && z <= SLOT_TOP + 2) continue;
         const ub = Math.floor(40 * (k + t)) - Math.round(O + L * (win(t) + 0.5));
         const r = (((ub + 2) % 4) + 4) % 4;
         if (r === 0) bars.push([x, y]);
@@ -390,13 +391,13 @@ export function bankWallDots(side, style, { start = false, end = false, run = [0
     d.stroke(bars, COL.brass);
     d.stroke(shades, COL.brassDark);
     // 受け取り窓口：格子の下の真ん中にあいた口。真鍮の小さな枠と、手すりの上に張り出した受け皿
-    const slotFrame = region((t, z) => Math.abs(uOf(t)) <= SLOT + 2 && z >= RAIL + 6 && z <= SLOT_TOP + 2);
-    const slot = region((t, z) => Math.abs(uOf(t)) <= SLOT && z >= RAIL + 6 && z <= SLOT_TOP);
+    const slotFrame = region((t, z) => Math.abs(uOf(t) - SC) <= SLOT + 2 && z >= RAIL + 6 && z <= SLOT_TOP + 2);
+    const slot = region((t, z) => Math.abs(uOf(t) - SC) <= SLOT && z >= RAIL + 6 && z <= SLOT_TOP);
     d.fill(slotFrame, (x, y) => (onWall(x + 0.5, y + 0.5)[1] > SLOT_TOP + 1 ? COL.brassLight : COL.brass), plain);
     rim(slotFrame);
     d.fill(slot, (x, y) => (onWall(x + 0.5, y + 0.5)[1] > SLOT_TOP - 3 ? '#1e1009' : '#2a170e'), plain);
     rim(slot);
-    const tray = region((t, z) => Math.abs(uOf(t)) <= SLOT + 4 && z >= RAIL - 1 && z <= RAIL + 6);
+    const tray = region((t, z) => Math.abs(uOf(t) - SC) <= SLOT + 4 && z >= RAIL - 1 && z <= RAIL + 6);
     d.fill(tray, (x, y) => (onWall(x + 0.5, y + 0.5)[1] > RAIL + 4 ? COL.brassLight : COL.brass), plain);
     rim(tray);
   }
