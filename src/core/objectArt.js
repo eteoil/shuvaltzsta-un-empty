@@ -43,12 +43,12 @@ export function atmDots() {
   const onLeft = (j1, i0, i1, z0, z1) => poly([iso(i0, j1, z0), iso(i1, j1, z0), iso(i1, j1, z1), iso(i0, j1, z1)]);
   // 立てた円柱（(i, j) に立つ半径 r ドットの筒。z0〜z1）。クォータービューでは、上と下の切り口は横長の楕円（高さは幅の半分）。
   // 横の面は左が明るく右が暗い。top があれば上の切り口を明るい楕円の面として描き、hole なら中に暗い穴をあける
-  const cylinder = (i, j, z0, z1, r, c, { top = false, hole = false } = {}) => {
+  const cylinder = (i, j, z0, z1, r, c, { top = false, hole = false, topLine = true, topColor = c.light } = {}) => {
     const [x, y0] = iso(i, j, z0);
     const [, y1] = iso(i, j, z1);
     const side = any(poly([[x - r, y1], [x + r, y1], [x + r, y0], [x - r, y0]]), ellipse(x, y0, r, r / 2), ellipse(x, y1, r, r / 2));
     d.fill(side, (px) => (px + 0.5 < x - r * 0.35 ? c.light : px + 0.5 > x + r * 0.35 ? c.dark : c.base));
-    if (top) d.fill(ellipse(x, y1, r, r / 2), flat(c.light));
+    if (top) d.fill(ellipse(x, y1, r, r / 2), flat(topColor), { line: topLine });
     if (hole) d.fill(ellipse(x, y1, r * 0.6, r * 0.3), flat(COL.slot), { line: false });
   };
 
@@ -86,8 +86,10 @@ export function atmDots() {
   box(I0 - 0.03, I1 + 0.03, -J - 0.03, J + 0.03, 82, 89, brass);
   box(I0 + 0.05, I1 - 0.04, -J + 0.08, J - 0.08, 89, 93, { left: COL.woodLight, front: COL.wood, top: COL.brassLight });
   // 煙突（奥から立つ銅の管と、頭の輪）
-  cylinder(-0.16, 0.12, 92, 105, 2.5, copper);
-  cylinder(-0.16, 0.12, 104, 108, 4, brassRing, { top: true, hole: true });   // 頭の輪と、中の暗い穴
+  // 上の段の上面（z 93）に、真鍮の台座の輪を乗せ、管はその上から立てる
+  cylinder(-0.2, 0.04, 93, 95, 5, brassRing, { top: true, topLine: false, topColor: COL.brass });
+  cylinder(-0.2, 0.04, 95, 105, 2.5, copper);
+  cylinder(-0.2, 0.04, 104, 108, 4, brassRing, { top: true, hole: true });   // 頭の輪と、中の暗い穴
 
   // 正面：圧力計（真鍮の縁の丸い文字盤）
   d.fill(frontDisc(I1, 0, 72, 0.2, 8), flat(COL.brass, COL.brassDark));
