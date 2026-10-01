@@ -1,5 +1,5 @@
 import { COLORS, text } from './draw.js';
-import { ATM, atmDots } from './objectArt.js';
+import { ATM, atmDots, bankWallDots, WALL_H } from './objectArt.js';
 
 // マップに置く物のドット絵。画像ファイルは使わずコードで描く（落ちている物はこれが本番の絵）。
 // 1文字＝1ドット、'.' は透明。落ちている物は2倍、家具は3倍で表示
@@ -176,4 +176,26 @@ export function drawObject(g, kind, x, y) {
 export function objectHeight(kind) {
   if (ART[kind]) return artImage(kind).height;
   return (OBJECTS[kind]?.length ?? 0) * 3;
+}
+
+// 壁（マップの walls）。side は 'ne'（右奥）か 'nw'（左奥）、style は 'plain' か 'teller'（窓口）。
+// (x, y) はその壁が立つマスの上の頂点。start・end は壁の端に縦の線を引くか
+const wallCache = new Map();
+export function drawWall(g, side, style, x, y, { start = false, end = false } = {}) {
+  const key = `${side}/${style}/${start}/${end}`;
+  if (!wallCache.has(key)) {
+    const rows = bankWallDots(side, style, { start, end });
+    const c = document.createElement('canvas');
+    c.width = rows[0].length;
+    c.height = rows.length;
+    const cg = c.getContext('2d');
+    rows.forEach((row, j) => row.forEach((col, i) => {
+      if (!col) return;
+      cg.fillStyle = col;
+      cg.fillRect(i, j, 1, 1);
+    }));
+    wallCache.set(key, c);
+  }
+  const dx = side === 'ne' ? -1 : -41;
+  g.drawImage(wallCache.get(key), Math.round(x + dx), Math.round(y - WALL_H - 1));
 }

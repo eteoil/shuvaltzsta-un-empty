@@ -3,7 +3,7 @@ import { loadEnemy, loadJSON, loadMap } from '../core/Data.js';
 import { COLORS, text, panel, sprite, gauge, isoTop, isoCenter } from '../core/draw.js';
 import { loadItems, money, addItem } from '../core/Items.js';
 import { poisonTick, regen, regenStep } from '../core/Hero.js';
-import { drawPickup, drawExit, drawObject, objectHeight } from '../core/icons.js';
+import { drawPickup, drawExit, drawObject, objectHeight, drawWall } from '../core/icons.js';
 import { Pickups } from '../core/Pickups.js';
 import { passTime, isNight, isMapOpen, eventsOf } from '../core/Calendar.js';
 import { DIRS, FACE_STEP } from '../core/grid.js';
@@ -293,6 +293,19 @@ export class FieldState {
         if (p.x < -tile[0] || p.x > W + tile[0] || p.y > H || p.y < -floorDef.size[1]) continue;
         sprite(g, floorImg, floorDef, p.x, p.y);
       }
+    }
+    // 奥の壁（マップの walls）。ne は1行目の各マスの右奥の縁、nw は1列目の各マスの左奥の縁に立つ。床のあと、人より先に描く。
+    // 右奥の壁の右端・左奥の壁の手前の端・2つの壁が出会う角に、縦の線を引く
+    const walls = this.map.walls;
+    if (walls) {
+      (walls.nw ?? []).forEach((style, j) => {
+        const p = isoTop(0, j, ox, oy, tile);
+        drawWall(g, 'nw', style, p.x, p.y, { start: j === walls.nw.length - 1, end: j === 0 });
+      });
+      (walls.ne ?? []).forEach((style, i) => {
+        const p = isoTop(i, 0, ox, oy, tile);
+        drawWall(g, 'ne', style, p.x, p.y, { end: i === walls.ne.length - 1 });
+      });
     }
     // マップの色味（砂漠の村）。床だけに掛ける（人より先に描く）
     if (this.map.tint) {

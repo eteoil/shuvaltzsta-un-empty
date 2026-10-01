@@ -284,3 +284,91 @@ export function bankFloorDots() {
   }
   return out;
 }
+
+// 銀行の壁（マップの walls）。床のマス1つぶんの奥の縁に立つ、高さ WALL_H の壁。出納機や床と同じ、マホガニーと真鍮。
+// side：'ne'（右奥の壁。マスの上の頂点から右の頂点へ。南西を向くので明るい）か 'nw'（左奥の壁。左の頂点から上の頂点へ。暗い）。
+// style：'plain'（下から幅木・腰板・真鍮の手すり・深い緑の壁紙に金の細い縦じま・真鍮の飾り縁）か
+//   'teller'（窓口。腰の高さのカウンターの上に、真鍮の格子のはまったアーチの窓。奥は明かりのついた事務室で、棚の影が見える）。
+// start・end：壁の端（と、左右の壁が出会う角）に縦の線を引く。
+// 絵の左上は、ne ならマスの上の頂点から (-1, -WALL_H-1)、nw ならマスの上の頂点から (-41, -WALL_H-1) の所
+export const WALL_H = 112;
+const WALL_COL = {
+  ne: { paper: '#3b5e4c', paperDark: '#33503f', stripe: '#7f7a3c', wood: '#7a4530', woodDark: '#5e3322', panel: '#5a311f' },
+  nw: { paper: '#2c4739', paperDark: '#263d31', stripe: '#6a6532', wood: '#5e3322', woodDark: '#48271a', panel: '#422316' },
+};
+
+export function bankWallDots(side, style, { start = false, end = false } = {}) {
+  const W = 42;
+  const H = WALL_H + 22;
+  const d = createDots(W, H, { shade: 0 });
+  const C = WALL_COL[side];
+  const plain = { line: false };
+  // 壁の面の上の (t, z)（t は壁の始まりから終わりまで 0〜1、z は床からの高さ）→ 絵の中の点
+  const p = (t, z) => [1 + 40 * t, 1 + WALL_H + (side === 'ne' ? 20 * t : 20 - 20 * t) - z];
+  const band = (t0, t1, z0, z1) => poly([p(t0, z0), p(t1, z0), p(t1, z1), p(t0, z1)]);
+  const line = (t0, z0, t1, z1, c = LINE) => d.stroke(linePoints(...p(t0, z0), ...p(t1, z1)), c);
+  // 面の上の形の内側の縁に線を引く
+  const rim = (shape, c = LINE) => {
+    const pts = [];
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        if (shape(x + 0.5, y + 0.5) && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => !shape(x + a + 0.5, y + b + 0.5))) pts.push([x, y]);
+      }
+    }
+    d.stroke(pts, c);
+  };
+  // 画面の点 → 面の上の (t, z)
+  const onWall = (x, y) => {
+    const t = (x - 1) / 40;
+    return [t, 1 + WALL_H + (side === 'ne' ? 20 * t : 20 - 20 * t) - y];
+  };
+  const region = (f) => (x, y) => { const [t, z] = onWall(x, y); return t >= 0 && t <= 1 && f(t, z); };
+
+  // 壁紙と、金の細い縦じま
+  d.fill(band(0, 1, 0, WALL_H), (x) => (Math.abs(((x - 1) % 10) - 5) < 0.5 ? C.stripe : C.paper), plain);
+  // 真鍮の飾り縁（てっぺん）
+  d.fill(band(0, 1, WALL_H - 7, WALL_H), (x, y) => (onWall(x + 0.5, y + 0.5)[1] > WALL_H - 3 ? COL.brassLight : COL.brass), plain);
+  line(0, WALL_H - 7, 1, WALL_H - 7);
+  if (style === 'teller') {
+    // カウンター（腰板と同じ高さまで）とその上の真鍮の縁
+    d.fill(band(0, 1, 0, 38), flat(C.wood), plain);
+    d.fill(band(0, 1, 0, 5), flat(C.woodDark), plain);
+    d.fill(band(0.12, 0.88, 10, 32), flat(C.panel), plain);
+    rim(band(0.12, 0.88, 10, 32), COL.brassDark);
+    d.fill(band(0, 1, 38, 43), (x, y) => (onWall(x + 0.5, y + 0.5)[1] > 41 ? COL.brassLight : COL.brass), plain);
+    line(0, 38, 1, 38);
+    line(0, 43, 1, 43);
+    // アーチの窓：真鍮の枠、奥は明かりのついた事務室（上ほど明るい）、棚の影、真鍮の格子
+    const archTop = (t, w) => 88 + 9 * Math.sqrt(Math.max(0, 1 - ((t - 0.5) / w) ** 2));
+    const frame = region((t, z) => t >= 0.08 && t <= 0.92 && z >= 44 && z <= archTop(t, 0.42) + 2);
+    const opening = region((t, z) => t >= 0.14 && t <= 0.86 && z >= 46 && z <= archTop(t, 0.36));
+    d.fill(frame, flat(COL.brass), plain);
+    rim(frame);
+    d.fill(opening, (x, y) => {
+      const z = onWall(x + 0.5, y + 0.5)[1];
+      if (Math.abs(z - 62) < 0.6 || Math.abs(z - 76) < 0.6) return '#2a170e';   // 棚
+      return z > 82 ? '#8a5a2a' : z > 70 ? '#6a4220' : '#4a2c16';
+    }, plain);
+    rim(opening);
+    for (let t = 0.22; t <= 0.79; t += 0.095) {
+      d.stroke(linePoints(...p(t, 47), ...p(t, archTop(t, 0.36) - 1)), COL.brass);
+      d.stroke(linePoints(...p(t, 47).map((v, k) => (k === 0 ? v + 1 : v)), ...p(t, archTop(t, 0.36) - 1).map((v, k) => (k === 0 ? v + 1 : v))), COL.brassDark);
+    }
+  } else {
+    // 幅木と腰板（羽目板の枠）と真鍮の手すり
+    d.fill(band(0, 1, 0, 38), flat(C.wood), plain);
+    d.fill(band(0, 1, 0, 5), flat(C.woodDark), plain);
+    d.fill(band(0.12, 0.88, 10, 32), flat(C.panel), plain);
+    rim(band(0.12, 0.88, 10, 32), COL.brassDark);
+    d.fill(band(0, 1, 38, 41), (x, y) => (onWall(x + 0.5, y + 0.5)[1] > 39.5 ? COL.brassLight : COL.brass), plain);
+    line(0, 38, 1, 38);
+    line(0, 41, 1, 41);
+  }
+  // 床との境目、てっぺん、端の縦の線
+  line(0, 0, 1, 0);
+  line(0, WALL_H, 1, WALL_H);
+  if (start) line(0, 0, 0, WALL_H);
+  if (end) line(1, 0, 1, WALL_H);
+  d.finish({ outline: false });
+  return d.result();
+}
