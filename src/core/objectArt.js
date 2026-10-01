@@ -43,12 +43,13 @@ export function atmDots() {
   const onLeft = (j1, i0, i1, z0, z1) => poly([iso(i0, j1, z0), iso(i1, j1, z0), iso(i1, j1, z1), iso(i0, j1, z1)]);
   // 立てた円柱（(i, j) に立つ半径 r ドットの筒。z0〜z1）。クォータービューでは、上と下の切り口は横長の楕円（高さは幅の半分）。
   // 横の面は左が明るく右が暗い。top があれば上の切り口を明るい楕円の面として描き、hole なら中に暗い穴をあける
-  const cylinder = (i, j, z0, z1, r, c, { top = false, hole = false, topLine = true, topColor = c.light } = {}) => {
+  // group を揃えた筒どうし（煙突の台座と管）は、境目に線を引かず色の違いで分ける
+  const cylinder = (i, j, z0, z1, r, c, { top = false, hole = false, topLine = true, topColor = c.light, group = null } = {}) => {
     const [x, y0] = iso(i, j, z0);
     const [, y1] = iso(i, j, z1);
     const side = any(poly([[x - r, y1], [x + r, y1], [x + r, y0], [x - r, y0]]), ellipse(x, y0, r, r / 2), ellipse(x, y1, r, r / 2));
-    d.fill(side, (px) => (px + 0.5 < x - r * 0.35 ? c.light : px + 0.5 > x + r * 0.35 ? c.dark : c.base));
-    if (top) d.fill(ellipse(x, y1, r, r / 2), flat(topColor), { line: topLine });
+    d.fill(side, (px) => (px + 0.5 < x - r * 0.35 ? c.light : px + 0.5 > x + r * 0.35 ? c.dark : c.base), { group });
+    if (top) d.fill(ellipse(x, y1, r, r / 2), flat(topColor), { line: topLine, group });
     if (hole) d.fill(ellipse(x, y1, r * 0.6, r * 0.3), flat(COL.slot), { line: false });
   };
 
@@ -60,7 +61,8 @@ export function atmDots() {
   const iron = { left: COL.ironLight, front: COL.iron, top: COL.ironLight };
 
   // 鉄の台と、マホガニーの本体
-  box(I0 - 0.03, I1 + 0.03, -J - 0.03, J + 0.03, 0, 7, iron);
+  // 左（管の側）だけ広くして、管の台座が乗るようにする
+  box(I0 - 0.03, I1 + 0.03, -J - 0.03, J + 0.15, 0, 7, iron);
   box(I0, I1, -J, J, 7, 82, wood);
   // 真鍮の縁（角の縦の帯と、上下の横の帯）。木の上に重ねるので線は引かない
   const trim = { line: false };
@@ -71,12 +73,12 @@ export function atmDots() {
   d.fill(onLeft(J, I0, I1, 7, 10), flat(COL.brass), trim);
   // 左の面：床から上へ登る銅の管と、バルブの輪
   const PI = -0.06;
-  const PJ = J + 0.05;
+  const PJ = J + 0.08;
   const copper = { base: COL.copper, light: COL.copperLight, dark: COL.copperDark };
   const brassRing = { base: COL.brass, light: COL.brassLight, dark: COL.brassDark };
-  // 下から順に、輪（床の台座と留め輪）→ その上の管、と重ねる。管は輪の上面の楕円から出る
-  let z = 0;
-  for (const ring of [0, 16, 38, 66]) {
+  // 下から順に、輪（鉄の台の上の台座と留め輪）→ その上の管、と重ねる。管は輪の上面の楕円から出る
+  let z = 7;
+  for (const ring of [7, 20, 40, 66]) {
     if (ring > z) cylinder(PI, PJ, z, ring, 3, copper);
     cylinder(PI, PJ, ring, ring + 3, 4.5, brassRing, { top: true });
     z = ring + 3;
@@ -87,8 +89,8 @@ export function atmDots() {
   box(I0 + 0.05, I1 - 0.04, -J + 0.08, J - 0.08, 89, 93, { left: COL.woodLight, front: COL.wood, top: COL.brassLight });
   // 煙突（奥から立つ銅の管と、頭の輪）
   // 上の段の上面（z 93）に、真鍮の台座の輪を乗せ、管はその上から立てる
-  cylinder(-0.2, 0.04, 93, 95, 5, brassRing, { top: true, topLine: false, topColor: COL.brass });
-  cylinder(-0.2, 0.04, 95, 105, 2.5, copper);
+  cylinder(-0.2, 0.04, 93, 95, 5, brassRing, { top: true, topLine: false, topColor: COL.brass, group: 'chimney' });
+  cylinder(-0.2, 0.04, 95, 105, 2.5, copper, { group: 'chimney' });
   cylinder(-0.2, 0.04, 104, 108, 4, brassRing, { top: true, hole: true });   // 頭の輪と、中の暗い穴
 
   // 正面：圧力計（真鍮の縁の丸い文字盤）
@@ -99,8 +101,7 @@ export function atmDots() {
   d.fill(onFront(I1, -0.23, 0.23, 52, 60), (x, y) => (y % 3 === 0 ? COL.glassLight : COL.glass), { line: false });
   // キーの台（正面から手前へ張り出す真鍮の台）
   box(I1, I1 + 0.18, -0.3, 0.3, 40, 46, brass);
-  // カードの差し込み口と、引き出し（取っ手は真鍮）
-  d.fill(onFront(I1, 0.06, 0.26, 33, 35), flat(COL.slot));
+  // 引き出し（お金の出し入れ口。取っ手は真鍮）
   d.fill(onFront(I1, -0.27, 0.27, 14, 28), flat(COL.woodDark));
   d.finish();
 
