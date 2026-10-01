@@ -4,7 +4,7 @@ import { loadItems, money, count, addItem, takeItem } from '../core/Items.js';
 import { loadJSON } from '../core/Data.js';
 import { setTotalScore } from '../core/Level.js';
 import { cure } from '../core/Hero.js';
-import { dateText, eventsOf, isNight, isMapOpen, passTime, sleep } from '../core/Calendar.js';
+import { dateText, eventsOf, isNight, isMapOpen, isOpen, passTime, sleep } from '../core/Calendar.js';
 import { CafeJobState } from './CafeJobState.js';
 import { ShopState } from './ShopState.js';
 import { settle } from '../core/Bank.js';
@@ -162,6 +162,8 @@ export class TalkState {
   menu() {
     const s = this.session;
     if (this.npc.closedText && !isMapOpen(this.game.calendar, s.map, s.day, s.minute)) { this.say(this.npc.closedText); return; }
+    // NPC の hours（[開く, 閉まる] の分）の外は、closedText を名前札なしで言って終わる（銀行の窓口。相手がいないので地の文）
+    if (this.npc.hours && !isOpen(this.npc.hours, s.minute)) { this.say(this.npc.closedText, undefined, ''); return; }
     const shown = this.visibleOptions();
     const main = shown.filter((o) => !o.cancel);
     if (main.length === 1) { this.act(main[0]); return; }

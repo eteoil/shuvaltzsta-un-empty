@@ -91,6 +91,9 @@
       "nw": "assets/img/doru_nw.png",
       "se": "assets/img/doru_se.png",
       "sw": "assets/img/doru_sw.png"
+    },
+    "anims": {
+      "idle": { "count": 3, "size": [64, 96], "anchor": [32, 88], "fps": 4, "src": "assets/img/doru_idle_{dir}.png" }
     }
   },
   "deru": {
@@ -111,5 +114,12 @@
     "tile": [80, 40],
     "placeholder": "bankFloor",
     "frames": { "default": null }
+  },
+  "bunnyTeller": {
+    "size": [37, 33],
+    "anchor": [18, 33],
+    "frames": {
+      "sw": "assets/img/teller_peek.png"
+    }
   }
 }

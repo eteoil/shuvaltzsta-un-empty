@@ -289,6 +289,7 @@ export function bankFloorDots() {
 // side：'ne'（右奥の壁。マスの上の頂点から右の頂点へ。南西を向くので明るい）か 'nw'（左奥の壁。左の頂点から上の頂点へ。暗い）。
 // style：'plain'（下から幅木・腰板・真鍮の手すり・深い緑の壁紙に金の細い縦じま・真鍮の飾り縁）か
 //   'teller'（窓口。カウンターの上に、真鍮の格子のはまったアーチの窓。奥は明かりのついた事務室で、棚の影が見える。格子の下の真ん中に受け取り窓口）。
+// peek：窓の奥からのぞく顔（色の2次元の並び。窓口が開いているときだけ）。
 // near：このマスにかかる窓口の窓の、このマスからのずれ（マス。-1・0・1）。窓は窓口のマスの真ん中に立ち、マスより少し広いので隣のマスにもはみ出す。
 // start・end：壁の端（と、左右の壁が出会う角）に縦の線を引く。
 // 絵の左上は、ne ならマスの上の頂点から (-1, -WALL_H-1)、nw ならマスの上の頂点から (-41, -WALL_H-1) の所
@@ -298,7 +299,7 @@ const WALL_COL = {
   nw: { paper: '#2c4739', paperDark: '#263d31', stripe: '#6a6532', wood: '#5e3322', woodDark: '#48271a', panel: '#422316' },
 };
 
-export function bankWallDots(side, style, { start = false, end = false, near = style === 'teller' ? [0] : [] } = {}) {
+export function bankWallDots(side, style, { start = false, end = false, near = style === 'teller' ? [0] : [], peek = null } = {}) {
   const W = 42;
   const H = WALL_H + 22;
   const d = createDots(W, H, { shade: 0 });
@@ -366,10 +367,28 @@ export function bankWallDots(side, style, { start = false, end = false, near = s
       return z > 108 ? '#8a5a2a' : z > 88 ? '#76491f' : z > RAIL + 16 ? '#5e3a1c' : '#4a2c16';
     }, plain);
     rim(opening);
-    // 格子は 4 ドットおき（明るい1本と暗い1本）。真ん中の下は受け取り窓口なので格子を抜く
     const SLOT = 7;
     const SC = -2;   // 受け取り口の真ん中。壁が斜めなので、窓の真ん中より少し左奥に置くと真ん中に見える
     const SLOT_TOP = RAIL + 20;
+    // 奥からのぞくバニーキャット（peek：色の2次元の並び。null は透明）。受け取り口の上に目が来るよう置き、
+    // 受け取り口の枠より下（奥のカウンターに隠れる所）と窓の縁には描かない。格子はこの上に描く
+    const face = new Set();   // 顔を描いた点（その上の格子は細くして、顔が見えるようにする）
+    if (peek) {
+      const pw = peek[0].length;
+      const ph = peek.length;
+      for (let y = 0; y < H; y++) {
+        for (let x = 1; x <= 40; x++) {
+          if (!opening(x + 0.5, y + 0.5) || [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => !opening.all(x + a + 0.5, y + b + 0.5))) continue;
+          const [t, z] = onWall(x + 0.5, y + 0.5);
+          if (z <= SLOT_TOP + 3) continue;
+          const c = nearest(t) + SC;
+          const [cx, cy] = p(c / 40, SLOT_TOP + 3);
+          const c2 = peek[y - (Math.round(cy) + 2 - ph)]?.[x - (Math.round(cx) - Math.floor(pw / 2))];
+          if (c2) { d.stroke([[x, y]], c2); face.add(`${x},${y}`); }
+        }
+      }
+    }
+    // 格子は 4 ドットおき（明るい1本と暗い1本）。真ん中の下は受け取り窓口なので格子を抜く
     const bars = [];
     const shades = [];
     for (let y = 0; y < H; y++) {
@@ -383,7 +402,7 @@ export function bankWallDots(side, style, { start = false, end = false, near = s
         const ub = Math.floor(40 * t) - Math.round(nearest(t));
         const r = (((ub + 2) % 4) + 4) % 4;
         if (r === 0) bars.push([x, y]);
-        else if (r === 1) shades.push([x, y]);
+        else if (r === 1 && !face.has(`${x},${y}`)) shades.push([x, y]);
       }
     }
     d.stroke(bars, COL.brass);
