@@ -1,7 +1,7 @@
 // マップに置く物の、コードで描くドット絵（クォータービュー）。1ドット＝1px、線も1ドット。
 // 床のマス（80×40 のひし形）と同じ角度の箱として組み立てる。iso(i, j, z) はマスの中心からのずれ
 // （i・j はマス単位、z は高さのドット）を絵の中の座標にする。i は右下（南東）、j は左下（南西）へ伸びる。
-import { createDots, flat, poly, ellipse, any, linePoints, LINE } from './dotArt.js';
+import { createDots, flat, poly, ellipse, any, linePoints, arcPoints, LINE } from './dotArt.js';
 
 const TILE_HALF = [40, 20];   // マスの半分の幅と高さ（data/sprites.json の floor.tile の半分）
 
@@ -60,11 +60,11 @@ export function atmDots() {
     const [cx, cy] = iso(I1, jc, zc);
     return (x, y) => { const [h, v] = onFace(x - cx, y - cy); return h * h + v * v <= R * R; };
   };
-  const rim = (shape, c = LINE, keep = () => true) => {
+  const rim = (shape, c = LINE) => {
     const pts = [];
     for (let y = 0; y < H; y++) {
       for (let x = 0; x < W; x++) {
-        if (!shape(x + 0.5, y + 0.5) || !keep(x, y)) continue;
+        if (!shape(x + 0.5, y + 0.5)) continue;
         if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => !shape(x + a + 0.5, y + b + 0.5))) pts.push([x, y]);
       }
     }
@@ -80,19 +80,21 @@ export function atmDots() {
   const onLeft = (j1, i0, i1, z0, z1) => poly([iso(i0, j1, z0), iso(i1, j1, z0), iso(i1, j1, z1), iso(i0, j1, z1)]);
   const onFront = (i1, j0, j1, z0, z1) => poly([iso(i1, j0, z0), iso(i1, j1, z0), iso(i1, j1, z1), iso(i1, j0, z1)]);
   // 立てた円柱（(i, j) に立つ半径 r ドットの筒。z0〜z1）。クォータービューでは、上と下の切り口は横長の楕円（高さは幅の半分）。
-  // 横の面は左が明るく右が暗い。線は塗った形の内側の縁から取る（形の外へはみ出さない）。
-  // onTop（輪や台座の上から出る管）なら、根元には線を引かず色の違いで分ける（輪の上面の縁の線と2本並ばないように）。
-  // top があれば上の切り口を明るい楕円の面として塗って縁を引き、hole なら中に暗い穴をあける
-  const cylinder = (i, j, z0, z1, r, c, { top = false, hole = false, topColor = c.light, onTop = false } = {}) => {
+  // 横の面は左が明るく右が暗い。線は、横の縦線2本と、下の切り口の手前半分の弧（下の物との境目）。
+  // top があれば上の切り口を明るい楕円の面として塗り、その縁を一周引く。hole なら中に暗い穴をあける
+  const cylinder = (i, j, z0, z1, r, c, { top = false, hole = false, topColor = c.light } = {}) => {
     const [x, y0] = iso(i, j, z0);
     const [, y1] = iso(i, j, z1);
     const side = any(poly([[x - r, y1], [x + r, y1], [x + r, y0], [x - r, y0]]), ellipse(x, y0, r, r / 2), ellipse(x, y1, r, r / 2));
     d.fill(side, (px) => (px + 0.5 < x - r * 0.35 ? c.light : px + 0.5 > x + r * 0.35 ? c.dark : c.base), plain);
-    rim(side, LINE, onTop ? (px, py) => py + 0.5 < y0 - 0.5 : undefined);
+    const left = Math.ceil(x - r - 0.5) - 1;
+    const right = Math.floor(x + r - 0.5) + 1;
+    d.stroke(linePoints(left, y1, left, y0));
+    d.stroke(linePoints(right, y1, right, y0));
+    d.stroke(arcPoints(x, y0, r + 0.5, r / 2 + 0.5, 0, Math.PI));
     if (top) {
-      const face = ellipse(x, y1, r, r / 2);
-      d.fill(face, flat(topColor), plain);
-      rim(face);
+      d.fill(ellipse(x, y1, r, r / 2), flat(topColor), plain);
+      d.stroke(arcPoints(x, y1, r + 0.5, r / 2 + 0.5));
     }
     if (hole) d.fill(ellipse(x, y1, r * 0.6, r * 0.3), flat(COL.slot), plain);
   };
@@ -124,11 +126,11 @@ export function atmDots() {
   // 下から順に、輪（鉄の台の上の台座と留め輪）→ その上の管、と重ねる。管は輪の上面の楕円から出る
   let z = 7;
   for (const ring of [7, 20, 40, 66]) {
-    if (ring > z) cylinder(PI, PJ, z, ring, 4, copper, { onTop: true });
-    cylinder(PI, PJ, ring, ring + 3, 5.5, brassRing, { top: true });
+    if (ring > z) cylinder(PI, PJ, z, ring, 3, copper);
+    cylinder(PI, PJ, ring, ring + 3, 4.5, brassRing, { top: true });
     z = ring + 3;
   }
-  cylinder(PI, PJ, z, 86, 4, copper, { onTop: true });
+  cylinder(PI, PJ, z, 86, 3, copper);
   // 正面：圧力計（真鍮の縁の丸い文字盤）。冠より先に描き、冠との間にすき間をあける
   const GZ = 70;
   const outer = faceDisc(0, GZ, 8);
@@ -154,10 +156,26 @@ export function atmDots() {
   // 煙突：上の段の上面（z 93）の奥寄りに真鍮の台座の輪を乗せ、銅の管はその上から立てる
   const [CI, CJ] = [-0.1, 0.15];
   cylinder(CI, CJ, 93, 95, 4, brassRing, { top: true, topColor: COL.brass });
-  cylinder(CI, CJ, 95, 105, 2.5, copper, { onTop: true });
+  cylinder(CI, CJ, 95, 105, 2.5, copper);
   cylinder(CI, CJ, 104, 108, 4, brassRing, { top: true, hole: true });   // 頭の輪と、中の暗い穴
 
   d.finish({ outline: false });
+  // 管の留め輪と根元の台座は、計算した線だと管の根元の弧と輪の上面の縁が2本並び、右へはみ出すので、手で描いたドットで上書きする。
+  // 上から：輪の奥の縁・管の左右に見える上面・管の根元の線・管の手前の上面・側面（2行）・下の縁。'.' はそのまま
+  const RING = [
+    '.##CCcckk##.',
+    '#L#CCcckk#d#',
+    '#LL######dd#',
+    '#LLLLLLLLbb#',
+    '##bbbbbbdd##',
+    '.#bbbbbbdd#.',
+    '..########..',
+  ];
+  const ringColors = { '#': LINE, C: COL.copperLight, c: COL.copper, k: COL.copperDark, L: COL.brassLight, b: COL.brass, d: COL.brassDark };
+  for (const ring of [7, 20, 40, 66]) {
+    const [rx, ry] = round(iso(PI, PJ, ring + 3));
+    d.stamp(RING, rx - 6, ry - 1, ringColors);
+  }
   // 計器の縁の、外へ1ドット飛び出して見える右上と左下の角を内側へ寄せる（中心からのずれで書く）
   const [gx, gy] = round(iso(I1, 0, GZ));
   for (const [dx, dy] of [[5, -7], [-6, 6]]) d.put(gx + dx, gy + dy, LINE);
