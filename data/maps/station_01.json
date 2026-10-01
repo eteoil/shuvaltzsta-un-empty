@@ -14,7 +14,7 @@
     { "at": [3, 4], "to": "slum_01", "spawn": [4, 1, "sw"], "label": "スラムへ" }
   ],
   "npcs": [
-    { "id": "cheru", "at": [3, 1], "dir": "sw" }
+    { "id": "doru", "at": [3, 1], "dir": "sw" }
   ],
   "encounters": []
 }

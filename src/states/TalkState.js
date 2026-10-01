@@ -284,7 +284,7 @@ export class TalkState {
     ], no);
   }
 
-  // 電車で別の町へ（駅員のチェルーとドルー）。say を言ってから、会話を閉じて暗転し、to のマップの spawn へ
+  // 電車で別の町へ（駅員のチェルー・ドルー・デルー）。say を言ってから、会話を閉じて暗転し、to のマップの spawn へ
   travel(t) {
     const go = () => {
       this.close();

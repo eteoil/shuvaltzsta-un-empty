@@ -1,7 +1,7 @@
 {
   "id": "bank_01",
   "kind": "town",
-  "name": "銀行（仮）",
+  "name": "クーベルバンク",
   "floorSprite": "floor_bank",
   "walls": {
     "ne": ["plain", "plain", "plain", "teller", "plain", "teller", "plain", "teller", "plain", "plain"],
