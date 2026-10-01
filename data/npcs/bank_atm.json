@@ -13,7 +13,8 @@
     "deposit": {
       "ask": "いくら預けますか？（▲▼：{step}　◀▶：{bigStep}）",
       "done": "{amount}を預けた（残高 {balance}）",
-      "none": "預けるお金を持っていない"
+      "none": "預けるお金を持っていない",
+      "short": "{min}から預けられる"
     },
     "withdraw": {
       "ask": "いくら引き出しますか？（▲▼：{step}　◀▶：{bigStep}）",

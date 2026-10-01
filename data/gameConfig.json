@@ -69,7 +69,8 @@
     "fadeSec": 0.4
   },
   "bank": {
-    "interestPerDay": 0.005,
+    "interestPerMonth": 0.05,
+    "min": 100,
     "step": 100,
     "bigStep": 1000
   },

@@ -366,8 +366,8 @@ export class FieldState {
       text(g, c.label, pos.x, Math.max(30, pos.y - height - 16), { size: 12, align: 'center', color: COLORS.brass });
     }
 
-    // 夜は少し暗く（演出）
-    if (this.night) {
+    // 夜は少し暗く（演出）。brightNight のマップ（白夜砂漠の村）は夜も明るいまま
+    if (this.night && !this.map.brightNight) {
       g.fillStyle = 'rgba(10,14,40,0.38)';
       g.fillRect(0, 0, W, H);
     }

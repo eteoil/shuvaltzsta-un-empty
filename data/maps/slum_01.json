@@ -19,7 +19,7 @@
     { "at": [8, 8], "to": "drugstore_01", "spawn": [2, 3, "ne"], "label": "薬屋", "closedText": "薬屋は閉まっている（仮）" },
     { "at": [11, 5], "to": "forest_01", "spawn": [3, 11, "ne"], "label": "森" },
     { "at": [5, 0], "to": "station_01", "spawn": [3, 3, "ne"], "label": "駅" },
-    { "at": [3, 8], "to": "bank_01", "spawn": [4, 4, "ne"], "label": "銀行" }
+    { "at": [2, 2], "to": "bank_01", "spawn": [4, 4, "ne"], "label": "銀行" }
   ],
   "npcs": [
     { "id": "kou", "at": [10, 6], "dir": "sw", "restDay": true }

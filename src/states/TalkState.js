@@ -170,7 +170,7 @@ export class TalkState {
     const cancel = shown.find((o) => o.cancel);
     let greet = this.night && this.npc.nightGreet ? this.npc.nightGreet : this.npc.greet;
     // 出納機のあいさつの {balance} は預金の残高（利息はここで付ける）
-    if (this.npc.bank) greet = greet.replace('{balance}', money(settle(s, this.game.config).balance));
+    if (this.npc.bank) greet = greet.replace('{balance}', money(settle(s, this.game.config, this.game.calendar).balance));
     this.choose(greet, shown.map((o) => ({ label: o.label, run: () => this.act(o) })), cancel ? () => this.act(cancel) : undefined);
   }
 
@@ -296,16 +296,20 @@ export class TalkState {
 
   // 銀行の出納機。mode は deposit（預ける）か withdraw（引き出す）。セリフは NPC の bank
   // 金額は十字で選ぶ（最初は全部。上下で bank.step、左右で bank.bigStep ずつ）。B ではそのまま終わる
+  // 動かせるのは bank.min（100$）から。持っているお金が bank.min に届かなければ預けられない（short）。
+  // 預金が bank.min に届かないときは、残った預金を全部引き出せる
   bank(mode) {
-    const b = settle(this.session, this.game.config);
+    const b = settle(this.session, this.game.config, this.game.calendar);
     const t = this.npc.bank[mode];
     const deposit = mode === 'deposit';
     const max = deposit ? this.session.money : b.balance;
     if (max <= 0) { this.say(t.none); return; }
-    const { step, bigStep } = this.game.config.bank;
+    const { step, bigStep, min: least } = this.game.config.bank;
+    if (deposit && max < least) { this.say(t.short.replace('{min}', money(least))); return; }
+    const min = Math.min(least, max);
     this.say(t.ask.replace('{step}', money(step)).replace('{bigStep}', money(bigStep)), null);
     this.counter = {
-      n: max, max, money: true, step, bigStep,
+      n: max, min, max, money: true, step, bigStep,
       run: (n) => {
         this.session.money += deposit ? -n : n;
         b.balance += deposit ? n : -n;
@@ -382,10 +386,10 @@ export class TalkState {
       if (typing && (btn === 'a' || btn === 'b')) { this.shownAt = -1e9; continue; }
       const k = this.counter;
       if (k) {
-        // 金額：上下で step、左右で bigStep ずつ。1〜max で止まる
+        // 金額：上下で step、左右で bigStep ずつ。min〜max で止まる
         if (k.money && DPAD_STEP[btn]) {
           const d = btn === 'up' ? k.step : btn === 'down' ? -k.step : btn === 'right' ? k.bigStep : -k.bigStep;
-          k.n = Math.max(1, Math.min(k.max, k.n + d));
+          k.n = Math.max(k.min, Math.min(k.max, k.n + d));
           this.game.sfx.play('select');
         // 上・右で1個増やし、下・左で1個減らす（端まで行くと反対の端へ）
         } else if (DPAD_STEP[btn]) {

@@ -15,7 +15,8 @@
     "deposit": {
       "ask": "いくら預けるニャ？（▲▼：{step}　◀▶：{bigStep}）",
       "done": "{amount} たしかに預かったニャ（残高 {balance}）",
-      "none": "お金を持ってないみたいニャ……"
+      "none": "お金を持ってないみたいニャ……",
+      "short": "{min}から預かるニャ"
     },
     "withdraw": {
       "ask": "いくら引き出すニャ？（▲▼：{step}　◀▶：{bigStep}）",

@@ -17,7 +17,7 @@
   ],
   "start": [4, 4, "ne"],
   "exits": [
-    { "at": [4, 5], "to": "slum_01", "spawn": [3, 7, "ne"], "label": "スラムへ" }
+    { "at": [4, 5], "to": "slum_01", "spawn": [3, 2, "se"], "label": "スラムへ" }
   ],
   "npcs": [
     { "id": "presto", "at": [1, 0], "dir": "sw" },

@@ -3,6 +3,7 @@
   "kind": "town",
   "name": "白夜砂漠の村（仮）",
   "tint": "rgba(236,186,96,0.26)",
+  "brightNight": true,
   "floor": [
     "..######..",
     ".########.",
