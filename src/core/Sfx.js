@@ -50,6 +50,32 @@ export class Sfx {
     osc.stop(t + dur + 0.02);
   }
 
+  // ビブラートのかかった音（freq から slide へ下がりながら、rate 回/秒・depth Hz で揺れる）
+  wobble(freq, dur, { type = 'triangle', vol = 0.4, when, delay = 0, slide = freq, rate = 7, depth = 30 } = {}) {
+    const ctx = this.ready(when, () => this.wobble(freq, dur, { type, vol, when, delay, slide, rate, depth }));
+    if (!ctx) return;
+    const t = Math.max(when ?? ctx.currentTime, ctx.currentTime) + delay;
+    const osc = ctx.createOscillator();
+    const lfo = ctx.createOscillator();
+    const lfoGain = ctx.createGain();
+    const env = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t);
+    osc.frequency.exponentialRampToValueAtTime(slide, t + dur);
+    lfo.frequency.value = rate;
+    lfoGain.gain.value = depth;
+    lfo.connect(lfoGain).connect(osc.frequency);
+    env.gain.setValueAtTime(0.001, t);
+    env.gain.exponentialRampToValueAtTime(vol, t + 0.03);
+    env.gain.setValueAtTime(vol, t + dur * 0.6);
+    env.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(env).connect(this.out(ctx));
+    osc.start(t);
+    lfo.start(t);
+    osc.stop(t + dur + 0.02);
+    lfo.stop(t + dur + 0.02);
+  }
+
   noise(dur, { vol = 0.5, when, delay = 0 } = {}) {
     const ctx = this.ready(when, () => this.noise(dur, { vol, when, delay }));
     if (!ctx) return;
@@ -104,6 +130,12 @@ export class Sfx {
       case 'poison':
         this.tone(330, 0.3, { type: 'sawtooth', vol: 0.25, when, slide: 110 });
         return this.tone(349, 0.3, { type: 'square', vol: 0.15, when, delay: 0.08, slide: 98 });
+      // 鬼灯が連れて行ってくれるときの「ホヨヨ〜ン」。ホ（高め）・ヨ・ヨ（少し下がる）・〜ン（揺れながら下がって伸びる）
+      case 'hoyoyon':
+        this.tone(784, 0.1, { type: 'triangle', vol: 0.35, when });
+        this.tone(659, 0.09, { type: 'triangle', vol: 0.35, when, delay: 0.12 });
+        this.tone(698, 0.09, { type: 'triangle', vol: 0.35, when, delay: 0.23 });
+        return this.wobble(660, 0.75, { vol: 0.35, when, delay: 0.34, slide: 392, rate: 8, depth: 40 });
       case 'step': return this.tone(180, 0.03, { type: 'triangle', vol: 0.25, when });
       case 'perfect': return this.tone(1320, 0.08, { vol: 0.35, when });
       case 'good': return this.tone(880, 0.07, { vol: 0.3, when });

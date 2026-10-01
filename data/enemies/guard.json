@@ -1,0 +1,25 @@
+{
+  "id": "guard",
+  "name": "看守",
+  "hp": 60,
+  "aggro": 4,
+  "faints": true,
+  "patterns": [
+    "guard_idle",
+    "guard_wander",
+    "guard_approach",
+    "guard_strike",
+    "guard_sweep",
+    "guard_slam",
+    "guard_feint",
+    "guard_retreat"
+  ],
+  "actors": [
+    {
+      "id": "guard",
+      "name": "看守",
+      "sprite": "guard",
+      "palette": null
+    }
+  ]
+}

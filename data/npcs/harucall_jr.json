@@ -1,0 +1,9 @@
+{
+  "id": "harucall_jr",
+  "name": "ハルコールJr.",
+  "sprite": "player",
+  "palette": { "id": "harucall_jr", "map": { "#394660": "#2e2a24", "#187fc4": "#5a2a4a", "#801e6b": "#2a2a33", "#f5c939": "#c9a24a" } },
+  "options": [
+    { "label": "話す", "travel": { "to": "prison_01", "spawn": [0, 0, "se"], "say": "……きみには、しばらく檻の中にいてもらうよ（仮）" } }
+  ]
+}

@@ -21,7 +21,7 @@
   ],
   "start": [3, 11, "ne"],
   "exits": [
-    { "at": [1, 12], "to": "slum_01", "spawn": [10, 5, "sw"], "label": "スラムへ" }
+    { "at": [1, 12], "to": "library_road_01", "spawn": [7, 1, "sw"], "label": "道へ" }
   ],
   "spawns": [
     { "enemy": "slime", "at": [5, 1] },

@@ -1,6 +1,8 @@
 import { loadJSON } from './Data.js';
 import { bunnyCatDots, BUNNY_CAT_ANCHOR } from './bunnyCat.js';
 import { bankFloorDots } from './objectArt.js';
+import { guardDots } from './guardArt.js';
+import { hozukiDots } from './hozukiArt.js';
 
 export const WHITE = { id: '__white', all: '#ffffff' };
 
@@ -139,9 +141,19 @@ function placeholder(def, frame) {
   else if (def.placeholder === 'wolf') drawWolf(g, w, h, frame);
   else if (def.placeholder === 'bankFloor') drawDots(g, bankFloorDots());   // 銀行の床（core/objectArt.js）
   // バニーキャットは画像（assets/img/{名前}_{向き}.png）が無いときだけ、コードの絵を足元の位置を合わせて描く
+  // 監獄の看守（core/guardArt.js）。南西は前向き、北東は後ろ向き、南東・北西はその左右反転。faint は気絶した姿
+  else if (def.placeholder === 'guard') {
+    const dir = frame.split('_').find((p) => ['ne', 'nw', 'se', 'sw'].includes(p)) ?? 'sw';
+    const view = frame === 'faint' ? 'faint' : dir.startsWith('n') ? 'back' : 'front';
+    drawDots(g, flipIf(guardDots(view), dir === 'se' || dir === 'nw'));
+  }
+  // 奈落の鬼灯（core/hozukiArt.js）。後ろ姿は見せないので、東向き（se・ne）は左右反転、西向きはそのまま
+  else if (def.placeholder === 'hozuki') drawDots(g, flipIf(hozukiDots(), frame.endsWith('e')));
   else if (def.placeholder === 'bunnyCat') drawDots(g, bunnyCatDots(def.style, frame), def.anchor[0] - BUNNY_CAT_ANCHOR[0], def.anchor[1] - BUNNY_CAT_ANCHOR[1]);
   return c;
 }
+
+const flipIf = (dots, flip) => (flip ? dots.map((r) => r.slice().reverse()) : dots);
 
 // 色の2次元配列（null は透明）を1ドット＝1px で描く
 function drawDots(g, dots, dx = 0, dy = 0) {

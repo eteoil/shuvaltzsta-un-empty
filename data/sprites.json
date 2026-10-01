@@ -114,5 +114,17 @@
     "tile": [80, 40],
     "placeholder": "bankFloor",
     "frames": { "default": null }
+  },
+  "guard": {
+    "size": [64, 136],
+    "anchor": [32, 128],
+    "placeholder": "guard",
+    "frames": { "ne": null, "nw": null, "se": null, "sw": null, "faint": null }
+  },
+  "hozuki": {
+    "size": [80, 160],
+    "anchor": [40, 152],
+    "placeholder": "hozuki",
+    "frames": { "ne": null, "nw": null, "se": null, "sw": null }
   }
 }

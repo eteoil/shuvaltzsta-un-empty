@@ -15,7 +15,9 @@
     "..######.."
   ],
   "start": [4, 2, "ne"],
-  "exits": [],
+  "exits": [
+    { "at": [9, 4], "to": "desert_dungeon_01", "spawn": [12, 10, "nw"], "label": "砂漠" }
+  ],
   "npcs": [
     { "id": "deru", "at": [4, 1], "dir": "sw" }
   ],

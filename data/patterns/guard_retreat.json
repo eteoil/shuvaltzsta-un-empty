@@ -1,0 +1,16 @@
+{
+  "id": "guard_retreat",
+  "length": 4,
+  "tags": [
+    "retreat"
+  ],
+  "events": [
+    {
+      "offset": 0,
+      "type": "enemy.move",
+      "payload": {
+        "away": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "id": "hozuki",
+  "name": "鬼灯",
+  "sprite": "hozuki",
+  "escort": { "sound": "hoyoyon" }
+}

@@ -116,6 +116,35 @@ export function drawExit(g, x, y, label, ms, locked = false) {
   if (label) text(g, label, x, y - 36, { size: 12, align: 'center', color: locked ? COLORS.muted : COLORS.signal });
 }
 
+// 穴（ダンジョンの出口の hole。奈落へ落ちる）。床のマスと同じ角度の、暗い底の見えない穴
+export function drawHole(g, x, y, label, ms) {
+  const pulse = 0.5 + 0.5 * Math.sin(ms / 400);
+  g.save();
+  g.beginPath();
+  g.moveTo(x, y - 17);
+  g.lineTo(x + 36, y);
+  g.lineTo(x, y + 17);
+  g.lineTo(x - 36, y);
+  g.closePath();
+  g.fillStyle = '#05040a';
+  g.fill();
+  g.lineWidth = 2;
+  g.strokeStyle = `rgba(150,110,200,${0.35 + 0.35 * pulse})`;
+  g.stroke();
+  g.beginPath();
+  g.moveTo(x - 36, y);
+  g.lineTo(x, y - 17);
+  g.lineTo(x + 36, y);
+  g.lineTo(x + 28, y + 2);
+  g.lineTo(x, y - 11);
+  g.lineTo(x - 28, y + 2);
+  g.closePath();
+  g.fillStyle = '#2a2236';
+  g.fill();
+  g.restore();
+  if (label) text(g, label, x, y - 36, { size: 12, align: 'center', color: COLORS.muted });
+}
+
 // 家具（マップの npcs に object で置く物）
 const OBJECTS = {
   bed: [

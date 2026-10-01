@@ -901,12 +901,15 @@ export class BattleState {
 
   drawPeople(g, beat, ox, oy, tile, pp, ap) {
     const { assets } = this.game;
-    const people = [{ id: 'player', sprite: 'player', frame: this.player.dir, palette: null, i: pp.i, j: pp.j, down: this.hero.hp <= 0 }];
+    const people = [{ id: 'player', sprite: 'player', frame: this.player.dir, palette: null, i: pp.i, j: pp.j, down: this.hero.hp <= 0, lift: this.playerLift() }];
     for (const [id, a] of Object.entries(this.actors)) {
       const d = this.actorDefs[id];
       const pos = ap[id];
-      people.push({ id, sprite: d.sprite, frame: frameOf(a.face), palette: d.palette, i: pos.i, j: pos.j, down: a.unit.dead, unit: a.unit });
+      // 気絶する敵（敵データの faints。監獄の看守）は、倒れても点滅せず、気絶した姿（frame の faint）で残る
+      const fainted = a.unit.dead && a.unit.def.faints;
+      people.push({ id, sprite: d.sprite, frame: fainted ? 'faint' : frameOf(a.face), palette: d.palette, i: pos.i, j: pos.j, down: a.unit.dead && !fainted, fainted, unit: a.unit });
     }
+    people.push(...this.extraPeople(beat));
     const screen = (c) => isoCenter(c.i, c.j, ox, oy, tile);
     const me = screen(people[0]);
     // プレイヤーは一番近い敵のほうへ身を乗り出す
@@ -924,14 +927,35 @@ export class BattleState {
       g.beginPath();
       g.ellipse(pos.x, pos.y, 22, 8, 0, 0, Math.PI * 2);
       g.fill();
-      const { anim, n } = c.down ? { anim: null, n: 0 } : this.poseOf(c.id, beat);
+      const { anim, n } = c.down || c.fainted || c.still ? { anim: null, n: 0 } : this.poseOf(c.id, beat);
       const pose = assets.pose(c.sprite, c.frame, anim, n, o.white ? WHITE : c.palette);
-      sprite(g, pose.img, pose.def, pos.x + o.dx, pos.y + o.dy + (c.down ? 6 : 0), alpha);
+      sprite(g, pose.img, pose.def, pos.x + o.dx, pos.y + o.dy + (c.down ? 6 : 0) + (c.lift ?? 0), alpha);
       const top = pos.y - def.anchor[1] - 4;
-      if (c.id !== 'player' && !c.down) this.drawActorMarks(g, c, pos, top, beat);
+      if (c.fainted) this.drawDizzy(g, pos.x, pos.y - 84);
+      else if (c.label) text(g, c.label, pos.x, top - 6, { size: 12, align: 'center', color: COLORS.brass });
+      else if (c.id !== 'player' && !c.down) this.drawActorMarks(g, c, pos, top, beat);
       c.screen = { x: pos.x, y: pos.y - def.anchor[1] };
     }
     this.lastPeople = people;
+  }
+
+  // 主人公を上へ浮かせて描くドット数（負で上。奈落へ落ちてくるところ）
+  playerLift() {
+    return 0;
+  }
+
+  // 敵のほかに並べて描く人（ダンジョンの NPC）。{ id, sprite, frame, palette, i, j, label, still }
+  extraPeople() {
+    return [];
+  }
+
+  // 気絶した敵の頭の上を回る星
+  drawDizzy(g, x, y) {
+    const t = performance.now() / 500;
+    for (let k = 0; k < 3; k++) {
+      const a = t + (k * Math.PI * 2) / 3;
+      text(g, '★', x + Math.cos(a) * 14, y + Math.sin(a) * 4, { size: 12, align: 'center', color: COLORS.perfect });
+    }
   }
 
   // 敵の頭上の「!」「GUARD」「CHANCE」
