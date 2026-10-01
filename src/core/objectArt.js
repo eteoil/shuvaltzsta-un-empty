@@ -340,20 +340,20 @@ export function bankWallDots(side, style, { start = false, end = false } = {}) {
     line(0, 38, 1, 38);
     line(0, 41, 1, 41);
     // アーチの窓：真鍮の枠、奥は明かりのついた事務室（上ほど明るい）、棚の影、真鍮の格子
-    const archTop = (t, w) => 88 + 9 * Math.sqrt(Math.max(0, 1 - ((t - 0.5) / w) ** 2));
-    const frame = region((t, z) => t >= 0.08 && t <= 0.92 && z >= 44 && z <= archTop(t, 0.42) + 2);
-    const opening = region((t, z) => t >= 0.14 && t <= 0.86 && z >= 46 && z <= archTop(t, 0.36));
+    const archTop = (t, w) => 116 + 12 * Math.sqrt(Math.max(0, 1 - ((t - 0.5) / w) ** 2));
+    const frame = region((t, z) => t >= 0.06 && t <= 0.94 && z >= 44 && z <= archTop(t, 0.44) + 2);
+    const opening = region((t, z) => t >= 0.12 && t <= 0.88 && z >= 46 && z <= archTop(t, 0.38));
     d.fill(frame, flat(COL.brass), plain);
     rim(frame);
     d.fill(opening, (x, y) => {
       const z = onWall(x + 0.5, y + 0.5)[1];
-      if (Math.abs(z - 62) < 0.6 || Math.abs(z - 76) < 0.6) return '#2a170e';   // 棚
-      return z > 82 ? '#8a5a2a' : z > 70 ? '#6a4220' : '#4a2c16';
+      if ([64, 84, 104].some((s) => Math.abs(z - s) < 0.6)) return '#2a170e';   // 棚
+      return z > 104 ? '#8a5a2a' : z > 84 ? '#76491f' : z > 64 ? '#5e3a1c' : '#4a2c16';
     }, plain);
     rim(opening);
-    for (let t = 0.22; t <= 0.79; t += 0.095) {
-      d.stroke(linePoints(...p(t, 47), ...p(t, archTop(t, 0.36) - 1)), COL.brass);
-      d.stroke(linePoints(...p(t, 47).map((v, k) => (k === 0 ? v + 1 : v)), ...p(t, archTop(t, 0.36) - 1).map((v, k) => (k === 0 ? v + 1 : v))), COL.brassDark);
+    for (let t = 0.2; t <= 0.81; t += 0.1) {
+      d.stroke(linePoints(...p(t, 47), ...p(t, archTop(t, 0.38) - 1)), COL.brass);
+      d.stroke(linePoints(...p(t, 47).map((v, k) => (k === 0 ? v + 1 : v)), ...p(t, archTop(t, 0.38) - 1).map((v, k) => (k === 0 ? v + 1 : v))), COL.brassDark);
     }
   } else {
     // 幅木と腰板（羽目板の枠）と真鍮の手すり

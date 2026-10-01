@@ -20,7 +20,7 @@
     { "at": [3, 5], "to": "slum_01", "spawn": [3, 7, "ne"], "label": "スラムへ" }
   ],
   "npcs": [
-    { "id": "presto", "at": [3, 0], "dir": "sw" },
+    { "id": "presto", "at": [1, 0], "dir": "sw" },
     { "id": "bank_atm", "at": [0, 1], "dir": "se" },
     { "id": "bank_atm", "at": [0, 2], "dir": "se" },
     { "id": "bank_atm", "at": [0, 3], "dir": "se" }
