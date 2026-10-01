@@ -289,7 +289,7 @@ export function bankFloorDots() {
 // side：'ne'（右奥の壁。マスの上の頂点から右の頂点へ。南西を向くので明るい）か 'nw'（左奥の壁。左の頂点から上の頂点へ。暗い）。
 // style：'plain'（下から幅木・腰板・真鍮の手すり・深い緑の壁紙に金の細い縦じま・真鍮の飾り縁）か
 //   'teller'（窓口。カウンターの上に、真鍮の格子のはまったアーチの窓。奥は明かりのついた事務室で、棚の影が見える。格子の下の真ん中に受け取り窓口）。
-// run：[k, n]。続いた teller の n マスのうち k 番目（0 から）。窓は n マスに n-1 個（1マスなら1個）並ぶ。
+// run：[k, n]。続いた teller の n マスのうち k 番目（0 から）。窓は n マスの真ん中に 3n/4 個（切り捨て。1マスなら1個）並ぶ。
 // start・end：壁の端（と、左右の壁が出会う角）に縦の線を引く。
 // 絵の左上は、ne ならマスの上の頂点から (-1, -WALL_H-1)、nw ならマスの上の頂点から (-41, -WALL_H-1) の所
 export const WALL_H = 160;   // 主人公（約 132 ドット）の頭の上に、頭ひとつ分ほどゆとりがある高さ
@@ -346,13 +346,14 @@ export function bankWallDots(side, style, { start = false, end = false, run = [0
   line(0, RAIL, 1, RAIL);
   line(0, RAIL + 3, 1, RAIL + 3);
   if (style === 'teller') {
-    // 続いた窓口の壁（run の n マス）に、窓を n-1 個（1マスなら1個）等間隔に並べる。窓はマスの境目をまたいでよい。
-    // u は、いちばん近い窓の真ん中からの横のずれ（ドット）
+    // 続いた窓口の壁（run の n マス）の真ん中に、窓を n の 3/4 個（切り捨て。1マスなら1個）、L ドットおきに並べる。
+    // 窓はマスの境目をまたいでよい。u は、いちばん近い窓の真ん中からの横のずれ（ドット）
     const [k, n] = run;
-    const m = Math.max(1, n - 1);
-    const L = (40 * n) / m;
-    const win = (t) => Math.min(m - 1, Math.max(0, Math.floor((40 * (k + t)) / L)));
-    const uOf = (t) => 40 * (k + t) - L * (win(t) + 0.5);
+    const m = Math.max(1, Math.floor((3 * n) / 4));
+    const L = Math.min((40 * n) / m, 160 / 3);
+    const O = (40 * n - m * L) / 2;   // 窓の並びの左の余白
+    const win = (t) => Math.min(m - 1, Math.max(0, Math.floor((40 * (k + t) - O) / L)));
+    const uOf = (t) => 40 * (k + t) - O - L * (win(t) + 0.5);
     const FH = L / 2 - 4;     // 枠の半分の幅
     const OH = FH - 2.4;      // 窓の穴の半分の幅
     const archTop = (u, h) => 122 + 14 * Math.sqrt(Math.max(0, 1 - (u / h) ** 2));
@@ -380,7 +381,7 @@ export function bankWallDots(side, style, { start = false, end = false, run = [0
         const u = uOf(t);
         if (Math.abs(u) > OH - 3) continue;
         if (Math.abs(u) <= SLOT + 2 && z <= SLOT_TOP + 2) continue;
-        const ub = Math.floor(40 * (k + t)) - Math.round(L * (win(t) + 0.5));
+        const ub = Math.floor(40 * (k + t)) - Math.round(O + L * (win(t) + 0.5));
         const r = (((ub + 2) % 4) + 4) % 4;
         if (r === 0) bars.push([x, y]);
         else if (r === 1) shades.push([x, y]);

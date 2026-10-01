@@ -4,7 +4,7 @@
   "name": "銀行（仮）",
   "floorSprite": "floor_bank",
   "walls": {
-    "ne": ["plain", "plain", "teller", "teller", "teller", "teller", "plain"],
+    "ne": ["plain", "teller", "teller", "teller", "teller", "teller", "plain"],
     "nw": ["plain", "plain", "plain", "plain", "plain"]
   },
   "floor": [
