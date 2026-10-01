@@ -4,16 +4,16 @@
   "name": "銀行（仮）",
   "floorSprite": "floor_bank",
   "walls": {
-    "ne": ["plain", "plain", "plain", "teller", "plain", "teller", "plain", "teller", "plain"],
+    "ne": ["plain", "plain", "plain", "teller", "plain", "teller", "plain", "teller", "plain", "plain"],
     "nw": ["plain", "plain", "plain", "plain", "plain"]
   },
   "floor": [
-    "#########",
-    "#########",
-    "#########",
-    "#########",
-    "#########",
-    "....#...."
+    "##########",
+    "##########",
+    "##########",
+    "##########",
+    "##########",
+    "....#....."
   ],
   "start": [4, 4, "ne"],
   "exits": [
@@ -27,7 +27,7 @@
     { "id": "bank_teller", "at": [3, -1], "dir": "sw" },
     { "id": "bank_teller", "at": [5, -1], "dir": "sw" },
     { "id": "bank_teller", "at": [7, -1], "dir": "sw" },
-    { "id": "banker", "at": [8, 1], "dir": "sw" }
+    { "id": "banker", "at": [9, 1], "dir": "sw" }
   ],
   "encounters": []
 }
