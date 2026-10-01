@@ -1,0 +1,9 @@
+{
+  "id": "delacroix",
+  "name": "ドラクロワ",
+  "sprite": "player",
+  "palette": { "id": "delacroix", "map": { "#394660": "#d8d4cc", "#187fc4": "#3a1a28", "#801e6b": "#1e1a22", "#f5c939": "#b8323a" } },
+  "options": [
+    { "label": "話す", "say": "……我が屋敷に何の用だ（仮）" }
+  ]
+}

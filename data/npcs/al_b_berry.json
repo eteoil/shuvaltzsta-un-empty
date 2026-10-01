@@ -1,0 +1,9 @@
+{
+  "id": "al_b_berry",
+  "name": "アル・B・ベリー",
+  "sprite": "player",
+  "palette": { "id": "al_b_berry", "map": { "#394660": "#c84a7a", "#187fc4": "#e8c35a", "#801e6b": "#4a2a6a", "#f5c939": "#7ad0e0" } },
+  "options": [
+    { "label": "話す", "say": "ようこそ劇場へ！今日も最高の舞台をお見せしよう（仮）" }
+  ]
+}

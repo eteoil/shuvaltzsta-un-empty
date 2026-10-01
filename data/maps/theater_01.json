@@ -1,7 +1,7 @@
 {
-  "id": "library_01",
+  "id": "theater_01",
   "kind": "town",
-  "name": "図書館（仮）",
+  "name": "劇場（仮）",
   "floor": [
     "########",
     "########",
@@ -12,10 +12,10 @@
   ],
   "start": [3, 4, "ne"],
   "exits": [
-    { "at": [3, 5], "to": "library_road_01", "spawn": [7, 1, "sw"], "label": "外へ" }
+    { "at": [3, 5], "to": "slum_01", "spawn": [9, 3, "sw"], "label": "フェストへ" }
   ],
   "npcs": [
-    { "id": "harucall_jr", "at": [4, 1], "dir": "sw" }
+    { "id": "al_b_berry", "at": [4, 1], "dir": "sw" }
   ],
   "encounters": []
 }

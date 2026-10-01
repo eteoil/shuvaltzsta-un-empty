@@ -4,7 +4,7 @@
   "sprite": "deru",
   "greet": "どちらまで行きますかニャ？",
   "options": [
-    { "label": "スラム", "travel": { "to": "station_01", "spawn": [3, 2, "ne"], "say": "スラム行き、発車しミャーす！" } },
+    { "label": "フェスト", "travel": { "to": "station_01", "spawn": [3, 2, "ne"], "say": "フェスト行き、発車しミャーす！" } },
     { "label": "ラボ", "travel": { "to": "lab_01", "spawn": [3, 2, "ne"], "say": "ラボ行き、発車しミャーす！" } },
     { "label": "なんでもない", "say": "またのご利用お待ちしてますニャ！", "cancel": true }
   ]

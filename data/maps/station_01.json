@@ -1,7 +1,7 @@
 {
   "id": "station_01",
   "kind": "town",
-  "name": "スラム駅（仮）",
+  "name": "フェスト駅（仮）",
   "floor": [
     "########",
     "########",
@@ -11,7 +11,7 @@
   ],
   "start": [3, 3, "ne"],
   "exits": [
-    { "at": [3, 4], "to": "slum_01", "spawn": [4, 1, "sw"], "label": "スラムへ" }
+    { "at": [3, 4], "to": "slum_01", "spawn": [4, 1, "sw"], "label": "フェストへ" }
   ],
   "npcs": [
     { "id": "doru", "at": [3, 1], "dir": "sw" }

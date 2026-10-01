@@ -13,7 +13,7 @@
   ],
   "start": [2, 3, "ne"],
   "exits": [
-    { "at": [2, 4], "to": "slum_01", "spawn": [8, 7, "ne"], "label": "スラムへ" }
+    { "at": [2, 4], "to": "slum_01", "spawn": [8, 7, "ne"], "label": "フェストへ" }
   ],
   "npcs": [
     { "id": "jacuzzi", "at": [2, 0], "dir": "sw" }

@@ -99,7 +99,7 @@ export class FieldState {
   }
 
   // 営業時間のある場所の店の人（map の npcs で staff: true）は、時間外はいない。night: true の人は夜だけ（バーのエレナ）。
-  // restDay: true の人は天赦日だけ、restDay: false の人は天赦日以外だけいる（天赦日のコウはカフェでなく、スラムの東の端の、図書館と森へ行く道の入り口の前）
+  // restDay: true の人は天赦日だけ、restDay: false の人は天赦日以外だけいる（天赦日のコウはカフェでなく、フェストの東の端の、図書館と森へ行く道の入り口の前）
   presentNpcs() {
     const rest = eventsOf(this.game.calendar, this.session.day).rest;
     return (this.map.npcs ?? []).filter((n) => (!n.staff || this.open) && (!n.night || this.night)

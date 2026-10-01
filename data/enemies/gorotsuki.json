@@ -1,0 +1,31 @@
+{
+  "id": "gorotsuki",
+  "name": "ゴロツキ",
+  "hp": 50,
+  "aggro": 4,
+  "patterns": [
+    "guard_idle",
+    "guard_wander",
+    "guard_approach",
+    "guard_strike",
+    "guard_sweep",
+    "guard_feint",
+    "guard_retreat"
+  ],
+  "actors": [
+    {
+      "id": "gorotsuki",
+      "name": "ゴロツキ",
+      "sprite": "player",
+      "palette": {
+        "id": "gorotsuki",
+        "map": {
+          "#394660": "#8a4a2a",
+          "#187fc4": "#5a5a52",
+          "#801e6b": "#3a3a44",
+          "#f5c939": "#c0302c"
+        }
+      }
+    }
+  ]
+}
