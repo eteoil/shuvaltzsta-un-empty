@@ -114,12 +114,5 @@
     "tile": [80, 40],
     "placeholder": "bankFloor",
     "frames": { "default": null }
-  },
-  "bunnyTeller": {
-    "size": [37, 33],
-    "anchor": [18, 33],
-    "frames": {
-      "sw": "assets/img/teller_peek.png"
-    }
   }
 }

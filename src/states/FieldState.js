@@ -5,7 +5,7 @@ import { loadItems, money, addItem } from '../core/Items.js';
 import { poisonTick, regen, regenStep } from '../core/Hero.js';
 import { drawPickup, drawExit, drawObject, objectHeight, drawWall } from '../core/icons.js';
 import { Pickups } from '../core/Pickups.js';
-import { passTime, isNight, isMapOpen, isOpen, eventsOf } from '../core/Calendar.js';
+import { passTime, isNight, isMapOpen, eventsOf } from '../core/Calendar.js';
 import { DIRS, FACE_STEP } from '../core/grid.js';
 
 // 探索。リズム入力は受け付けない（憲法③）。町のマップ（kind: town）では TOWN として動く。
@@ -299,17 +299,14 @@ export class FieldState {
     const walls = this.map.walls;
     // そのマスにかかる窓口の窓（隣のマスの窓もはみ出してくる）のずれ
     const nearOf = (list, k) => [-1, 0, 1].filter((d) => list[k + d] === 'teller');
-    // 窓口の奥からのぞく顔（NPC の peek。hours の中だけ）
-    const tellerNpc = this.presentNpcs().map((n) => this.npcDefs[n.id]).find((d) => d?.peek);
-    const peek = tellerNpc && isOpen(tellerNpc.hours, this.session.minute) ? assets.get(tellerNpc.peek, 'sw') : null;
     if (walls) {
       (walls.nw ?? []).forEach((style, j) => {
         const p = isoTop(0, j, ox, oy, tile);
-        drawWall(g, 'nw', style, p.x, p.y, { start: j === walls.nw.length - 1, end: j === 0, near: nearOf(walls.nw, j), peek });
+        drawWall(g, 'nw', style, p.x, p.y, { start: j === walls.nw.length - 1, end: j === 0, near: nearOf(walls.nw, j) });
       });
       (walls.ne ?? []).forEach((style, i) => {
         const p = isoTop(i, 0, ox, oy, tile);
-        drawWall(g, 'ne', style, p.x, p.y, { end: i === walls.ne.length - 1, near: nearOf(walls.ne, i), peek });
+        drawWall(g, 'ne', style, p.x, p.y, { end: i === walls.ne.length - 1, near: nearOf(walls.ne, i) });
       });
     }
     // マップの色味（砂漠の村）。床だけに掛ける（人より先に描く）

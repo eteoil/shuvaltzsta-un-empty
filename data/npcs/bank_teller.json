@@ -3,7 +3,6 @@
   "name": "窓口のバニーキャット",
   "hidden": true,
   "hideName": true,
-  "peek": "bunnyTeller",
   "hours": [540, 900],
   "closedText": "窓口の受付は 9:00〜15:00 だ。いまは閉まっている",
   "greet": "いらっしゃいニャ。預金は {balance}ニャ",

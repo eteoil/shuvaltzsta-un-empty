@@ -179,13 +179,12 @@ export function objectHeight(kind) {
 }
 
 // 壁（マップの walls）。side は 'ne'（右奥）か 'nw'（左奥）、style は 'plain' か 'teller'（窓口）。
-// (x, y) はその壁が立つマスの上の頂点。start・end は壁の端に縦の線を引くか。near はこのマスにかかる窓口の窓のずれ（マス）。
-// peek は窓の奥からのぞく顔の絵（窓口が開いているときだけ）
+// (x, y) はその壁が立つマスの上の頂点。start・end は壁の端に縦の線を引くか。near はこのマスにかかる窓口の窓のずれ（マス）
 const wallCache = new Map();
-export function drawWall(g, side, style, x, y, { start = false, end = false, near = [], peek = null } = {}) {
-  const key = `${side}/${style}/${start}/${end}/${near}/${peek ? 'peek' : ''}`;
+export function drawWall(g, side, style, x, y, { start = false, end = false, near = [] } = {}) {
+  const key = `${side}/${style}/${start}/${end}/${near}`;
   if (!wallCache.has(key)) {
-    const rows = bankWallDots(side, style, { start, end, near, peek: peek && pixelRows(peek) });
+    const rows = bankWallDots(side, style, { start, end, near });
     const c = document.createElement('canvas');
     c.width = rows[0].length;
     c.height = rows.length;
@@ -199,19 +198,4 @@ export function drawWall(g, side, style, x, y, { start = false, end = false, nea
   }
   const dx = side === 'ne' ? -1 : -41;
   g.drawImage(wallCache.get(key), Math.round(x + dx), Math.round(y - WALL_H - 1));
-}
-
-// 絵 → 色の2次元の並び（透明は null）
-function pixelRows(img) {
-  const c = document.createElement('canvas');
-  c.width = img.width;
-  c.height = img.height;
-  const cg = c.getContext('2d');
-  cg.drawImage(img, 0, 0);
-  const d = cg.getImageData(0, 0, c.width, c.height).data;
-  const hex = (v) => v.toString(16).padStart(2, '0');
-  return Array.from({ length: c.height }, (_, y) => Array.from({ length: c.width }, (_, x) => {
-    const k = (y * c.width + x) * 4;
-    return d[k + 3] > 0 ? `#${hex(d[k])}${hex(d[k + 1])}${hex(d[k + 2])}` : null;
-  }));
 }

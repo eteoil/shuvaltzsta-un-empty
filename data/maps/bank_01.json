@@ -26,7 +26,8 @@
     { "id": "bank_atm", "at": [0, 3], "dir": "se" },
     { "id": "bank_teller", "at": [2, -1], "dir": "sw" },
     { "id": "bank_teller", "at": [4, -1], "dir": "sw" },
-    { "id": "bank_teller", "at": [6, -1], "dir": "sw" }
+    { "id": "bank_teller", "at": [6, -1], "dir": "sw" },
+    { "id": "banker", "at": [7, 1], "dir": "sw" }
   ],
   "encounters": []
 }
