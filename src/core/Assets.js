@@ -1,6 +1,7 @@
 import { loadJSON } from './Data.js';
 import { bunnyCatDots, BUNNY_CAT_ANCHOR } from './bunnyCat.js';
 import { bankFloorDots } from './objectArt.js';
+import { cafeFloorDots } from './cafeArt.js';
 import { guardDots } from './guardArt.js';
 import { hozukiDots } from './hozukiArt.js';
 
@@ -140,6 +141,7 @@ function placeholder(def, frame) {
   else if (def.placeholder === 'slime') drawSlime(g, w, h, frame);
   else if (def.placeholder === 'wolf') drawWolf(g, w, h, frame);
   else if (def.placeholder === 'bankFloor') drawDots(g, bankFloorDots());   // 銀行の床（core/objectArt.js）
+  else if (def.placeholder === 'cafeFloor') drawDots(g, cafeFloorDots());   // カフェの床（core/cafeArt.js）
   // バニーキャットは画像（assets/img/{名前}_{向き}.png）が無いときだけ、コードの絵を足元の位置を合わせて描く
   // 監獄の看守（core/guardArt.js）。南西は前向き、北東は後ろ向き、南東・北西はその左右反転。faint は気絶した姿
   else if (def.placeholder === 'guard') {

@@ -4,23 +4,78 @@
   "name": "シャルヴィスのカフェ",
   "nightName": "シャルヴィスのバー",
   "hours": [900, 1380],
-  "floor": [
-    "#######",
-    "#######",
-    "#######",
-    "#######",
-    "#######",
-    "...#..."
+  "floorSprite": "floor_cafe",
+  "wallArt": "cafe",
+  "walls": {
+    "ne": ["loft", "door", "plain", "lamp", "plain", "window", "window", "window", "window", "window", "window", "window"],
+    "nw": ["loft", "loft", "loft", "loftLamp", "loft", "loft", "loftLamp", "loft", "loft"]
+  },
+  "wallDecor": [
+    { "side": "ne", "at": 4, "style": "painting", "flag": "cafe_painting" }
   ],
-  "start": [3, 4, "ne"],
+  "stepH": 34,
+  "loftH": 136,
+  "floor": [
+    "#--#########",
+    "#--#########",
+    "#--#########",
+    "#--#########",
+    "#--#########",
+    "#--#########",
+    "#--#########",
+    "############",
+    "############"
+  ],
+  "heights": [
+    "400000000000",
+    "400000000000",
+    "400000000000",
+    "400000000000",
+    "400000000000",
+    "400000000000",
+    "400000000000",
+    "432100000000",
+    "400000000000"
+  ],
+  "loftFront": ["backbar", "vitrine", "backbar", "backbar", "backbar", "vitrine", "backbar", "panel", "panel"],
+  "start": [0, 7, "ne"],
   "exits": [
-    { "at": [3, 5], "to": "fest_01", "spawn": [5, 5, "se"], "label": "フェストへ" }
+    { "at": [0, 8], "to": "fest_01", "spawn": [5, 5, "se"], "label": "フェストへ" }
+  ],
+  "props": [
+    { "art": "counter", "at": [2, 0], "across": true },
+    { "art": "counter", "at": [2, 1], "across": true },
+    { "art": "counter", "at": [2, 2], "across": true },
+    { "art": "counter", "at": [2, 3], "across": true },
+    { "art": "counter", "at": [2, 4], "across": true },
+    { "art": "counter", "at": [2, 5], "across": true },
+    { "art": "counterEnd", "at": [2, 6], "across": true },
+    { "art": "stool", "at": [3, 0] },
+    { "art": "stool", "at": [3, 1] },
+    { "art": "stool", "at": [3, 3] },
+    { "art": "stool", "at": [3, 5] },
+    { "art": "stool", "at": [3, 6] },
+    { "art": "gramophone", "at": [4, 0] },
+    { "art": "boothSide", "at": [5, 0], "size": [1, 2], "blocks": false, "key": 5.5 },
+    { "art": "boothSeat", "at": [5, 0], "size": [2, 1] },
+    { "art": "boothTable", "at": [5, 1], "size": [2, 1], "across": true },
+    { "art": "boothSide", "at": [7, 0], "size": [1, 2], "blocks": false, "key": 6.8 },
+    { "art": "boothSide", "at": [9, 0], "size": [1, 2], "blocks": false, "key": 9.5 },
+    { "art": "boothSeat", "at": [9, 0], "size": [2, 1] },
+    { "art": "boothTable", "at": [9, 1], "size": [2, 1], "across": true },
+    { "art": "boothSide", "at": [11, 0], "size": [1, 2], "blocks": false, "key": 10.8 },
+    { "art": "chairSE", "at": [5, 4] },
+    { "art": "roundTable", "at": [6, 4] },
+    { "art": "chairNW", "at": [7, 4] },
+    { "art": "chairSE", "at": [8, 6] },
+    { "art": "roundTable", "at": [9, 6] },
+    { "art": "chairNW", "at": [10, 6] }
   ],
   "npcs": [
-    { "id": "shalvis", "at": [3, 0], "dir": "sw", "staff": true },
-    { "id": "elena", "at": [4, 0], "dir": "sw", "staff": true, "night": true },
-    { "id": "kou", "at": [0, 2], "dir": "se", "staff": true, "restDay": false },
-    { "id": "cafe_bed", "at": [6, 1], "dir": "sw" }
+    { "id": "shalvis", "at": [1, 2], "dir": "se", "staff": true },
+    { "id": "elena", "at": [1, 4], "dir": "se", "staff": true, "night": true },
+    { "id": "kou", "at": [6, 0], "dir": "sw", "staff": true, "restDay": false, "sit": 27 },
+    { "id": "cafe_bed", "at": [0, 0], "dir": "sw" }
   ],
   "encounters": []
 }

@@ -115,6 +115,13 @@
     "placeholder": "bankFloor",
     "frames": { "default": null }
   },
+  "floor_cafe": {
+    "size": [80, 80],
+    "anchor": [40, 0],
+    "tile": [80, 40],
+    "placeholder": "cafeFloor",
+    "frames": { "default": null }
+  },
   "guard": {
     "size": [64, 136],
     "anchor": [32, 128],

@@ -3,7 +3,7 @@ import { loadEnemy, loadJSON, loadMap } from '../core/Data.js';
 import { COLORS, text, panel, sprite, gauge, isoTop, isoCenter } from '../core/draw.js';
 import { loadItems, money, addItem } from '../core/Items.js';
 import { poisonTick, regen, regenStep } from '../core/Hero.js';
-import { drawPickup, drawExit, drawObject, objectHeight, drawWall } from '../core/icons.js';
+import { drawPickup, drawExit, drawObject, objectHeight, drawWall, drawProp, drawTileBox, drawRail } from '../core/icons.js';
 import { Pickups } from '../core/Pickups.js';
 import { passTime, isNight, isMapOpen, eventsOf } from '../core/Calendar.js';
 import { DIRS, FACE_STEP } from '../core/grid.js';
@@ -144,16 +144,40 @@ export class FieldState {
     return Math.max(0, this.fadeIn / fade);
   }
 
+  // 歩ける床は '#'。'-' は床を描くが歩けない（カウンターの内側など）
   isFloor(i, j) {
     return this.map.floor[j]?.[i] === '#';
+  }
+
+  drawnFloor(i, j) {
+    const c = this.map.floor[j]?.[i];
+    return c === '#' || c === '-';
+  }
+
+  // 床の高さ（ドット）。マップの heights（数字1文字＝stepH ドット。カフェのロフトと階段）。無ければ 0
+  heightAt(i, j) {
+    const c = this.map.heights?.[j]?.[i];
+    return c >= '0' && c <= '9' ? Number(c) * (this.map.stepH ?? 0) : 0;
+  }
+
+  // そのマスに置いてある家具（マップの props。size はマスの数 [i の向き, j の向き]）
+  propAt(i, j) {
+    return (this.map.props ?? []).find((p) => {
+      const [w, d] = p.size ?? [1, 1];
+      return i >= p.at[0] && i < p.at[0] + w && j >= p.at[1] && j < p.at[1] + d;
+    }) ?? null;
   }
 
   encounterAt(i, j) {
     return this.map.encounters.find((e) => e.actors.some((a) => a.at[0] === i && a.at[1] === j));
   }
 
-  walkable(i, j) {
-    return this.isFloor(i, j) && !this.encounterAt(i, j) && !this.npcAt(i, j);
+  // 床の高さが1段（stepH）より違うマスへは行けない（ロフトの上と下）。家具は blocks が false でなければ通れない
+  walkable(i, j, from = null) {
+    if (!this.isFloor(i, j) || this.encounterAt(i, j) || this.npcAt(i, j)) return false;
+    const prop = this.propAt(i, j);
+    if (prop && prop.blocks !== false) return false;
+    return !from || Math.abs(this.heightAt(i, j) - this.heightAt(...from)) <= (this.map.stepH ?? 0);
   }
 
   update(dt, presses) {
@@ -173,7 +197,9 @@ export class FieldState {
         const [fi, fj] = [this.p.i + d.di, this.p.j + d.dj];
         const enc = this.encounterAt(fi, fj);
         if (enc) { this.trigger(enc); return; }
-        const npc = this.npcAt(fi, fj);
+        // カウンターやテーブル（props の across）の向こうの人にも話しかけられる
+        let npc = this.npcAt(fi, fj);
+        if (!npc && this.propAt(fi, fj)?.across) npc = this.npcAt(fi + d.di, fj + d.dj);
         if (npc && this.npcDefs[npc.id]) {
           this.game.sfx.play('confirm');
           this.game.talk(this.npcDefs[npc.id]);
@@ -209,7 +235,7 @@ export class FieldState {
     const ni = this.p.i + d.di;
     const nj = this.p.j + d.dj;
     // ぶつかっても話しかけはしない。向きだけ変わるので、A で話しかける
-    if (this.walkable(ni, nj)) {
+    if (this.walkable(ni, nj, [this.p.i, this.p.j])) {
       this.move = { from: [this.p.i, this.p.j], to: [ni, nj], t: 0 };
       this.game.sfx.play('step');
     }
@@ -271,14 +297,17 @@ export class FieldState {
 
     let pi = this.p.i;
     let pj = this.p.j;
+    let ph = this.heightAt(pi, pj);
     if (this.move) {
       const t = Math.min(1, this.move.t);
       pi = this.move.from[0] + (this.move.to[0] - this.move.from[0]) * t;
       pj = this.move.from[1] + (this.move.to[1] - this.move.from[1]) * t;
+      const h0 = this.heightAt(...this.move.from);
+      ph = h0 + (this.heightAt(...this.move.to) - h0) * t;
     }
-    // プレイヤーが画面の中ほどに来るようにカメラを合わせる
+    // プレイヤーが画面の中ほどに来るようにカメラを合わせる（ロフトの上では、そのぶん下げる）
     const ox = Math.round(W / 2 - (pi - pj) * tile[0] / 2);
-    const oy = Math.round(232 - tile[1] / 2 - (pi + pj) * tile[1] / 2);
+    const oy = Math.round(232 - tile[1] / 2 - (pi + pj) * tile[1] / 2 + ph);
 
     g.fillStyle = '#12142a';
     g.fillRect(0, 0, W, H);
@@ -288,26 +317,33 @@ export class FieldState {
     for (let s = 0; s <= rows + cols - 2; s++) {
       for (let i = 0; i < cols; i++) {
         const j = s - i;
-        if (j < 0 || j >= rows || !this.isFloor(i, j)) continue;
+        if (j < 0 || j >= rows || !this.drawnFloor(i, j) || this.heightAt(i, j) > 0) continue;
         const p = isoTop(i, j, ox, oy, tile);
         if (p.x < -tile[0] || p.x > W + tile[0] || p.y > H || p.y < -floorDef.size[1]) continue;
         sprite(g, floorImg, floorDef, p.x, p.y);
       }
     }
     // 奥の壁（マップの walls）。ne は1行目の各マスの右奥の縁、nw は1列目の各マスの左奥の縁に立つ。床のあと、人より先に描く。
-    // 右奥の壁の右端・左奥の壁の手前の端・2つの壁が出会う角に、縦の線を引く
+    // 右奥の壁の右端・左奥の壁の手前の端・2つの壁が出会う角に、縦の線を引く。絵はマップの wallArt（'bank'・'cafe'）
     const walls = this.map.walls;
+    const art = this.map.wallArt ?? 'bank';
     // そのマスにかかる窓口の窓（隣のマスの窓もはみ出してくる）のずれ
     const nearOf = (list, k) => [-1, 0, 1].filter((d) => list[k + d] === 'teller');
     if (walls) {
       (walls.nw ?? []).forEach((style, j) => {
         const p = isoTop(0, j, ox, oy, tile);
-        drawWall(g, 'nw', style, p.x, p.y, { start: j === walls.nw.length - 1, end: j === 0, near: nearOf(walls.nw, j) });
+        drawWall(g, 'nw', style, p.x, p.y, { start: j === walls.nw.length - 1, end: j === 0, near: nearOf(walls.nw, j), art, seed: 100 + j });
       });
       (walls.ne ?? []).forEach((style, i) => {
         const p = isoTop(i, 0, ox, oy, tile);
-        drawWall(g, 'ne', style, p.x, p.y, { end: i === walls.ne.length - 1, near: nearOf(walls.ne, i) });
+        drawWall(g, 'ne', style, p.x, p.y, { end: i === walls.ne.length - 1, near: nearOf(walls.ne, i), art, seed: i });
       });
+    }
+    // 壁に掛ける物（wallDecor）。flag があれば、そのフラグが立ってから（カフェの蓄音機の上の絵はイベントのあと）
+    for (const w of this.map.wallDecor ?? []) {
+      if (w.flag && !this.session.flags[w.flag]) continue;
+      const p = w.side === 'ne' ? isoTop(w.at, 0, ox, oy, tile) : isoTop(0, w.at, ox, oy, tile);
+      drawWall(g, w.side, w.style, p.x, p.y, { art });
     }
     // マップの色味（砂漠の村）。床だけに掛ける（人より先に描く）
     if (this.map.tint) {
@@ -315,25 +351,60 @@ export class FieldState {
       g.fillRect(0, 0, W, H);
     }
 
-    // 出口と拾い物は床の上なので、人より先に描く
-    for (const e of this.map.exits ?? []) {
-      const pos = isoCenter(e.at[0], e.at[1], ox, oy, tile);
-      const open = this.destOpen(e);
-      const closed = (e.requires && !this.session.flags[e.requires]) || (e.closedText && !open);
-      drawExit(g, pos.x, pos.y, this.night && open && e.nightLabel ? e.nightLabel : e.label, performance.now(), closed);
+    // 奥から順に描く物：床の高さのあるマスの箱・手すり・出口・拾い物・家具・人。key が小さいほど奥（i + j が基準）
+    const items = [];
+    const step = this.map.stepH ?? 0;
+    const loftH = this.map.loftH ?? Infinity;
+    for (let j = 0; j < rows; j++) {
+      for (let i = 0; i < cols; i++) {
+        const h = this.heightAt(i, j);
+        if (h <= 0 || !this.drawnFloor(i, j)) continue;
+        const loft = h >= loftH;
+        const nb = (a, b) => (this.drawnFloor(a, b) ? this.heightAt(a, b) : 0);
+        const p = isoTop(i, j, ox, oy, tile);
+        const face = loft ? (this.map.loftFront?.[j] ?? 'panel') : 'stairs';
+        items.push({ key: i + j - 0.5, draw: () => drawTileBox(g, loft ? 'loft' : 'stairs', h, nb(i + 1, j), nb(i, j + 1), face, j, p.x, p.y) });
+        // 手すり：隣が低い辺（ロフトは2段以上、階段は1段以上）。階段は前後の段の高さで傾ける。入口（マップの外）の辺には付けない
+        const edgeZ = (k) => (this.heightAt(i + k - 1, j) + this.heightAt(i + k, j)) / 2;
+        for (const [edge, a, b] of [['ne', i, j - 1], ['se', i + 1, j], ['sw', i, j + 1]]) {
+          if (b < 0 || a >= cols || b >= rows) continue;
+          const drop = h - nb(a, b);
+          if (loft ? drop <= step : drop < step) continue;
+          if (!loft && edge === 'se') continue;
+          const [z0, z1] = loft ? [h, h] : [edgeZ(0), edgeZ(1)];
+          items.push({ key: i + j + (edge === 'ne' ? -0.45 : 0.6), draw: () => drawRail(g, edge, Math.round(z0), Math.round(z1), p.x, p.y) });
+        }
+      }
     }
-    for (const p of this.drops.spots) {
-      const pos = isoCenter(p.at[0], p.at[1], ox, oy, tile);
-      drawPickup(g, p.item, pos.x, pos.y, performance.now());
+    for (const e of this.map.exits ?? []) {
+      const [i, j] = e.at;
+      items.push({ key: i + j - 0.2, draw: () => {
+        const pos = isoCenter(i, j, ox, oy, tile);
+        const open = this.destOpen(e);
+        const closed = (e.requires && !this.session.flags[e.requires]) || (e.closedText && !open);
+        drawExit(g, pos.x, pos.y - this.heightAt(i, j), this.night && open && e.nightLabel ? e.nightLabel : e.label, performance.now(), closed);
+      } });
+    }
+    for (const sp of this.drops.spots) {
+      const [i, j] = sp.at;
+      items.push({ key: i + j - 0.2, draw: () => {
+        const pos = isoCenter(i, j, ox, oy, tile);
+        drawPickup(g, sp.item, pos.x, pos.y - this.heightAt(i, j), performance.now());
+      } });
+    }
+    for (const pr of this.map.props ?? []) {
+      const [w, d] = pr.size ?? [1, 1];
+      const p = isoTop(pr.at[0], pr.at[1], ox, oy, tile);
+      items.push({ key: pr.key ?? pr.at[0] + w - 1 + pr.at[1] + d - 1 - 0.4, draw: () => drawProp(g, pr.art, p.x, p.y - this.heightAt(...pr.at)) });
     }
 
-    const people = [{ sprite: 'player', frame: this.p.dir, anim: this.move ? 'walk' : null, n: Math.floor(this.stride * 2), palette: null, i: pi, j: pj }];
+    const people = [{ sprite: 'player', frame: this.p.dir, anim: this.move ? 'walk' : null, n: Math.floor(this.stride * 2), palette: null, i: pi, j: pj, h: ph }];
     for (const enc of this.map.encounters) {
       const def = this.enemyDefs[enc.id];
       if (!def) continue;
       for (const a of enc.actors) {
         const actor = def.actors.find((x) => x.id === a.id);
-        people.push({ sprite: actor.sprite, frame: a.dir, anim: null, n: 0, palette: actor.palette, i: a.at[0], j: a.at[1] });
+        people.push({ sprite: actor.sprite, frame: a.dir, anim: null, n: 0, palette: actor.palette, i: a.at[0], j: a.at[1], h: this.heightAt(...a.at) });
       }
     }
     for (const n of this.presentNpcs()) {
@@ -342,28 +413,42 @@ export class FieldState {
       if (!def || def.hidden) continue;
       // 絵に idle のモーション（data/sprites.json）があれば、その場でくり返す（ドルー）
       const idle = def.sprite && assets.def(def.sprite)?.anims?.idle;
-      const step = idle ? Math.floor((performance.now() / 1000) * (idle.fps ?? 4)) : 0;
-      people.push({ sprite: def.sprite, object: def.object, frame: n.dir, anim: idle ? 'idle' : null, n: step, palette: def.palette, i: n.at[0], j: n.at[1], label: def.hideName ? null : def.name });
+      const frameN = idle ? Math.floor((performance.now() / 1000) * (idle.fps ?? 4)) : 0;
+      people.push({ sprite: def.sprite, object: def.object, frame: n.dir, anim: idle ? 'idle' : null, n: frameN, palette: def.palette, i: n.at[0], j: n.at[1], h: this.heightAt(...n.at), sit: n.sit, label: def.hideName ? null : def.name });
     }
-    people.sort((a, b) => a.i + a.j - (b.i + b.j));
     for (const c of people) {
-      const pos = isoCenter(c.i, c.j, ox, oy, tile);
-      // ベッドなどの家具は NPC と同じ扱いで、絵だけコードで描く
-      if (c.object) { drawObject(g, c.object, pos.x, pos.y); continue; }
-      g.fillStyle = 'rgba(11,12,24,0.45)';
-      g.beginPath();
-      g.ellipse(pos.x, pos.y, 22, 8, 0, 0, Math.PI * 2);
-      g.fill();
-      const { img, def } = assets.pose(c.sprite, c.frame, c.anim, c.n, c.palette);
-      sprite(g, img, def, pos.x, pos.y);
+      items.push({ key: c.i + c.j, draw: () => {
+        const pos = isoCenter(c.i, c.j, ox, oy, tile);
+        const y = pos.y - c.h;
+        // ベッドなどの家具は NPC と同じ扱いで、絵だけコードで描く
+        if (c.object) { drawObject(g, c.object, pos.x, y); return; }
+        const { img, def } = assets.pose(c.sprite, c.frame, c.anim, c.n, c.palette);
+        // 座っている人（マップの npcs の sit：座面の高さ）。腰（足元から36ドット）より下は描かず、腰を座面の高さに下ろす
+        if (c.sit !== undefined) {
+          g.save();
+          g.beginPath();
+          g.rect(0, 0, W, y - c.sit);
+          g.clip();
+          sprite(g, img, def, pos.x, y + 36 - c.sit);
+          g.restore();
+          return;
+        }
+        g.fillStyle = 'rgba(11,12,24,0.45)';
+        g.beginPath();
+        g.ellipse(pos.x, y, 22, 8, 0, 0, Math.PI * 2);
+        g.fill();
+        sprite(g, img, def, pos.x, y);
+      } });
     }
+    items.sort((a, b) => a.key - b.key);
+    for (const it of items) it.draw();
     // 名前はほかのキャラに隠れないよう、全員を描いたあとに（hideName の NPC は出さない。並んだ出納機）
     for (const c of people) {
       if (!c.label) continue;
       const pos = isoCenter(c.i, c.j, ox, oy, tile);
-      const height = c.object ? objectHeight(c.object) : assets.height(c.sprite, c.frame, c.palette);
+      const height = c.object ? objectHeight(c.object) : assets.height(c.sprite, c.frame, c.palette) - (c.sit !== undefined ? 36 - c.sit : 0);
       // 奥にいる人の名前が上の帯（HP・所持金）に重ならないよう、帯より下に収める
-      text(g, c.label, pos.x, Math.max(30, pos.y - height - 16), { size: 12, align: 'center', color: COLORS.brass });
+      text(g, c.label, pos.x, Math.max(30, pos.y - c.h - height - 16), { size: 12, align: 'center', color: COLORS.brass });
     }
 
     // 夜は少し暗く（演出）。brightNight のマップ（白夜砂漠の村）は夜も明るいまま

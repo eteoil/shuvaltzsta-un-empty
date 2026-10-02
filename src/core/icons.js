@@ -1,5 +1,6 @@
 import { COLORS, text } from './draw.js';
 import { ATM, atmDots, bankWallDots, WALL_H } from './objectArt.js';
+import { CAFE, cafeWallDots, CAFE_PROPS, tileBoxDots, railDots } from './cafeArt.js';
 
 // マップに置く物のドット絵。画像ファイルは使わずコードで描く（落ちている物はこれが本番の絵）。
 // 1文字＝1ドット、'.' は透明。落ちている物は2倍、家具は3倍で表示
@@ -209,11 +210,17 @@ export function objectHeight(kind) {
 
 // 壁（マップの walls）。side は 'ne'（右奥）か 'nw'（左奥）、style は 'plain' か 'teller'（窓口）。
 // (x, y) はその壁が立つマスの上の頂点。start・end は壁の端に縦の線を引くか。near はこのマスにかかる窓口の窓のずれ（マス）
+// art はマップの wallArt（'bank' か 'cafe'）。seed は窓ごとに絵を変える番号（カフェの水槽の魚）
+const WALL_ART = {
+  bank: { dots: bankWallDots, h: WALL_H },
+  cafe: { dots: cafeWallDots, h: CAFE.wallH },
+};
 const wallCache = new Map();
-export function drawWall(g, side, style, x, y, { start = false, end = false, near = [] } = {}) {
-  const key = `${side}/${style}/${start}/${end}/${near}`;
+export function drawWall(g, side, style, x, y, { start = false, end = false, near = [], art = 'bank', seed = 0 } = {}) {
+  const A = WALL_ART[art];
+  const key = `${art}/${side}/${style}/${start}/${end}/${near}/${seed}`;
   if (!wallCache.has(key)) {
-    const rows = bankWallDots(side, style, { start, end, near });
+    const rows = A.dots(side, style, { start, end, near, seed });
     const c = document.createElement('canvas');
     c.width = rows[0].length;
     c.height = rows.length;
@@ -226,5 +233,44 @@ export function drawWall(g, side, style, x, y, { start = false, end = false, nea
     wallCache.set(key, c);
   }
   const dx = side === 'ne' ? -1 : -41;
-  g.drawImage(wallCache.get(key), Math.round(x + dx), Math.round(y - WALL_H - 1));
+  g.drawImage(wallCache.get(key), Math.round(x + dx), Math.round(y - A.h - 1));
+}
+
+// { dots, ax, ay } の絵を、一度だけキャンバスにして持っておく
+const sceneryCache = new Map();
+function sceneryImage(key, make) {
+  if (!sceneryCache.has(key)) {
+    const { dots, ax, ay } = make();
+    const c = document.createElement('canvas');
+    c.width = dots[0].length;
+    c.height = dots.length;
+    const cg = c.getContext('2d');
+    dots.forEach((row, j) => row.forEach((col, i) => {
+      if (!col) return;
+      cg.fillStyle = col;
+      cg.fillRect(i, j, 1, 1);
+    }));
+    sceneryCache.set(key, { img: c, ax, ay });
+  }
+  return sceneryCache.get(key);
+}
+
+// (x, y) はアンカーのマスの上の頂点（床の高さ）
+function drawScenery(g, key, make, x, y) {
+  const s = sceneryImage(key, make);
+  g.drawImage(s.img, Math.round(x - s.ax), Math.round(y - s.ay));
+}
+
+// 内装の家具（マップの props。core/cafeArt.js）
+export function drawProp(g, kind, x, y) {
+  if (CAFE_PROPS[kind]) drawScenery(g, `prop/${kind}`, CAFE_PROPS[kind], x, y);
+}
+
+// 床の高さのあるマスの箱（ロフト・階段）と、その縁の手すり
+export function drawTileBox(g, kind, h, se, sw, face, seed, x, y) {
+  drawScenery(g, `box/${kind}/${h}/${se}/${sw}/${face}/${seed}`, () => tileBoxDots(kind, h, se, sw, face, seed), x, y);
+}
+
+export function drawRail(g, edge, z0, z1, x, y) {
+  drawScenery(g, `rail/${edge}/${z0}/${z1}`, () => railDots(edge, z0, z1), x, y);
 }
