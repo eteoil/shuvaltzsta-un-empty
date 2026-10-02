@@ -363,17 +363,21 @@ const PANEL = (u, z, h) => {
 // h は自分の高さ、se・sw は南東・南西の隣の高さ（その高さから上の面を描く。null なら描かない）。face は南東の面の絵
 export function tileBoxDots(kind, h, se, sw, face = 'panel', seed = 0) {
   const c = iso(0, 1, 0, 1, h + 2);
+  // 階段は face が 'stairs_i'（段が i の向きに並ぶ：南東の面が蹴込み、南西の面が側板）か 'stairs_j'（その逆）
+  const alongJ = face === 'stairs_j';
+  const riser = (z) => (z > h - 3 ? WOOD.lighter : '#5e3c24');
+  const stringer = (t, z) => (z > h - 9 ? '#6a4428' : (Math.floor(t * 40) % 10 === 0 ? WOOD.deep : '#3e2618'));
   const topPaint = kind === 'loft'
     ? (u, v, x, y) => (Math.floor(v * 40) % 10 === 0 ? '#3a2616' : hash(Math.floor(v * 4), Math.floor(u * 3), 2) < 0.5 ? '#6a4a30' : '#5e4029')
-    : (u) => (u > 0.86 ? WOOD.lighter : u > 0.8 ? WOOD.mid : '#7a5234');
+    : (u, v) => { const k = alongJ ? v : u; return k > 0.86 ? WOOD.lighter : k > 0.8 ? WOOD.mid : '#7a5234'; };
   const sePaint = (v, z) => {
-    if (kind === 'stairs') return z > h - 3 ? WOOD.lighter : '#5e3c24';
+    if (kind === 'stairs') return alongJ ? stringer(v, z) : riser(z);
     if (face === 'backbar') return backBar(v, z, seed);
     if (face === 'vitrine') return vitrine(v, z);
     return PANEL(v, z, h);
   };
   const swPaint = (u, z) => {
-    if (kind === 'stairs') return z > h - 9 ? '#6a4428' : (Math.floor(u * 40) % 10 === 0 ? WOOD.deep : '#3e2618');
+    if (kind === 'stairs') return alongJ ? riser(z) : stringer(u, z);
     return PANEL(u, z, h);
   };
   if (sw !== null && sw < h) box(c, 0, 1, 0, 1, sw, h, { sw: swPaint });
@@ -419,24 +423,67 @@ const RED = { top: '#b03a48', mid: '#9a3040', dark: '#78202e', button: '#e2c9a8'
 // 細い脚（画面の2点を結ぶ）
 const leg = (c, a, b, w, col, opts = {}) => c.d.fill(capsule(a, b, w), (x) => (x < Math.min(a[0], b[0]) + w / 2 ? mix(col, '#ffffff', 0.15) : col), opts);
 
-// 高い丸椅子（カウンターの前）。4本の脚、真鍮の足かけ、緑のクッション
-function stoolDots() {
-  const c = iso(0, 1, 0, 1, 50);
+// 椅子の背もたれ（参考：上が丸く盛り上がった笠木、真ん中に縦の背板、両脇の柱）。
+// 面は、座った人の向き（dir）と反対側に立つ。dir が 'se'・'nw' なら u が一定の面、'sw'・'ne' なら v が一定の面
+function chairBack(c, dir, z0, z1, crown) {
+  const { d, P } = c;
+  const alongV = dir === 'se' || dir === 'nw';
+  const k = { se: 0.28, nw: 0.72, sw: 0.28, ne: 0.72 }[dir];
+  const at = (s, z) => (alongV ? P(k, s, z) : P(s, k, z));
+  const pts = [];
+  for (let n = 0; n <= 12; n++) { const s = 0.28 + (0.44 * n) / 12; pts.push(at(s, z1 + crown * Math.sin(Math.PI * n / 12))); }
+  pts.push(at(0.72, z0), at(0.28, z0));
+  const [mx] = at(0.5, 0);
+  d.fill(poly(pts), (x, y) => {
+    const [, ty] = at(0.5, z1 - 4);
+    if (Math.abs(x - mx) < 3.5 && y > ty) return Math.abs(x - mx) < 1 && y > ty + 6 && y < ty + 14 ? WOOD.deep : WOOD.light;   // 背板（真ん中に細い透かし）
+    const [lx] = at(0.32, 0);
+    const [rx] = at(0.68, 0);
+    if (Math.abs(x - lx) < 2 || Math.abs(x - rx) < 2) return WOOD.mid;
+    return y < at(0.5, z1 - 6)[1] ? WOOD.light : WOOD.dark;   // 笠木と、その下の抜け
+  }, { group: 'back' });
+}
+
+// 丸いクッション（緑、ふちに真鍮の鋲）
+function cushion(c, z, rx, ry, th) {
+  const { d, P } = c;
+  const [cx, cy] = P(0.5, 0.5, z);
+  d.fill(poly([[cx - rx, cy], [cx + rx, cy], [cx + rx, cy + th], [cx - rx, cy + th]]), (x, y) => (y === Math.round(cy + th / 2) && x % 3 === 0 ? WOOD.brass : CUSHION.side), { group: 'seat' });
+  d.fill(ellipse(cx, cy + th, rx, ry), (x, y) => (y > cy + th + ry - 2 && x % 3 === 0 ? WOOD.brass : CUSHION.side), { group: 'seat' });
+  d.fill(ellipse(cx, cy, rx, ry), (x, y) => (y < cy - 1 && x < cx ? CUSHION.top : CUSHION.mid), { group: 'seatTop' });
+}
+
+// 木の椅子（テーブルのまわり）。dir は座った人の向き。背もたれが奥なら先に、手前なら最後に描く
+function chairDots(dir) {
+  const c = iso(0, 1, 0, 1, 90);
   const { P } = c;
-  const top = 40;
-  const legs = [[0.32, 0.32], [0.68, 0.32], [0.32, 0.68], [0.68, 0.68]];
-  const feet = [[0.24, 0.24], [0.76, 0.24], [0.24, 0.76], [0.76, 0.76]];
-  [0, 1].forEach((k) => leg(c, P(...legs[k], top - 4), P(...feet[k], 0), 3, WOOD.mid));
-  c.d.fill((x, y) => disc(c, 0.5, 0.5, 15, 11, 5.5)(x, y) && !disc(c, 0.5, 0.5, 15, 8.5, 4)(x, y), flat(WOOD.brass), { group: 'ring' });
-  [2, 3].forEach((k) => leg(c, P(...legs[k], top - 4), P(...feet[k], 0), 3, WOOD.mid));
-  const [cx, cy] = P(0.5, 0.5, top);
-  c.d.fill(poly([[cx - 12, cy], [cx + 12, cy], [cx + 12, cy + 5], [cx - 12, cy + 5]]), flat(CUSHION.side), { group: 'seat' });
-  c.d.fill(ellipse(cx, cy + 5, 12, 6), flat(CUSHION.side), { group: 'seat' });
-  c.d.fill(ellipse(cx, cy, 12, 6), (x, y) => (y < cy - 2 && x < cx ? CUSHION.top : CUSHION.mid), { group: 'seatTop' });
+  const seat = 28;
+  const backFirst = dir === 'se' || dir === 'sw';
+  if (backFirst) chairBack(c, dir, seat, 74, 6);
+  const legs = [[0.3, 0.3], [0.7, 0.3], [0.3, 0.7], [0.7, 0.7]];
+  [0, 1].forEach((k) => leg(c, P(...legs[k], seat), P(...legs[k], 0), 3, WOOD.mid));
+  cushion(c, seat, 13, 6.5, 4);
+  [2, 3].forEach((k) => leg(c, P(...legs[k], seat - 2), P(...legs[k], 0), 3, WOOD.mid));
+  if (!backFirst) chairBack(c, dir, seat, 74, 6);
   return done(c);
 }
 
-// 丸テーブル（1本脚、上にレースの敷物・ランプ・花瓶）
+// カウンターの前の背もたれ付きの高い椅子（参考：細い4本脚、真鍮の足かけ、低い背もたれ、緑のクッション）。客はカウンター（北西）を向く
+function barChairDots() {
+  const c = iso(0, 1, 0, 1, 90);
+  const { d, P } = c;
+  const seat = 44;
+  const legs = [[0.32, 0.32], [0.68, 0.32], [0.32, 0.68], [0.68, 0.68]];
+  [0, 1].forEach((k) => leg(c, P(...legs[k], seat - 2), P(legs[k][0] + (legs[k][0] - 0.5) * 0.3, legs[k][1] + (legs[k][1] - 0.5) * 0.3, 0), 3, WOOD.mid));
+  d.fill((x, y) => disc(c, 0.5, 0.5, 16, 12, 6)(x, y) && !disc(c, 0.5, 0.5, 16, 9.5, 4.5)(x, y), flat(WOOD.brass), { group: 'ring' });
+  [2, 3].forEach((k) => leg(c, P(...legs[k], seat - 2), P(legs[k][0] + (legs[k][0] - 0.5) * 0.3, legs[k][1] + (legs[k][1] - 0.5) * 0.3, 0), 3, WOOD.mid));
+  cushion(c, seat, 12, 6, 4);
+  chairBack(c, 'nw', seat, 70, 4);
+  return done(c);
+}
+
+// 丸テーブル（太い1本脚に台座、上にレースの敷物・ランプ・花瓶）。big は手前の大きなテーブル、そうでなければ階段のそばの小さなテーブル
+// テーブルの上の物（レースの敷物・ガラスのランプ・白い花の花瓶）
 function tableItems(c, u, v, z) {
   const { d, P } = c;
   const [x, y] = P(u, v, z);
@@ -449,47 +496,28 @@ function tableItems(c, u, v, z) {
   for (const [fx, fy] of [[5, -11], [8, -12], [6, -14], [9, -9], [3, -9]]) d.put(x + fx, y + fy, '#f6f2ea');
   for (const [fx, fy] of [[6, -8], [7, -10], [5, -9]]) d.put(x + fx, y + fy, '#4f8a4a');
 }
-function roundTableDots() {
-  const c = iso(-0.2, 1.2, -0.2, 1.2, 70);
+function roundTableDots(big) {
+  const c = iso(-0.2, 1.2, -0.2, 1.2, 76);
   const { d, P } = c;
+  const [rx, ry, top] = big ? [33, 16.5, 50] : [22, 11, 46];
   const [bx, by] = P(0.5, 0.5, 0);
-  d.fill(ellipse(bx, by, 16, 7), flat(WOOD.dark), { group: 'base' });
-  const [tx, ty] = P(0.5, 0.5, 48);
-  d.fill(poly([[bx - 3, by - 2], [bx + 3, by - 2], [tx + 3, ty], [tx - 3, ty]]), (x) => (x < bx ? WOOD.light : WOOD.mid), { group: 'post' });
-  d.fill(ellipse(tx, ty + 4, 30, 15), flat('#3e2414'), { group: 'top' });
-  d.fill(ellipse(tx, ty, 30, 15), (x, y) => (((x - tx + 8) / 14) ** 2 + ((y - ty + 4) / 5) ** 2 <= 1 ? '#7a4e30' : '#5e3a22'), { group: 'topFace' });
+  d.fill(ellipse(bx, by, big ? 18 : 13, big ? 8 : 6), flat(WOOD.dark), { group: 'base' });
+  const [tx, ty] = P(0.5, 0.5, top);
+  d.fill(poly([[bx - 4, by - 2], [bx + 4, by - 2], [tx + 4, ty], [tx - 4, ty]]), (x, y) => {
+    const k = (by - y) / (by - ty);
+    const w = 4 + (Math.abs(k - 0.45) < 0.1 ? 1.5 : 0);   // 真ん中のふくらみ（ろくろ挽き）
+    if (Math.abs(x - bx) > w) return null;
+    return x < bx - 1 ? WOOD.light : WOOD.mid;
+  }, { group: 'post' });
+  d.fill(ellipse(tx, ty + 4, rx, ry), flat('#3e2414'), { group: 'top' });
+  d.fill(ellipse(tx, ty, rx, ry), (x, y) => (((x - tx + rx * 0.3) / (rx * 0.45)) ** 2 + ((y - ty + ry * 0.3) / (ry * 0.35)) ** 2 <= 1 ? '#7a4e30' : '#5e3a22'), { group: 'topFace' });
   d.finish();
-  // 机の上の物は線を足してから重ねる
-  const items = iso(-0.2, 1.2, -0.2, 1.2, 70);
-  tableItems(items, 0.5, 0.5, 48);
+  const items = iso(-0.2, 1.2, -0.2, 1.2, 76);
+  tableItems(items, 0.5, 0.5, top);
   items.d.finish();
   const a = d.result();
   const b = items.d.result();
   return { dots: a.map((r, y) => r.map((col, x) => b[y][x] ?? col)), ax: c.ax, ay: c.ay };
-}
-
-// 木の椅子（緑の丸いクッション、背もたれの広い板）。dir は座った人の向き：'se'（背もたれは北西）か 'nw'（背もたれは南東、手前）
-function chairDots(dir) {
-  const c = iso(0, 1, 0, 1, 84);
-  const { d, P } = c;
-  const seat = 26;
-  const backU = dir === 'se' ? 0.3 : 0.7;
-  const back = () => {
-    const pts = [];
-    for (let k = 0; k <= 12; k++) { const v = 0.3 + (0.4 * k) / 12; pts.push(P(backU, v, 72 + 6 * Math.sin(Math.PI * k / 12))); }
-    pts.push(P(backU, 0.7, seat), P(backU, 0.3, seat));
-    d.fill(poly(pts), (x, y) => (Math.abs(x - P(backU, 0.5, 0)[0]) < 3 ? WOOD.light : WOOD.mid), { group: 'back' });
-  };
-  const legs = [[0.3, 0.3], [0.7, 0.3], [0.3, 0.7], [0.7, 0.7]];
-  if (dir === 'se') back();
-  [0, 1].forEach((k) => leg(c, P(...legs[k], seat), P(...legs[k], 0), 3, WOOD.mid));
-  const [cx, cy] = P(0.5, 0.5, seat);
-  d.fill(poly([[cx - 12, cy], [cx + 12, cy], [cx + 12, cy + 4], [cx - 12, cy + 4]]), flat(CUSHION.side), { group: 'seat' });
-  d.fill(ellipse(cx, cy + 4, 12, 6), flat(CUSHION.side), { group: 'seat' });
-  d.fill(ellipse(cx, cy, 12, 6), (x, y) => ((x + y) % 7 === 0 ? WOOD.brass : y < cy - 1 && x < cx ? CUSHION.top : CUSHION.mid), { group: 'seatTop' });
-  [2, 3].forEach((k) => leg(c, P(...legs[k], seat - 2), P(...legs[k], 0), 3, WOOD.mid));
-  if (dir === 'nw') back();
-  return done(c);
 }
 
 // カウンター（1マスぶん）。上は磨いた木に真鍮の縁、手前（南東）は飾り板、足元に真鍮の足かけ。end は手前の端（南西の面も描く）
@@ -510,55 +538,61 @@ function counterDots(end) {
   return done(c);
 }
 
-// ボックス席（2マスぶん）：窓を背にした赤いボタン留めの長椅子
-function boothSeatDots() {
-  const c = iso(0, 2, 0, 1, 90);
-  box(c, 0.04, 1.96, 0.14, 0.64, 0, 20, { sw: (u, z) => (z < 5 ? WOOD.deep : Math.floor(u * 20) % 10 === 0 ? WOOD.dark : WOOD.mid), se: () => WOOD.dark });
-  box(c, 0.04, 1.96, 0.14, 0.64, 20, 27, { sw: () => RED.dark, se: () => RED.dark, top: (u, v) => (v < 0.22 ? RED.dark : RED.top) });
-  const tuft = (u, z) => {
-    const a = (u * 40 + z) % 14;
-    const b = (u * 40 - z + 1400) % 14;
-    if ((a < 1.1 || b < 1.1)) return RED.dark;
-    if (a > 6.5 && a < 7.6 && b > 6.5 && b < 7.6) return RED.button;
-    return RED.mid;
+// ボックス席の長椅子（参考：赤いボタン留めの高い背もたれを木の枠で囲み、窓から部屋のほうへ向かい合って並ぶ）。
+// dir は座った人の向き：'se'（背もたれは北西の辺）か 'nw'（背もたれは南東の辺。部屋からは背もたれの裏の木の面が見える）
+const tufted = (s, z) => {
+  const a = (s * 40 + z) % 14;
+  const b = (s * 40 - z + 1400) % 14;
+  if (a < 1.1 || b < 1.1) return RED.dark;
+  if (a > 6.5 && a < 7.6 && b > 6.5 && b < 7.6) return RED.button;
+  return RED.mid;
+};
+function boothBenchDots(dir) {
+  const c = iso(0, 1, 0, 1, 110);
+  const backFirst = dir === 'se';
+  const [b0, b1] = backFirst ? [0.06, 0.22] : [0.78, 0.94];
+  const back = () => {
+    box(c, b0, b1, 0, 0.92, 0, 96, {
+      sw: (u, z) => (z > 90 ? WOOD.lighter : z < 26 ? WOOD.mid : backFirst ? WOOD.mid : WOOD.light),
+      se: backFirst
+        ? (v, z) => (z > 90 || v > 0.86 || v < 0.05 || z < 26 ? WOOD.light : tufted(v, z))
+        : (v, z) => (z < 6 ? WOOD.deep : z > 90 ? WOOD.light : Math.floor(v * 40) % 9 === 0 ? WOOD.dark : WOOD.mid),
+      top: () => WOOD.lighter,
+    });
   };
-  box(c, 0.04, 1.96, 0, 0.16, 20, 74, { sw: tuft, se: () => RED.dark, top: () => RED.dark });
-  box(c, 0.04, 1.96, 0, 0.16, 74, 79, { sw: () => WOOD.light, se: () => WOOD.mid, top: () => WOOD.lighter });
+  if (backFirst) back();
+  box(c, 0.08, 0.92, 0, 0.92, 0, 20, { sw: (u, z) => (z < 5 ? WOOD.deep : WOOD.mid), se: (v, z) => (z < 5 ? WOOD.deep : WOOD.dark) });
+  box(c, 0.08, 0.92, 0, 0.92, 20, 28, { sw: () => RED.dark, se: () => RED.dark, top: (u, v) => tufted(v, u * 20 + 40) === RED.mid ? RED.top : tufted(v, u * 20 + 40) });
+  if (!backFirst) back();
   return done(c);
 }
 
-// ボックス席の仕切り（マスの北西の辺に立つ、窓から2マスぶんの高い背もたれ）
-function boothSideDots() {
-  const c = iso(-0.1, 0.1, 0, 2, 92);
-  box(c, -0.06, 0.06, 0, 1.55, 0, 82, {
-    sw: (u, z) => (z > 76 ? WOOD.lighter : WOOD.mid),
-    se: (v, z) => {
-      if (z > 76 || v > 1.47 || v < 0.06) return WOOD.light;
-      if (z < 24) return Math.floor(v * 20) % 8 === 0 ? WOOD.dark : WOOD.mid;
-      const a = (v * 40 + z) % 14;
-      const b = (v * 40 - z + 1400) % 14;
-      if (a < 1.1 || b < 1.1) return RED.dark;
-      if (a > 6.5 && a < 7.6 && b > 6.5 && b < 7.6) return RED.button;
-      return RED.mid;
-    },
-    top: () => WOOD.lighter,
-  });
-  return done(c);
-}
-
-// ボックス席のテーブル（2マスぶん）
+// ボックス席のテーブル（1マス。1本脚の四角い天板、上に花瓶とランプ）
 function boothTableDots() {
-  const c = iso(0, 2, 0, 1, 80);
+  const c = iso(0, 1, 0, 1, 80);
   const { P } = c;
-  for (const u of [0.5, 1.5]) leg(c, P(u, 0.5, 0), P(u, 0.5, 42), 5, WOOD.mid);
-  box(c, 0.12, 1.88, 0.16, 0.84, 40, 45, { sw: () => '#3e2414', se: () => '#3e2414', top: (u, v, x, y) => ((x + y * 3) % 19 === 0 ? '#7a4e30' : '#5e3a22') });
+  leg(c, P(0.5, 0.5, 0), P(0.5, 0.5, 42), 6, WOOD.mid);
+  box(c, 0.16, 0.84, 0.1, 0.86, 40, 45, { sw: () => '#3e2414', se: () => '#3e2414', top: (u, v, x, y) => ((x + y * 3) % 19 === 0 ? '#7a4e30' : '#5e3a22') });
   c.d.finish();
-  const items = iso(0, 2, 0, 1, 80);
-  tableItems(items, 1, 0.5, 45);
+  const items = iso(0, 1, 0, 1, 80);
+  tableItems(items, 0.5, 0.5, 45);
   items.d.finish();
   const a = c.d.result();
   const b = items.d.result();
   return { dots: a.map((r, y) => r.map((col, x) => b[y][x] ?? col)), ax: c.ax, ay: c.ay };
+}
+
+// 天井から下がるランタン（参考：窓のそばとバーの上。真鍮の枠に暖かい光）
+function pendantDots() {
+  const c = iso(0, 1, 0, 1, CAFE.wallH);
+  const { d, P } = c;
+  const [x, y] = P(0.5, 0.5, 176);
+  const [, yt] = P(0.5, 0.5, CAFE.wallH - 12);
+  d.stroke(Array.from({ length: Math.round(y - 14 - yt) }, (_, k) => [Math.round(x), Math.round(yt + k)]), WOOD.dark);
+  d.fill(poly([[x - 6, y - 14], [x + 6, y - 14], [x + 4, y - 18], [x - 4, y - 18]]), flat(WOOD.brass), { group: 'cap' });
+  d.fill(poly([[x - 6, y - 14], [x + 6, y - 14], [x + 5, y + 4], [x - 5, y + 4]]), (px, py) => (Math.abs(px - x) < 1 ? WOOD.brassDark : py > y - 4 ? '#f2b452' : '#ffe7a8'), { group: 'glass' });
+  d.fill(poly([[x - 5, y + 4], [x + 5, y + 4], [x, y + 9]]), flat(WOOD.brass), { group: 'base' });
+  return done(c);
 }
 
 // 蓄音機（木の戸棚の上に、黒いレコードと真鍮の大きなラッパ）
@@ -581,14 +615,18 @@ function gramophoneDots() {
 }
 
 export const CAFE_PROPS = {
-  stool: () => stoolDots(),
-  roundTable: () => roundTableDots(),
+  barChair: () => barChairDots(),
+  roundTableBig: () => roundTableDots(true),
+  roundTableSmall: () => roundTableDots(false),
   chairSE: () => chairDots('se'),
   chairNW: () => chairDots('nw'),
+  chairSW: () => chairDots('sw'),
+  chairNE: () => chairDots('ne'),
   counter: () => counterDots(false),
   counterEnd: () => counterDots(true),
-  boothSeat: () => boothSeatDots(),
-  boothSide: () => boothSideDots(),
+  boothBenchSE: () => boothBenchDots('se'),
+  boothBenchNW: () => boothBenchDots('nw'),
   boothTable: () => boothTableDots(),
   gramophone: () => gramophoneDots(),
+  pendant: () => pendantDots(),
 };

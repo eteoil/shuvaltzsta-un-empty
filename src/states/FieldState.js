@@ -108,9 +108,10 @@ export class FieldState {
 
   // 出口に乗ったら行き先へ。requires のフラグ（勝った戦闘など）が無ければ通れない。
   // 行き先のマップが営業時間外（hours の外。天赦日に休む店は天赦日も）なら、closedText を出して入れない（薬屋）
-  takeExit() {
+  // edge の付いた出口（カフェのロフトの奥の端）は、乗っても出ない。そのマスから edge の向きへ進もうとしたときに出る
+  takeExit(dir = null) {
     const exit = this.exitAt(this.p.i, this.p.j);
-    if (!exit) return false;
+    if (!exit || (exit.edge ?? null) !== dir) return false;
     const locked = exit.requires && !this.session.flags[exit.requires] ? exit.locked
       : exit.closedText && !this.destOpen(exit) ? exit.closedText : null;
     if (locked) {
@@ -197,9 +198,14 @@ export class FieldState {
         const [fi, fj] = [this.p.i + d.di, this.p.j + d.dj];
         const enc = this.encounterAt(fi, fj);
         if (enc) { this.trigger(enc); return; }
-        // カウンターやテーブル（props の across）の向こうの人にも話しかけられる
-        let npc = this.npcAt(fi, fj);
-        if (!npc && this.propAt(fi, fj)?.across) npc = this.npcAt(fi + d.di, fj + d.dj);
+        // カウンターや椅子（props の across）が続いていれば、その向こうの人にも話しかけられる（丸椅子とカウンター越しのシャルヴィス）
+        let [ti, tj] = [fi, fj];
+        let npc = this.npcAt(ti, tj);
+        for (let k = 0; k < 3 && !npc && this.propAt(ti, tj)?.across; k++) {
+          ti += d.di;
+          tj += d.dj;
+          npc = this.npcAt(ti, tj);
+        }
         if (npc && this.npcDefs[npc.id]) {
           this.game.sfx.play('confirm');
           this.game.talk(this.npcDefs[npc.id]);
@@ -235,7 +241,9 @@ export class FieldState {
     const ni = this.p.i + d.di;
     const nj = this.p.j + d.dj;
     // ぶつかっても話しかけはしない。向きだけ変わるので、A で話しかける
-    if (this.walkable(ni, nj, [this.p.i, this.p.j])) {
+    if (!this.walkable(ni, nj, [this.p.i, this.p.j])) {
+      if (!this.drawnFloor(ni, nj) && this.takeExit(d.face)) return;
+    } else {
       this.move = { from: [this.p.i, this.p.j], to: [ni, nj], t: 0 };
       this.game.sfx.play('step');
     }
@@ -362,16 +370,23 @@ export class FieldState {
         const loft = h >= loftH;
         const nb = (a, b) => (this.drawnFloor(a, b) ? this.heightAt(a, b) : 0);
         const p = isoTop(i, j, ox, oy, tile);
-        const face = loft ? (this.map.loftFront?.[j] ?? 'panel') : 'stairs';
+        // 階段の向き（マップの stairAxis）：'i' なら段は i の向きに並び、'j' なら j の向き（カフェは j：バーの壁に沿って上る）
+        const axis = this.map.stairAxis ?? 'i';
+        const face = loft ? (this.map.loftFront?.[j] ?? 'panel') : `stairs_${axis}`;
         items.push({ key: i + j - 0.5, draw: () => drawTileBox(g, loft ? 'loft' : 'stairs', h, nb(i + 1, j), nb(i, j + 1), face, j, p.x, p.y) });
-        // 手すり：隣が低い辺（ロフトは2段以上、階段は1段以上）。階段は前後の段の高さで傾ける。入口（マップの外）の辺には付けない
-        const edgeZ = (k) => (this.heightAt(i + k - 1, j) + this.heightAt(i + k, j)) / 2;
+        // 手すり：隣が低い辺（ロフトは2段以上）。階段は段の並びに沿った辺だけで、前後の段の高さで傾ける。入口（マップの外）の辺には付けない
+        const [pi0, pj0, pi1, pj1] = axis === 'i' ? [i - 1, j, i + 1, j] : [i, j - 1, i, j + 1];
+        const hPrev = this.heightAt(pi0, pj0);
+        const hNext = this.drawnFloor(pi1, pj1) ? this.heightAt(pi1, pj1) : 0;
+        const run = (x) => Math.abs(x - h) === step;
+        const zStart = run(hPrev) ? (h + hPrev) / 2 : run(hNext) ? h + (h - hNext) / 2 : h;
+        const zEnd = run(hNext) ? (h + hNext) / 2 : run(hPrev) ? h - (hPrev - h) / 2 : h;
+        const along = axis === 'i' ? ['ne', 'sw'] : ['se'];
         for (const [edge, a, b] of [['ne', i, j - 1], ['se', i + 1, j], ['sw', i, j + 1]]) {
           if (b < 0 || a >= cols || b >= rows) continue;
           const drop = h - nb(a, b);
-          if (loft ? drop <= step : drop < step) continue;
-          if (!loft && edge === 'se') continue;
-          const [z0, z1] = loft ? [h, h] : [edgeZ(0), edgeZ(1)];
+          if (loft ? drop <= step : drop < step || !along.includes(edge)) continue;
+          const [z0, z1] = loft ? [h, h] : [zStart, zEnd];
           items.push({ key: i + j + (edge === 'ne' ? -0.45 : 0.6), draw: () => drawRail(g, edge, Math.round(z0), Math.round(z1), p.x, p.y) });
         }
       }

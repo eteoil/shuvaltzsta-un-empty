@@ -15,7 +15,7 @@
   ],
   "start": [10, 7, "ne"],
   "exits": [
-    { "at": [4, 5], "to": "cafe_01", "spawn": [0, 7, "ne"], "label": "カフェ", "nightLabel": "バー" },
+    { "at": [4, 5], "to": "cafe_01", "spawn": [0, 9, "ne"], "label": "カフェ", "nightLabel": "バー" },
     { "at": [12, 8], "to": "drugstore_01", "spawn": [2, 3, "ne"], "label": "薬屋", "closedText": "薬屋は閉まっている（仮）" },
     { "at": [15, 5], "to": "library_road_01", "spawn": [1, 2, "se"], "label": "図書館・森" },
     { "at": [9, 0], "to": "station_01", "spawn": [3, 3, "ne"], "label": "駅" },
