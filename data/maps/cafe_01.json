@@ -10,7 +10,7 @@
     "ne": [null, null, null, "plain", "plain", "plain", "plain", "window", "window", "window", "window", "window", "window", "window", "window", "window"],
     "nw": [null, null, "loft", "loft", "loft", "loft", "loft", "loft", "loft", "loft", "loft"]
   },
-  "neWallTop": 230,
+  "neWallTop": 136,
   "extraWalls": [
     { "side": "ne", "at": [0, 1], "style": "plain", "start": true },
     { "side": "ne", "at": [1, 1], "style": "plain" },

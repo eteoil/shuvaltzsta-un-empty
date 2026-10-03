@@ -4,10 +4,9 @@
 // 物の絵は { dots, ax, ay }：dots の (ax, ay) が、置いたマス（アンカーのマス）の上の頂点に来る。
 import { createDots, flat, poly, ellipse, capsule } from './dotArt.js';
 
-// 水槽の窓のてっぺん（床から。窓の高さは4マス＝160）
-const WINDOW_TOP = 206;
-// 水槽の窓の壁のてっぺん（窓のすぐ上）
-export const WINDOW_WALL_TOP = 230;
+// 水槽の窓の壁のてっぺん（酒棚から続く梁と同じ高さ。その上の壁は描かない）と、窓のてっぺん（壁のてっぺんの梁のすぐ下）
+export const WINDOW_WALL_TOP = 136;
+const WINDOW_TOP = 118;
 // 酒棚のてっぺんから扉と額の壁の上へ続く梁（BEAM_Z からロフトの床の高さまで）。扉は梁のすぐ下まで
 const BEAM_Z = 122;
 const DOOR_H = BEAM_Z;
@@ -132,7 +131,7 @@ const BOOKS = ['#7a3a32', '#3e5a6e', '#6e6a3a', '#4a3a5e', '#8a6a3a', '#2f5a46',
 // seed は窓ごとに魚や水草を変えるための番号
 export function cafeWallDots(side, style, { start = false, end = false, seed = 0, top = null } = {}) {
   const H0 = CAFE.wallH;
-  const T = top ?? H0;   // この壁のてっぺん（水槽の窓の壁は、窓のすぐ上）
+  const T = style === 'plainBeam' ? CAFE.loftH : top ?? H0;   // この壁のてっぺん（水槽の窓の壁と額の壁は、梁の高さ）
   const W = 42;
   const H = H0 + 22;
   const d = createDots(W, H, { shade: 0 });
@@ -294,13 +293,13 @@ export function cafeWallDots(side, style, { start = false, end = false, seed = 0
   } else if (style === 'window') {
     wainscot(40);
     // アーチ窓：木の枠、外は水槽の青（上ほど明るく、斜めの光の筋）、下から水草、魚、泡。縦の桟と横の桟が2本
-    const top = (t) => WINDOW_TOP - 26 + 26 * Math.sqrt(Math.max(0, 1 - ((t - 0.5) / 0.38) ** 2));   // 下の縁（46）から4マス（160）
+    const top = (t) => WINDOW_TOP - 26 + 26 * Math.sqrt(Math.max(0, 1 - ((t - 0.5) / 0.38) ** 2));   // 下の縁（46）から、てっぺんの梁の下まで
     const outer = region((t, z) => t >= 0.09 && t <= 0.91 && z >= 46 && z <= top(t) + 4);
     const glass = region((t, z) => t >= 0.14 && t <= 0.86 && z >= 52 && z <= top(t) - 1);
     d.fill(band(0.06, 0.94, 44, 50), flat(C.beamLight), plain);
     d.fill(outer, flat(C.beam), plain);
-    const fish = [0, 1].map((k) => ({ t: 0.25 + 0.5 * hash(seed, k, 1), z: 100 + 80 * hash(seed, k, 2), dir: hash(seed, k, 3) < 0.5 ? -1 : 1, col: hash(seed, k, 4) < 0.35 ? '#e3893c' : '#1d4a60' }));
-    const weeds = [0, 1, 2].map((k) => ({ t: 0.2 + 0.6 * hash(seed, k, 6), h: 60 + 70 * hash(seed, k, 7), ph: hash(seed, k, 8) * 6 }));
+    const fish = [0, 1].map((k) => ({ t: 0.25 + 0.5 * hash(seed, k, 1), z: 64 + 40 * hash(seed, k, 2), dir: hash(seed, k, 3) < 0.5 ? -1 : 1, col: hash(seed, k, 4) < 0.35 ? '#e3893c' : '#1d4a60' }));
+    const weeds = [0, 1, 2].map((k) => ({ t: 0.2 + 0.6 * hash(seed, k, 6), h: 24 + 36 * hash(seed, k, 7), ph: hash(seed, k, 8) * 6 }));
     d.fill(glass, (x, y) => {
       const [t, z] = at(x, y);
       const tx = t * 40;
@@ -314,9 +313,9 @@ export function cafeWallDots(side, style, { start = false, end = false, seed = 0
         if (z < 52 + w.h && Math.abs(tx - w.t * 40 - Math.sin(z / 13 + w.ph) * 2.2) < 1.3) return z % 7 < 2 ? '#5aa86a' : '#3f8a52';
       }
       if (hash(Math.floor(tx / 2), Math.floor(z / 6), seed + 20) < 0.012) return '#cdf3f6';
-      if (((tx * 0.9 + z * 0.55) % 24) < 3.5 && z > 120) return mix('#5fc0d0', '#bdeef0', (z - 120) / 140);
+      if (((tx * 0.9 + z * 0.55) % 24) < 3.5 && z > 80) return mix('#5fc0d0', '#bdeef0', (z - 80) / 40);
       if (z < 64) return '#2a6070';
-      return mix('#2e7088', '#6cc4d2', (z - 52) / 210);
+      return mix('#2e7088', '#6cc4d2', (z - 52) / 70);
     }, plain);
     const rimOf = (shape, c) => {
       const pts = [];
@@ -326,7 +325,7 @@ export function cafeWallDots(side, style, { start = false, end = false, seed = 0
       d.stroke(pts, c);
     };
     // 桟
-    d.fill(region((t, z) => glass(...p(t, z)) && (Math.abs(t - 0.5) < 0.03 || Math.abs(z - 110) < 1.5 || Math.abs(z - 160) < 1.5)), flat(C.beam), plain);
+    d.fill(region((t, z) => glass(...p(t, z)) && (Math.abs(t - 0.5) < 0.03 || Math.abs(z - 84) < 1.5)), flat(C.beam), plain);
     rimOf(outer, LINE);
     rimOf(glass, LINE);
     line(0.06, 44, 0.94, 44, LINE);
@@ -554,8 +553,8 @@ function roundTableDots(big) {
 
 // カウンター（1マスぶん）。上は磨いた木に真鍮の縁、手前（南東）は飾り板、足元に真鍮の足かけ。end は手前の端（南西の面も描く）
 function counterDots(end) {
-  const c = iso(0, 1, 0, 1, 90);
-  const H = 80;   // 店の側から見て、てっぺんが酒棚の下の戸棚の上と揃う
+  const c = iso(0, 1, 0, 1, 70);
+  const H = 60;
   box(c, 0.1, 0.9, 0, end ? 0.92 : 1, 0, H, {
     sw: end ? (u, z) => (z < 6 ? WOOD.deep : z > H - 5 ? WOOD.light : u > 0.2 && u < 0.8 && z > 12 && z < H - 10 ? '#4a2c1a' : WOOD.mid) : null,
     se: (v, z) => {
@@ -602,12 +601,12 @@ function boothBenchDots(dir) {
 
 // ボックス席のテーブル（窓から部屋へ2マスの長い天板。2本脚、上に花瓶とランプ）
 function boothTableDots() {
-  const c = iso(0, 1, 0, 2, 80);
+  const c = iso(-0.2, 1.2, 0, 2, 80);
   const { P } = c;
   for (const v of [0.5, 1.5]) leg(c, P(0.5, v, 0), P(0.5, v, 42), 6, WOOD.mid);
-  box(c, 0.16, 0.84, 0.1, 1.86, 40, 45, { sw: () => '#3e2414', se: () => '#3e2414', top: (u, v, x, y) => ((x + y * 3) % 19 === 0 ? '#7a4e30' : '#5e3a22') });
+  box(c, -0.18, 1.18, 0.1, 1.86, 40, 45, { sw: () => '#3e2414', se: () => '#3e2414', top: (u, v, x, y) => ((x + y * 3) % 19 === 0 ? '#7a4e30' : '#5e3a22') });
   c.d.finish();
-  const items = iso(0, 1, 0, 2, 80);
+  const items = iso(-0.2, 1.2, 0, 2, 80);
   tableItems(items, 0.5, 1, 45);
   items.d.finish();
   const a = c.d.result();
@@ -731,7 +730,7 @@ export const CAFE_PROPS = {
   gramophone: () => gramophoneDots(),
   pendant: () => pendantDots(150, CAFE.wallH - 12),
   pendantLoft: () => pendantDots(140, CAFE.wallH - CAFE.loftH - 12),
-  pendantLow: () => pendantDots(150, WINDOW_WALL_TOP - 12),   // 水槽の窓の側（壁が低い）   // ロフトの上（頭の上ぎりぎりに下がる）
+  pendantLow: () => pendantDots(96, WINDOW_WALL_TOP - 12),   // 水槽の窓の側（壁が低い。ボックス席のテーブルの上に下がる）
   loftShelf: () => loftShelfDots(false),
   loftShelfEnd: () => loftShelfDots(true),
 };
