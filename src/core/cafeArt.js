@@ -8,9 +8,9 @@ import { createDots, flat, poly, ellipse, capsule } from './dotArt.js';
 const WINDOW_TOP = 206;
 // 水槽の窓の壁のてっぺん（窓のすぐ上）
 export const WINDOW_WALL_TOP = 230;
-// 扉の高さ（2マス＝80）と、扉のまわりの枠・まぐさを入れた高さ
-export const DOOR_H = 80;
-export const DOOR_TOP = 88;
+// 酒棚のてっぺんから扉と額の壁の上へ続く梁（BEAM_Z からロフトの床の高さまで）。扉は梁のすぐ下まで
+const BEAM_Z = 122;
+const DOOR_H = BEAM_Z;
 
 export const CAFE = {
   stepH: 34,      // 段の高さ（ロフトは4段＝136）
@@ -127,7 +127,7 @@ const BOOKS = ['#7a3a32', '#3e5a6e', '#6e6a3a', '#4a3a5e', '#8a6a3a', '#2f5a46',
 
 // 壁。side は 'ne'（右奥）か 'nw'（左奥）。style：
 //   'loft'（ロフトの上の壁：ロフトの床の高さから腰板、その上は漆喰）・'loftLamp'（＋壁のランタンのまわりの明るみ）・
-//   'door'（扉。ひし形の飾りの付いた木の扉）・'plain'（腰板と漆喰）・'lamp'（＋壁のランタンのまわりの明るみ）・
+//   'door'（扉。ひし形の飾りの付いた木の扉）・'plain'（腰板と漆喰）・'plainBeam'（＋酒棚から続く梁）・'doorTri'（扉と、上の三角の壁）・'lamp'（＋壁のランタンのまわりの明るみ）・
 //   'window'（水槽をのぞくアーチ窓。外は青い水で、水草と魚と泡）・'painting'（絵だけ。イベントで後から掛ける額）。
 // seed は窓ごとに魚や水草を変えるための番号
 export function cafeWallDots(side, style, { start = false, end = false, seed = 0, top = null } = {}) {
@@ -154,51 +154,52 @@ export function cafeWallDots(side, style, { start = false, end = false, seed = 0
   const LINE = '#231815';
 
   if (style === 'doorTri') {
-    // 扉の付いた壁（nw の向き＝南東を向く面）。扉は高さ2マス（DOOR_H）で、扉の上は三角の壁：
-    // 左の端（ロフトの奥の壁との角）は天井まで、右の端は扉の上（DOOR_TOP）まで斜めに下がる
-    const ceil = (t) => H0 + (DOOR_TOP - H0) * t;
+    // 扉の付いた壁（nw の向き＝南東を向く面。バーの酒棚と同じ面）。扉はマスの幅いっぱいで、酒棚のてっぺんから続く梁の下まで。
+    // 梁の上は三角の壁：左の端（ロフトの奥の壁との角）は天井まで、右の端は梁まで斜めに下がる
+    const L = CAFE.loftH;
+    const ceil = (t) => H0 + (L - H0) * t;
     const shape = region((t, z) => z <= ceil(t));
-    const door = (t, z) => t >= 0.3 && t <= 0.7 && z <= DOOR_H;
+    const door = (t, z) => t >= 0.1 && t <= 0.9 && z <= DOOR_H;
     d.fill(shape, (x, y) => {
       const [t, z] = at(x, y);
       if (door(t, z)) {
-        if (t < 0.34 || t > 0.66 || z > DOOR_H - 4) return C.beam;   // 枠
-        const dia = (cz) => Math.abs(t - 0.5) / 0.12 + Math.abs(z - cz) / 13;
-        const k = Math.min(dia(24), dia(56));
-        if (k <= 1) return k > 0.78 ? C.woodDark : mix(C.wood, '#ffffff', 0.15);
-        if (Math.hypot((t - 0.61) * 40, z - 40) < 1.6) return WOOD.brass;
+        if (t < 0.16 || t > 0.84 || z > DOOR_H - 6) return C.beam;   // 枠
+        const dia = (cz) => Math.abs(t - 0.5) / 0.2 + Math.abs(z - cz) / 20;
+        const k = Math.min(dia(32), dia(80));
+        if (k <= 1) return k > 0.8 ? C.woodDark : mix(C.wood, '#ffffff', 0.15);
+        if (Math.abs((t - 0.24) * 40) < 1 && Math.abs(z - 54) < 6) return WOOD.brass;   // 取っ手
         return Math.floor(t * 40) % 4 === 0 ? C.woodDark : C.wood;
       }
+      if (z >= BEAM_Z && z <= L) return Math.abs(z - 125) < 0.8 ? WOOD.brass : WOOD.dark;   // 酒棚から続く梁
       if (z > ceil(t) - 6) return C.beam;   // 斜めの梁
-      if (z < 6) return C.woodDark;
-      if (z < 40) return C.wood;
-      if (z < 44) return C.beamLight;
+      if (z < BEAM_Z) return z < 6 ? C.woodDark : C.beam;   // 扉の両脇の柱
       return hash(x, y, 11) < 0.07 ? C.speck : C.plaster;
     }, plain);
-    const pts = [];
-    for (let yy = 0; yy < H; yy++) for (let xx = 0; xx < W; xx++) {
-      if (shape(xx + 0.5, yy + 0.5) && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a2, b2]) => !shape(xx + a2 + 0.5, yy + b2 + 0.5))) pts.push([xx, yy]);
-    }
-    d.stroke(pts, LINE);
-    const dpts = [];
-    const dr = region((t, z) => door(t, z));
-    for (let yy = 0; yy < H; yy++) for (let xx = 0; xx < W; xx++) {
-      if (dr(xx + 0.5, yy + 0.5) && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a2, b2]) => !dr(xx + a2 + 0.5, yy + b2 + 0.5))) dpts.push([xx, yy]);
-    }
-    d.stroke(dpts, LINE);
-    line(0, 40, 0.3, 40, LINE);
-    line(0.7, 40, 1, 40, LINE);
+    const rim = (sh) => {
+      const pts = [];
+      for (let yy = 0; yy < H; yy++) for (let xx = 0; xx < W; xx++) {
+        if (sh(xx + 0.5, yy + 0.5) && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a2, b2]) => !sh(xx + a2 + 0.5, yy + b2 + 0.5))) pts.push([xx, yy]);
+      }
+      d.stroke(pts, LINE);
+    };
+    rim(shape);
+    rim(region((t, z) => door(t, z)));
+    rim(region((t, z) => Math.min(...[32, 80].map((cz) => Math.abs(t - 0.5) / 0.2 + Math.abs(z - cz) / 20)) <= 1));
+    line(0, BEAM_Z, 1, BEAM_Z, LINE);
+    line(0, L, 1, L, LINE);
     d.finish({ outline: false });
     return d.result();
   }
 
   if (style === 'painting') {
-    // 蓄音機の上に掛ける額（イベントで後から）。金の額縁に、青いドレスと緑の服の2人の肖像
-    const frame = region((t, z) => t >= 0.22 && t <= 0.78 && z >= 116 && z <= 186);
-    const canvas = region((t, z) => t >= 0.27 && t <= 0.73 && z >= 122 && z <= 180);
+    // 蓄音機のそばに掛ける額（イベントで後から）。梁のすぐ下。金の額縁に、青いドレスと緑の服の2人の肖像
+    const Z0 = 66;   // 絵の中の高さを、梁の下へ下げるぶん
+    const frame = region((t, z) => t >= 0.22 && t <= 0.78 && z >= 116 - Z0 && z <= 186 - Z0);
+    const canvas = region((t, z) => t >= 0.27 && t <= 0.73 && z >= 122 - Z0 && z <= 180 - Z0);
     d.fill(frame, (x, y) => ((x + y) % 4 === 0 ? WOOD.brassLight : WOOD.brass), plain);
     d.fill(canvas, (x, y) => {
-      const [t, z] = at(x, y);
+      const [t, z0] = at(x, y);
+      const z = z0 + Z0;
       const fig = (ct, colBody, colHead, ears) => {
         const dt = (t - ct) * 40;
         if (Math.abs(dt) < 4.5 - (z - 126) / 14 && z >= 126 && z < 152) return colBody;   // 服
@@ -330,9 +331,14 @@ export function cafeWallDots(side, style, { start = false, end = false, seed = 0
     rimOf(glass, LINE);
     line(0.06, 44, 0.94, 44, LINE);
   } else {
-    // plain・lamp：腰板と漆喰。lamp は真鍮の腕に下がったランタン
+    // plain・lamp：腰板と漆喰。lamp は真鍮の腕に下がったランタン。plainBeam は、酒棚から扉の上を通って続く梁も
     wainscot(56);
     post();
+    if (style === 'plainBeam') {
+      d.fill(band(0, 1, BEAM_Z, CAFE.loftH), (x, y) => (Math.abs(at(x, y)[1] - 125) < 0.8 ? WOOD.brass : WOOD.dark), plain);
+      line(0, BEAM_Z, 1, BEAM_Z, LINE);
+      line(0, CAFE.loftH, 1, CAFE.loftH, LINE);
+    }
   }
   line(0, 0, 1, 0, LINE);
   line(0, T, 1, T, LINE);
@@ -548,8 +554,8 @@ function roundTableDots(big) {
 
 // カウンター（1マスぶん）。上は磨いた木に真鍮の縁、手前（南東）は飾り板、足元に真鍮の足かけ。end は手前の端（南西の面も描く）
 function counterDots(end) {
-  const c = iso(0, 1, 0, 1, 56);
-  const H = 46;
+  const c = iso(0, 1, 0, 1, 90);
+  const H = 80;   // 店の側から見て、てっぺんが酒棚の下の戸棚の上と揃う
   box(c, 0.1, 0.9, 0, end ? 0.92 : 1, 0, H, {
     sw: end ? (u, z) => (z < 6 ? WOOD.deep : z > H - 5 ? WOOD.light : u > 0.2 && u < 0.8 && z > 12 && z < H - 10 ? '#4a2c1a' : WOOD.mid) : null,
     se: (v, z) => {
