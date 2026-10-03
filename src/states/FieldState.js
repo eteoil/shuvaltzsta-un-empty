@@ -346,7 +346,7 @@ export class FieldState {
       (walls.ne ?? []).forEach((style, i) => {
         if (!style) return;
         const p = isoTop(i, 0, ox, oy, tile);
-        drawWall(g, 'ne', style, p.x, p.y, { end: i === walls.ne.length - 1, near: nearOf(walls.ne, i), art, seed: i });
+        drawWall(g, 'ne', style, p.x, p.y, { end: i === walls.ne.length - 1, near: nearOf(walls.ne, i), art, seed: i, top: this.map.neWallTop ?? null });
       });
     }
     // 1行目・1列目のほかのマスの縁に立つ壁（extraWalls：{ side, at, style, start, end }。カフェのロフトの奥の壁・扉の上の三角の壁・額の壁）

@@ -216,11 +216,12 @@ const WALL_ART = {
   cafe: { dots: cafeWallDots, h: CAFE.wallH },
 };
 const wallCache = new Map();
-export function drawWall(g, side, style, x, y, { start = false, end = false, near = [], art = 'bank', seed = 0 } = {}) {
+// top は壁のてっぺんの高さ（無ければ art の高さ。カフェの水槽の窓の壁は低い）
+export function drawWall(g, side, style, x, y, { start = false, end = false, near = [], art = 'bank', seed = 0, top = null } = {}) {
   const A = WALL_ART[art];
-  const key = `${art}/${side}/${style}/${start}/${end}/${near}/${seed}`;
+  const key = `${art}/${side}/${style}/${start}/${end}/${near}/${seed}/${top}`;
   if (!wallCache.has(key)) {
-    const rows = A.dots(side, style, { start, end, near, seed });
+    const rows = A.dots(side, style, { start, end, near, seed, top });
     const c = document.createElement('canvas');
     c.width = rows[0].length;
     c.height = rows.length;
