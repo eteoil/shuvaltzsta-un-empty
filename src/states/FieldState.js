@@ -339,18 +339,25 @@ export class FieldState {
     const nearOf = (list, k) => [-1, 0, 1].filter((d) => list[k + d] === 'teller');
     if (walls) {
       (walls.nw ?? []).forEach((style, j) => {
+        if (!style) return;   // null の所には壁が無い（カフェの、ロフトの手前へずれた角）
         const p = isoTop(0, j, ox, oy, tile);
         drawWall(g, 'nw', style, p.x, p.y, { start: j === walls.nw.length - 1, end: j === 0, near: nearOf(walls.nw, j), art, seed: 100 + j });
       });
       (walls.ne ?? []).forEach((style, i) => {
+        if (!style) return;
         const p = isoTop(i, 0, ox, oy, tile);
         drawWall(g, 'ne', style, p.x, p.y, { end: i === walls.ne.length - 1, near: nearOf(walls.ne, i), art, seed: i });
       });
     }
+    // 1行目・1列目のほかのマスの縁に立つ壁（extraWalls：{ side, at, style, start, end }。カフェのロフトの奥の壁・扉の上の三角の壁・額の壁）
+    for (const w of this.map.extraWalls ?? []) {
+      const p = isoTop(w.at[0], w.at[1], ox, oy, tile);
+      drawWall(g, w.side, w.style, p.x, p.y, { start: !!w.start, end: !!w.end, art, seed: w.at[0] * 31 + w.at[1] });
+    }
     // 壁に掛ける物（wallDecor）。flag があれば、そのフラグが立ってから（カフェの蓄音機の上の絵はイベントのあと）
     for (const w of this.map.wallDecor ?? []) {
       if (w.flag && !this.session.flags[w.flag]) continue;
-      const p = w.side === 'ne' ? isoTop(w.at, 0, ox, oy, tile) : isoTop(0, w.at, ox, oy, tile);
+      const p = Array.isArray(w.at) ? isoTop(w.at[0], w.at[1], ox, oy, tile) : w.side === 'ne' ? isoTop(w.at, 0, ox, oy, tile) : isoTop(0, w.at, ox, oy, tile);
       drawWall(g, w.side, w.style, p.x, p.y, { art });
     }
     // マップの色味（砂漠の村）。床だけに掛ける（人より先に描く）
@@ -383,7 +390,7 @@ export class FieldState {
         const zEnd = run(hNext) ? (h + hNext) / 2 : run(hPrev) ? h - (hPrev - h) / 2 : h;
         const along = axis === 'i' ? ['ne', 'sw'] : ['se'];
         for (const [edge, a, b] of [['ne', i, j - 1], ['se', i + 1, j], ['sw', i, j + 1]]) {
-          if (b < 0 || a >= cols || b >= rows) continue;
+          if (b < 0 || a >= cols || b >= rows || !this.drawnFloor(a, b)) continue;   // 床の無い側（壁の向こう）には付けない
           const drop = h - nb(a, b);
           if (loft ? drop <= step : drop < step || !along.includes(edge)) continue;
           const [z0, z1] = loft ? [h, h] : [zStart, zEnd];

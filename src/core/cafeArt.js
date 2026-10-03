@@ -4,8 +4,11 @@
 // 物の絵は { dots, ax, ay }：dots の (ax, ay) が、置いたマス（アンカーのマス）の上の頂点に来る。
 import { createDots, flat, poly, ellipse, capsule } from './dotArt.js';
 
-// 壁のランタンの高さ（床から）
-export const LANTERN_Z = 150;
+// 水槽の窓のてっぺん（床から。窓の高さは4マス＝160）
+const WINDOW_TOP = 206;
+// 扉の高さ（2マス＝80）と、扉のまわりの枠・まぐさを入れた高さ
+export const DOOR_H = 80;
+export const DOOR_TOP = 88;
 
 export const CAFE = {
   stepH: 34,      // 段の高さ（ロフトは4段＝136）
@@ -147,6 +150,27 @@ export function cafeWallDots(side, style, { start = false, end = false, seed = 0
   };
   const LINE = '#231815';
 
+  if (style === 'slope') {
+    // 扉の上からロフトの壁にかけての三角の壁。下の縁は、ロフトの床の高さ（t=0）から扉の上（t=1）へ下がる
+    // 壁は扉の上（DOOR_TOP）から天井まで張り、斜めの梁（ロフトの床の角から扉の上へ）で三角を作る
+    const bottom = (t) => CAFE.loftH + (DOOR_TOP - CAFE.loftH) * t;
+    d.fill(region((t, z) => z >= DOOR_TOP && z <= H0), (x, y) => {
+      const [, z] = at(x, y);
+      if (z > H0 - 12) return z > H0 - 4 ? C.beamLight : C.beam;
+      return hash(x, y, 11) < 0.07 ? C.speck : C.plaster;
+    }, plain);
+    // 下の縁の梁
+    d.fill(region((t, z) => z >= bottom(t) && z <= bottom(t) + 5), flat(C.beam), plain);
+    line(0, CAFE.loftH + 5, 1, DOOR_TOP + 5, LINE);
+    line(0, CAFE.loftH, 1, DOOR_TOP, LINE);
+    line(0, DOOR_TOP, 1, DOOR_TOP, LINE);
+    line(0, H0 - 12, 1, H0 - 12, LINE);
+    line(0, H0, 1, H0, LINE);
+    if (end) line(1, DOOR_TOP, 1, H0, LINE);
+    d.finish({ outline: false });
+    return d.result();
+  }
+
   if (style === 'painting') {
     // 蓄音機の上に掛ける額（イベントで後から）。金の額縁に、青いドレスと緑の服の2人の肖像
     const frame = region((t, z) => t >= 0.22 && t <= 0.78 && z >= 116 && z <= 186);
@@ -179,7 +203,7 @@ export function cafeWallDots(side, style, { start = false, end = false, seed = 0
 
   // 漆喰（ところどころ細かい斑）と、ランプのまわりの明るみ
   const lamp = style === 'lamp' || style === 'loftLamp';
-  const lampZ = style === 'loftLamp' ? CAFE.loftH + LANTERN_Z : LANTERN_Z;   // 壁のランタン（props の lanternNW・lanternNE）のまわりの明るみ
+  const lampZ = style === 'loftLamp' ? CAFE.loftH + 140 : 160;
   d.fill(band(0, 1, 0, H0), (x, y) => {
     const [t, z] = at(x, y);
     if (lamp && Math.hypot((t - 0.5) * 40, (z - lampZ) * 0.8) < 26) return (x + y) % 2 ? C.glow : mix(C.glow, '#f4e2b0', 0.3);
@@ -248,13 +272,13 @@ export function cafeWallDots(side, style, { start = false, end = false, seed = 0
   } else if (style === 'window') {
     wainscot(40);
     // アーチ窓：木の枠、外は水槽の青（上ほど明るく、斜めの光の筋）、下から水草、魚、泡。縦の桟と横の桟が2本
-    const top = (t) => 236 + 26 * Math.sqrt(Math.max(0, 1 - ((t - 0.5) / 0.38) ** 2));
+    const top = (t) => WINDOW_TOP - 26 + 26 * Math.sqrt(Math.max(0, 1 - ((t - 0.5) / 0.38) ** 2));   // 下の縁（46）から4マス（160）
     const outer = region((t, z) => t >= 0.09 && t <= 0.91 && z >= 46 && z <= top(t) + 4);
     const glass = region((t, z) => t >= 0.14 && t <= 0.86 && z >= 52 && z <= top(t) - 1);
     d.fill(band(0.06, 0.94, 44, 50), flat(C.beamLight), plain);
     d.fill(outer, flat(C.beam), plain);
-    const fish = [0, 1].map((k) => ({ t: 0.25 + 0.5 * hash(seed, k, 1), z: 100 + 120 * hash(seed, k, 2), dir: hash(seed, k, 3) < 0.5 ? -1 : 1, col: hash(seed, k, 4) < 0.35 ? '#e3893c' : '#1d4a60' }));
-    const weeds = [0, 1, 2].map((k) => ({ t: 0.2 + 0.6 * hash(seed, k, 6), h: 90 + 90 * hash(seed, k, 7), ph: hash(seed, k, 8) * 6 }));
+    const fish = [0, 1].map((k) => ({ t: 0.25 + 0.5 * hash(seed, k, 1), z: 100 + 80 * hash(seed, k, 2), dir: hash(seed, k, 3) < 0.5 ? -1 : 1, col: hash(seed, k, 4) < 0.35 ? '#e3893c' : '#1d4a60' }));
+    const weeds = [0, 1, 2].map((k) => ({ t: 0.2 + 0.6 * hash(seed, k, 6), h: 60 + 70 * hash(seed, k, 7), ph: hash(seed, k, 8) * 6 }));
     d.fill(glass, (x, y) => {
       const [t, z] = at(x, y);
       const tx = t * 40;
@@ -280,7 +304,7 @@ export function cafeWallDots(side, style, { start = false, end = false, seed = 0
       d.stroke(pts, c);
     };
     // 桟
-    d.fill(region((t, z) => glass(...p(t, z)) && (Math.abs(t - 0.5) < 0.03 || Math.abs(z - 124) < 1.5 || Math.abs(z - 196) < 1.5)), flat(C.beam), plain);
+    d.fill(region((t, z) => glass(...p(t, z)) && (Math.abs(t - 0.5) < 0.03 || Math.abs(z - 110) < 1.5 || Math.abs(z - 160) < 1.5)), flat(C.beam), plain);
     rimOf(outer, LINE);
     rimOf(glass, LINE);
     line(0.06, 44, 0.94, 44, LINE);
@@ -529,50 +553,58 @@ const tufted = (s, z) => {
   return RED.mid;
 };
 function boothBenchDots(dir) {
-  const c = iso(0, 1, 0, 1, 110);
+  const D = 1.92;   // 窓から部屋へ2マス
+  const c = iso(0, 1, 0, 2, 110);
   const backFirst = dir === 'se';
   const [b0, b1] = backFirst ? [0.06, 0.22] : [0.78, 0.94];
   const back = () => {
-    box(c, b0, b1, 0, 0.92, 0, 96, {
+    box(c, b0, b1, 0, D, 0, 96, {
       sw: (u, z) => (z > 90 ? WOOD.lighter : z < 26 ? WOOD.mid : backFirst ? WOOD.mid : WOOD.light),
       se: backFirst
-        ? (v, z) => (z > 90 || v > 0.86 || v < 0.05 || z < 26 ? WOOD.light : tufted(v, z))
+        ? (v, z) => (z > 90 || v > D - 0.06 || v < 0.05 || z < 26 ? WOOD.light : tufted(v, z))
         : (v, z) => (z < 6 ? WOOD.deep : z > 90 ? WOOD.light : Math.floor(v * 40) % 9 === 0 ? WOOD.dark : WOOD.mid),
       top: () => WOOD.lighter,
     });
   };
   if (backFirst) back();
-  box(c, 0.08, 0.92, 0, 0.92, 0, 20, { sw: (u, z) => (z < 5 ? WOOD.deep : WOOD.mid), se: (v, z) => (z < 5 ? WOOD.deep : WOOD.dark) });
-  box(c, 0.08, 0.92, 0, 0.92, 20, 28, { sw: () => RED.dark, se: () => RED.dark, top: (u, v) => tufted(v, u * 20 + 40) === RED.mid ? RED.top : tufted(v, u * 20 + 40) });
+  box(c, 0.08, 0.92, 0, D, 0, 20, { sw: (u, z) => (z < 5 ? WOOD.deep : WOOD.mid), se: (v, z) => (z < 5 ? WOOD.deep : WOOD.dark) });
+  box(c, 0.08, 0.92, 0, D, 20, 28, { sw: () => RED.dark, se: () => RED.dark, top: (u, v) => tufted(v, u * 20 + 40) === RED.mid ? RED.top : tufted(v, u * 20 + 40) });
   if (!backFirst) back();
   return done(c);
 }
 
-// ボックス席のテーブル（1マス。1本脚の四角い天板、上に花瓶とランプ）
+// ボックス席のテーブル（窓から部屋へ2マスの長い天板。2本脚、上に花瓶とランプ）
 function boothTableDots() {
-  const c = iso(0, 1, 0, 1, 80);
+  const c = iso(0, 1, 0, 2, 80);
   const { P } = c;
-  leg(c, P(0.5, 0.5, 0), P(0.5, 0.5, 42), 6, WOOD.mid);
-  box(c, 0.16, 0.84, 0.1, 0.86, 40, 45, { sw: () => '#3e2414', se: () => '#3e2414', top: (u, v, x, y) => ((x + y * 3) % 19 === 0 ? '#7a4e30' : '#5e3a22') });
+  for (const v of [0.5, 1.5]) leg(c, P(0.5, v, 0), P(0.5, v, 42), 6, WOOD.mid);
+  box(c, 0.16, 0.84, 0.1, 1.86, 40, 45, { sw: () => '#3e2414', se: () => '#3e2414', top: (u, v, x, y) => ((x + y * 3) % 19 === 0 ? '#7a4e30' : '#5e3a22') });
   c.d.finish();
-  const items = iso(0, 1, 0, 1, 80);
-  tableItems(items, 0.5, 0.5, 45);
+  const items = iso(0, 1, 0, 2, 80);
+  tableItems(items, 0.5, 1, 45);
   items.d.finish();
   const a = c.d.result();
   const b = items.d.result();
   return { dots: a.map((r, y) => r.map((col, x) => b[y][x] ?? col)), ax: c.ax, ay: c.ay };
 }
 
-// 天井から下がるランタン（参考：窓のそばとバーの上。真鍮の枠に暖かい光）
-function pendantDots() {
-  const c = iso(0, 1, 0, 1, CAFE.wallH);
+// 天井から下がるランタン（真鍮の鎖に、六角の枠のガラスの箱。2つの見える面が光り、上に屋根、下に台）。
+// z はランタンの下の端の高さ、top は天井の高さ（どちらもそのマスの床から。ロフトの上は天井が低い）
+function pendantDots(z, top) {
+  const c = iso(0, 1, 0, 1, top + 4);
   const { d, P } = c;
-  const [x, y] = P(0.5, 0.5, 176);
-  const [, yt] = P(0.5, 0.5, CAFE.wallH - 12);
-  d.stroke(Array.from({ length: Math.round(y - 14 - yt) }, (_, k) => [Math.round(x), Math.round(yt + k)]), WOOD.dark);
-  d.fill(poly([[x - 6, y - 14], [x + 6, y - 14], [x + 4, y - 18], [x - 4, y - 18]]), flat(WOOD.brass), { group: 'cap' });
-  d.fill(poly([[x - 6, y - 14], [x + 6, y - 14], [x + 5, y + 4], [x - 5, y + 4]]), (px, py) => (Math.abs(px - x) < 1 ? WOOD.brassDark : py > y - 4 ? '#f2b452' : '#ffe7a8'), { group: 'glass' });
-  d.fill(poly([[x - 5, y + 4], [x + 5, y + 4], [x, y + 9]]), flat(WOOD.brass), { group: 'base' });
+  const [k0, k1] = [0.4, 0.6];
+  const glassTop = z + 18;
+  const roofTop = glassTop + 9;
+  const [cx, cy] = P(0.5, 0.5, roofTop);
+  const [, yt] = P(0.5, 0.5, top);
+  if (cy > yt) d.stroke(Array.from({ length: Math.round(cy - yt) + 1 }, (_, n) => [Math.round(cx), Math.round(yt + n)]), WOOD.dark);
+  box(c, k0, k1, k0, k1, z - 3, z, { sw: () => WOOD.brass, se: () => WOOD.brassDark, top: () => WOOD.brassLight }, { group: 'base' });
+  box(c, k0, k1, k0, k1, z, glassTop, { sw: (u, zz) => (Math.abs(u - 0.5) < 0.02 ? WOOD.brassDark : zz < z + 6 ? '#f2b452' : '#ffe7a8'), se: (v, zz) => (Math.abs(v - 0.5) < 0.02 ? WOOD.brassDark : '#e8a040') }, { group: 'glass' });
+  const corner = [P(k0, k1, glassTop), P(k1, k1, glassTop), P(k1, k0, glassTop), P(k0, k0, glassTop)];
+  const apex = P(0.5, 0.5, roofTop);
+  d.fill(poly([corner[0], corner[1], apex]), flat(WOOD.brassLight), { group: 'roofA' });
+  d.fill(poly([corner[1], corner[2], apex]), flat(WOOD.brass), { group: 'roofB' });
   return done(c);
 }
 
@@ -592,6 +624,26 @@ function gramophoneDots() {
   d.fill(poly([[bx - 2, by], [bx + 2, by], [bell[0] + 12, bell[1] + 6], [bell[0] - 12, bell[1] + 2]]), (x, y) => (x < (bx + bell[0]) / 2 ? WOOD.brassLight : WOOD.brass), { group: 'horn' });
   d.fill(ellipse(bell[0], bell[1] + 2, 16, 11, -15), flat(WOOD.brass), { group: 'bell' });
   d.fill(ellipse(bell[0] + 1, bell[1] + 2, 11, 7, -15), (x, y) => (y < bell[1] ? '#5a3c18' : '#7a5420'), { group: 'bellIn' });
+  return done(c);
+}
+
+// 扉の壁（1マスぶんの出っ張り。高さは扉のまぐさまで）。南東の面にひし形の飾りの木の扉、南西の面は凹んだバーの横の壁
+function doorBlockDots() {
+  const c = iso(0, 1, 0, 1, DOOR_TOP + 4);
+  const side = (s, z) => (z < 6 ? WOOD.deep : z < 40 ? (s > 0.12 && s < 0.88 && z > 12 && z < 34 ? '#4f311f' : WOOD.mid) : z < 44 ? WOOD.light : '#c4b38d');
+  box(c, 0, 1, 0, 1, 0, DOOR_TOP, {
+    sw: (u, z) => side(u, z),
+    se: (v, z) => {
+      if (v < 0.18 || v > 0.82 || z > DOOR_H) return z > DOOR_H && z < DOOR_H + 3 ? WOOD.dark : (v < 0.18 || v > 0.82 ? side(v, z) : '#c4b38d');
+      if (v < 0.23 || v > 0.77 || z > DOOR_H - 4) return WOOD.dark;   // 扉の枠
+      const dia = (cz) => Math.abs(v - 0.5) / 0.15 + Math.abs(z - cz) / 13;
+      const k = Math.min(dia(24), dia(56));
+      if (k <= 1) return k > 0.78 ? WOOD.dark : WOOD.lighter;
+      if (Math.hypot((v - 0.68) * 40, z - 40) < 1.6) return WOOD.brass;
+      return Math.floor(v * 40) % 4 === 0 ? WOOD.mid : WOOD.light;
+    },
+    top: () => WOOD.dark,
+  });
   return done(c);
 }
 
@@ -620,36 +672,6 @@ function loftShelfDots(end) {
   return done(c);
 }
 
-// 壁のランタン（真鍮の腕で壁から出た、六角の枠にガラスのランタン。中に灯り）。side は付いている壁：'nw'（u=0 の壁）か 'ne'（v=0 の壁）
-function lanternDots(side) {
-  const Z = LANTERN_Z;
-  const c = iso(0, 1, 0, 1, Z + 50);
-  const { d, P } = c;
-  const nw = side === 'nw';
-  const at = (k, s, z) => (nw ? P(k, s, z) : P(s, k, z));   // k は壁からの距離、s は壁に沿った位置
-  // 腕（壁から出て、先が下へ曲がる）
-  const arm = [at(0, 0.5, Z + 30), at(0.2, 0.5, Z + 30), at(0.24, 0.5, Z + 26)];
-  for (let n = 0; n < arm.length - 1; n++) leg(c, arm[n], arm[n + 1], 2.5, WOOD.brassDark, { group: 'arm' });
-  d.fill(ellipse(...at(0, 0.5, Z + 30), 3, 3), flat(WOOD.brass), { group: 'plate' });
-  // 本体：ガラスの箱（2つの見える面が光る）、上に屋根、下に台
-  const [k0, k1, s0, s1] = [0.16, 0.32, 0.42, 0.58];
-  const faceA = nw ? { se: () => '#ffe7a8' } : { sw: () => '#ffe7a8' };
-  const faceB = nw ? { sw: () => '#f2b452' } : { se: () => '#f2b452' };
-  const boxAt = (paint, z0, z1) => (nw ? box(c, k0, k1, s0, s1, z0, z1, paint, { group: 'glass' }) : box(c, s0, s1, k0, k1, z0, z1, paint, { group: 'glass' }));
-  boxAt({ ...faceA, ...faceB }, Z, Z + 18);
-  boxAt({ sw: () => WOOD.brass, se: () => WOOD.brassDark, top: () => WOOD.brassLight }, Z - 3, Z);
-  const top = [at(k0, s0, Z + 18), at(k1, s0, Z + 18), at(k1, s1, Z + 18), at(k0, s1, Z + 18)];
-  const apex = at((k0 + k1) / 2, 0.5, Z + 27);
-  d.fill(poly([top[3], top[2], top[1], apex]), (x, y) => (x < apex[0] ? WOOD.brassLight : WOOD.brass), { group: 'roof' });
-  d.fill(poly([top[3], top[0], apex]), flat(WOOD.brassDark), { group: 'roof' });
-  d.finish();
-  // 枠の縦の桟（ガラスの面の真ん中）と、灯りの芯
-  const mid = at((k0 + k1) / 2, 0.5, Z + 9);
-  d.put(Math.round(mid[0]), Math.round(mid[1]), '#ffffff');
-  d.put(Math.round(mid[0]), Math.round(mid[1]) + 1, '#fff4c8');
-  return { dots: d.result(), ax: c.ax, ay: c.ay };
-}
-
 export const CAFE_PROPS = {
   barChair: () => barChairDots(),
   roundTableBig: () => roundTableDots(true),
@@ -664,9 +686,9 @@ export const CAFE_PROPS = {
   boothBenchNW: () => boothBenchDots('nw'),
   boothTable: () => boothTableDots(),
   gramophone: () => gramophoneDots(),
-  pendant: () => pendantDots(),
+  pendant: () => pendantDots(150, CAFE.wallH - 12),
+  pendantLoft: () => pendantDots(140, CAFE.wallH - CAFE.loftH - 12),   // ロフトの上（頭の上ぎりぎりに下がる）
+  doorBlock: () => doorBlockDots(),
   loftShelf: () => loftShelfDots(false),
   loftShelfEnd: () => loftShelfDots(true),
-  lanternNW: () => lanternDots('nw'),
-  lanternNE: () => lanternDots('ne'),
 };
