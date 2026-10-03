@@ -665,26 +665,23 @@ function boothBenchDots(dir) {
   return done(c);
 }
 
-// ボックス席の後ろの棚（参考：濃い木の引き出しの箪笥。奥行きはボックス席と同じ2マス。部屋の側の面と、横の面に3段の引き出しと真鍮のつまみ）
+// ボックス席の後ろの棚（ボックス席の背もたれと同じ高さ・半分の厚みの木の棚。背もたれにくっつけて置く。板張りで、引き出しは無い）
 function drawerChestDots() {
   const D = 1.92;
-  const c = iso(0, 1, 0, 2, 76);
-  const H = 62;
-  const drawers = (s, z, n) => {
-    if (z < 6) return WOOD.deep;
-    if (z > H - 5) return WOOD.light;
-    const f = (s * n) % 1;
-    if (f < 0.06 || f > 0.94) return WOOD.dark;
-    const row = Math.floor((z - 6) / ((H - 11) / 3));
-    const dz = z - (6 + row * ((H - 11) / 3));
-    if (dz < 2) return WOOD.deep;   // 引き出しの境目
-    for (const ks of [0.3, 0.7]) if (Math.abs((f - ks) * 40 / n) < 1.3 && Math.abs(dz - 8) < 1.3) return WOOD.brass;   // つまみ
-    return dz > 12 ? '#4a2e1c' : '#3e2616';
+  const c = iso(0, 1, 0, 2, 90);
+  const H = 76;
+  const T = 0.15;   // 厚み（背もたれの半分）
+  const boards = (s, z) => {
+    if (z < 5) return WOOD.deep;
+    if (z > H - 4) return WOOD.lighter;
+    const f = (s * 2.2) % 1;
+    if (f > 0.12 && f < 0.88 && z > 9 && z < H - 8) return Math.floor(s * 40) % 5 === 0 ? '#4a2e1c' : WOOD.mid;
+    return WOOD.light;
   };
-  box(c, 0.08, 0.92, 0.05, D, 0, H, {
-    sw: (u, z) => drawers((u - 0.08) / 0.84, z, 1),
-    se: (v, z) => drawers((v - 0.05) / (D - 0.05), z, 2),
-    top: (u, v, x, y) => ((x + 2 * y) % 13 === 0 ? WOOD.mid : WOOD.light),
+  box(c, 1 - T, 1, 0.05, D, 0, H, {
+    sw: (u, z) => (z < 5 ? WOOD.deep : z > H - 4 ? WOOD.lighter : WOOD.light),
+    se: (v, z) => boards(v, z),
+    top: () => WOOD.lighter,
   });
   return done(c);
 }
@@ -724,10 +721,14 @@ function pendantDots(z, top) {
   return done(c);
 }
 
-// 蓄音機（参考：横長の彫りの飾りの木の箱。上に黒いレコードの盤。奥の右の真鍮の支えから、トーンアームが盤の上を手前の左の
-// サウンドボックスまで伸びる。ラッパは支えから立ち上がって左へ曲がりながら一気に太くなり、箱の幅ほどもある大きな口を左へ開く）
+// 蓄音機（ラッパの付いた蓄音機の作り：横長の木の箱の上にレコードの盤、右の横にぜんまいの取っ手。
+// 箱の奥の真鍮の支え（肘）から、トーンアームが盤の上を手前へ伸び、先のサウンドボックスの針がレコードに乗る。
+// ラッパは細い端が奥の肘につながり、上へ立ち上がって手前へ弧を描きながら太くなり、口を手前（聞く人のほう）へ大きく開く。
+// ラッパは何枚もの板を継いだ形で、継ぎ目が縦に走る。手前は箱の南西の面）
+// ラッパ・アーム・サウンドボックスは、立体の点を画面へ写して、手前の点が奥の点を隠すように描く
+const GRAM_L = 48;   // 1マスの辺の長さ（立体の計算の単位。高さの1ドットと同じ尺度）
 function gramophoneDots() {
-  const c = iso(-0.8, 1, 0, 1.2, 130);
+  const c = iso(-0.4, 1.3, 0, 1.7, 150);
   const { d, P } = c;
   // 戸棚
   box(c, 0.12, 0.88, 0.12, 0.88, 0, 46, {
@@ -735,74 +736,107 @@ function gramophoneDots() {
     se: (v, z) => (z < 5 ? WOOD.deep : z > 8 && z < 40 && v > 0.2 && v < 0.8 ? '#3a2416' : WOOD.dark),
     top: () => WOOD.light,
   });
-  // 蓄音機の箱：下に台座の縁、上に張り出した蓋の縁、正面は彫りのはめ込みの板と、左寄りに真鍮の丸い飾り
-  const B = [0.14, 0.86, 0.22, 0.8, 46, 64];
-  const face = (s, z, knob) => {
-    if (z < 48) return WOOD.brassDark;               // 台座の縁
-    if (z > 61) return z > 63 ? WOOD.lighter : WOOD.light;   // 蓋の縁
+  // 蓄音機の箱：下に台座の縁、上に蓋の縁、横の面は彫りのはめ込みの板
+  const face = (s, z) => {
+    if (z < 48) return WOOD.brassDark;
+    if (z > 61) return z > 63 ? WOOD.lighter : WOOD.light;
     if (s < 0.08 || s > 0.92 || z < 51 || z > 58.5) return '#6e4228';
-    if (knob && Math.hypot((s - 0.3) * 40, z - 55) < 2) return WOOD.brassLight;
-    return (Math.floor(s * 40) + Math.floor(z)) % 5 === 0 ? '#4a2a18' : '#5a3420';   // 彫り
+    return (Math.floor(s * 40) + Math.floor(z)) % 5 === 0 ? '#4a2a18' : '#5a3420';
   };
-  box(c, B[0], B[1], B[2], B[3], B[4], B[5], {
-    sw: (u, z) => face((u - B[0]) / (B[1] - B[0]), z, true),
-    se: (v, z) => face((v - B[2]) / (B[3] - B[2]), z, false),
+  box(c, 0.16, 0.84, 0.18, 0.82, 46, 64, {
+    sw: (u, z) => face((u - 0.16) / 0.68, z),
+    se: (v, z) => face((v - 0.18) / 0.64, z),
     top: () => '#3a2416',
   });
-  // レコード（黒い盤に溝の光、赤いラベル、真鍮の芯）
-  const [rx, ry] = P(0.46, 0.5, 65);
+  // ぜんまいの取っ手（右の横の面から外へ出て、先に握り）
+  const [hx, hy] = P(0.84, 0.55, 55);
+  d.fill(poly([[hx, hy - 1], [hx + 6, hy + 2], [hx + 6, hy + 4], [hx, hy + 1]]), flat(WOOD.brassDark), { group: 'crank' });
+  d.fill(ellipse(hx + 7, hy + 2, 1.6, 2.5), flat(WOOD.dark), { group: 'crank' });
+  // 盤とレコード
+  const [rx, ry] = P(0.5, 0.52, 65);
   d.fill(ellipse(rx, ry, 12, 6), (x, y) => {
     const r = Math.hypot((x + 0.5 - rx) / 12, (y + 0.5 - ry) / 6);
     if (r < 0.1) return WOOD.brassLight;
     if (r < 0.3) return '#c0392b';
     return Math.floor(r * 10) % 2 === 0 && x < rx ? '#3a3632' : '#1a1614';
   }, { group: 'disc' });
-  // 奥の右の真鍮の支え（低い肘の形）
-  const [sx, sy] = P(0.78, 0.32, 64);
-  d.fill(poly([[sx - 2, sy + 1], [sx + 2, sy + 1], [sx + 2, sy - 7], [sx - 2, sy - 7]]), (x) => (x < sx ? WOOD.brassLight : WOOD.brassDark), { group: 'stand' });
-  // トーンアーム（支えから盤の上を手前の左のサウンドボックスへ）
-  const [bx, by] = P(0.3, 0.66, 67);
-  d.fill(capsule([sx - 1, sy - 5], [bx + 2, by - 2], 1.6), (x, y) => (y < by - 2 + ((sx - x) * (sy - by)) / (sx - bx) - 0.5 ? WOOD.brassLight : WOOD.brass), { group: 'arm' });
-  // ラッパ：支えの上から立ち上がり、左へ曲がりながら太くなる（細い所はゆっくり、口の手前で一気に開く）
-  const p0 = [sx, sy - 6];
-  const p1 = [sx - 2, sy - 24];
-  const p2 = [sx - 25, sy - 36];
-  const at = (t) => [(1 - t) ** 2 * p0[0] + 2 * (1 - t) * t * p1[0] + t * t * p2[0], (1 - t) ** 2 * p0[1] + 2 * (1 - t) * t * p1[1] + t * t * p2[1]];
-  const rad = (t) => 2 + 17 * t ** 3;
-  const pts = [];
-  for (let t = 0; t <= 1.0001; t += 0.01) pts.push([t, ...at(t), rad(t)]);
-  // ラッパの口：進む向きに垂直な楕円。外の縁は明るい真鍮、内側は奥ほど暗い
-  const [ex, ey] = at(1);
-  const [qx, qy] = at(0.97);
-  const ang = Math.atan2(ey - qy, ex - qx);
-  const R = rad(1) + 2;
-  const mouth = (k, sq) => (x, y) => {
-    const dx = x + 0.5 - ex;
-    const dy = y + 0.5 - ey;
-    const a = dx * Math.cos(ang) + dy * Math.sin(ang);
-    const b = -dx * Math.sin(ang) + dy * Math.cos(ang);
-    return (a / (R * sq * k)) ** 2 + (b / (R * k)) ** 2 <= 1;
+
+  // ---- 立体の部品（世界の座標：U = u×L, V = v×L, Z = 高さ）
+  const L = GRAM_L;
+  const view = (() => { const k = 40 / L; const n = Math.hypot(1, 1, k); return [1 / n, 1 / n, k / n]; })();   // 見る人のほうへの向き
+  const light = (() => { const v = [-0.5, 0.35, 1]; const n = Math.hypot(...v); return v.map((a) => a / n); })();
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const W = c.W;
+  const zbuf = new Float64Array(W * c.H).fill(-Infinity);
+  const col = new Array(W * c.H).fill(null);
+  const plot = (U, V, Z, color) => {
+    const [x, y] = P(U / L, V / L, Z);
+    const xi = Math.floor(x);
+    const yi = Math.floor(y);
+    if (xi < 0 || yi < 0 || xi >= W || yi >= c.H) return;
+    const depth = dot([U, V, Z], view);
+    const k = yi * W + xi;
+    if (depth > zbuf[k]) { zbuf[k] = depth; col[k] = color; }
   };
-  // ラッパの胴（口の面より先は描かない）
-  d.fill((x, y) => ((x + 0.5 - ex) * Math.cos(ang) + (y + 0.5 - ey) * Math.sin(ang)) <= 0 && pts.some(([, cx, cy, r]) => Math.hypot(x + 0.5 - cx, y + 0.5 - cy) <= r), (x, y) => {
-    let best = pts[0];
-    for (const q of pts) if (Math.hypot(x + 0.5 - q[1], y + 0.5 - q[2]) <= q[3]) best = q;
-    const [, cx, cy, r] = best;
-    const k = ((x + 0.5 - cx) * 0.6 + (y + 0.5 - cy)) / r;   // 上が明るく、下が暗い
-    return k < -0.5 ? WOOD.brassLight : k > 0.45 ? WOOD.brassDark : WOOD.brass;
-  }, { group: 'horn' });
-  d.fill(mouth(1, 0.34), (x, y) => (x + y < ex + ey ? WOOD.brassLight : WOOD.brass), { group: 'bell' });
-  d.fill(mouth(0.84, 0.3), (x, y) => {
-    const dx = x + 0.5 - ex;
-    const dy = y + 0.5 - ey;
-    const r = Math.hypot(dx, dy) / R;
-    if (r < 0.2) return '#2a1c0c';                  // のど
-    if (r < 0.45) return '#5a3c18';
-    return dx + dy > 0 ? '#8a6a2a' : '#a8843a';     // 内側の面（光の当たる側が明るい）
-  }, { group: 'bell' });
-  // サウンドボックス（盤の上の手前の左。丸い真鍮）
-  d.fill(ellipse(bx, by, 3.2, 3), (x, y) => (y < by ? WOOD.brassLight : WOOD.brassDark), { group: 'sound' });
-  d.put(Math.round(bx), Math.round(by), '#2a1c0c');
+  const shadeBrass = (n, seam) => {
+    const k = dot(n, light);
+    if (seam) return k > 0.3 ? WOOD.brass : WOOD.brassDark;
+    return k > 0.75 ? '#fff0c0' : k > 0.4 ? WOOD.brassLight : k > -0.1 ? WOOD.brass : k > -0.5 ? WOOD.brassDark : '#5a4018';
+  };
+  // 管（中心線 path(t)、太さ rad(t)）を表面の点で描く。bell なら、口の縁と内側と継ぎ目も描く
+  const tube = (path, rad, { bell = false, steps = 260 } = {}) => {
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const C = path(t);
+      const C2 = path(Math.min(1, t + 0.002));
+      const C1 = path(Math.max(0, t - 0.002));
+      let T = [C2[0] - C1[0], C2[1] - C1[1], C2[2] - C1[2]];
+      const tn = Math.hypot(...T); T = T.map((a) => a / tn);
+      // 管の断面の2つの向き
+      let N = [1, 0, 0];   // U の軸から T の向きを除いた向き
+      N = N.map((a, k) => a - dot([1, 0, 0], T) * T[k]);
+      const nn = Math.hypot(...N); N = N.map((a) => a / nn);
+      const B = [T[1] * N[2] - T[2] * N[1], T[2] * N[0] - T[0] * N[2], T[0] * N[1] - T[1] * N[0]];
+      const r = rad(t);
+      const na = Math.max(24, Math.ceil(r * 8));
+      for (let a = 0; a < na; a++) {
+        const th = (a / na) * Math.PI * 2;
+        const wav = bell && t > 0.9 ? 1 + 0.05 * Math.cos(8 * th) * (t - 0.9) / 0.1 : 1;   // 口の縁は花びらのように波打つ
+        const n = [0, 1, 2].map((k) => Math.cos(th) * N[k] + Math.sin(th) * B[k]);
+        const p = [0, 1, 2].map((k) => C[k] + r * wav * n[k]);
+        const outer = dot(n, view) > -0.05;
+        const seam = bell && Math.abs(((th / (Math.PI * 2)) * 8 + 0.5) % 1 - 0.5) < 0.05;
+        let color;
+        if (bell && t > 0.985) color = outer ? WOOD.brassLight : WOOD.brass;   // 口の縁
+        else if (outer) color = shadeBrass(n, seam);
+        else color = t < 0.75 ? '#2a1c0c' : t < 0.88 ? '#4a3414' : t < 0.95 ? '#7a5a24' : '#a8843a';   // 内側（奥ほど暗い）
+        plot(p[0], p[1], p[2], color);
+      }
+    }
+  };
+  const bez = (pts) => (t) => {
+    const [a, b2, cc, dd] = pts;
+    const m = 1 - t;
+    return [0, 1, 2].map((k) => m * m * m * a[k] + 3 * m * m * t * b2[k] + 3 * m * t * t * cc[k] + t * t * t * dd[k]);
+  };
+  const X = 0.5 * L;
+  // 奥の真鍮の支え（肘）：箱の上から立つ太い柱
+  tube((t) => [X, 0.24 * L, 64 + 12 * t], () => 2.6, { steps: 30 });
+  // トーンアーム：肘から盤の上を手前へ、細くなりながら
+  tube((t) => [X, (0.24 + 0.4 * t) * L, 74 - 4 * t], (t) => 2 - 0.8 * t, { steps: 80 });
+  // サウンドボックス：手前を向いた丸い真鍮の箱（膜の面）と、下へ針
+  const SB = [X, 0.66 * L, 70];
+  for (let rr = 0; rr <= 4.5; rr += 0.25) {
+    for (let a = 0; a < 64; a++) {
+      const th = (a / 64) * Math.PI * 2;
+      for (const dv of [0, 1.5]) plot(SB[0] + rr * Math.cos(th), SB[1] + dv, SB[2] + rr * Math.sin(th), rr > 3.6 ? WOOD.brassLight : dv > 1 ? (rr < 1 ? '#3a2c1c' : '#d8c8a0') : WOOD.brass);
+    }
+  }
+  for (let z = 65; z < 66.5; z += 0.25) plot(SB[0], SB[1] + 1, z, '#2a2420');
+  // ラッパ：細い端は肘の上。上へ立ち上がり、手前へ弧を描いて、口を手前へ開く
+  tube(bez([[X, 0.24 * L, 76], [X, 0.08 * L, 112], [X, 0.62 * L, 128], [X, 1.15 * L, 122]]), (t) => 2.2 + 19 * t ** 3.4, { bell: true, steps: 420 });
+  d.fill((x, y) => x >= 0 && y >= 0 && x < W && y < c.H && col[Math.floor(y) * W + Math.floor(x)] !== null,
+    (x, y) => col[y * W + x], { group: 'horn' });
   return done(c);
 }
 

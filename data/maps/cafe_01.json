@@ -7,7 +7,7 @@
   "floorSprite": "floor_cafe",
   "wallArt": "cafe",
   "walls": {
-    "ne": [null, null, null, "plain", "plain", "plain", "plain", "window", "window", "window", "window", "window", "window", "window", "window", "window"],
+    "ne": [null, null, null, "window", "window", "window", "window", "window", "window", "window", "window", "window", "window", "window", "window", "window"],
     "nw": [null, null, "loft", "loft", "loft", "loft", "loft", "loft", "loft", "loft", "loft"]
   },
   "neWallTop": 136,
