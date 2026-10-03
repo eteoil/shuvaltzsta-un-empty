@@ -157,8 +157,8 @@ export function cafeWallDots(side, style, { start = false, end = false, seed = 0
     // 梁の上は三角の壁：左の端（ロフトの奥の壁との角）は天井まで、右の端は梁まで斜めに下がる
     const L = CAFE.loftH;
     const ceil = (t) => H0 + (L - H0) * t;
-    const shape = region((t, z) => z <= ceil(t));
-    const door = (t, z) => t >= 0.1 && t <= 0.9 && z <= DOOR_H;
+    const shape = region((t, z) => z >= 0 && z <= ceil(t));
+    const door = (t, z) => t >= 0.1 && t <= 0.9 && z >= 0 && z <= DOOR_H;
     d.fill(shape, (x, y) => {
       const [t, z] = at(x, y);
       if (door(t, z)) {
@@ -351,30 +351,63 @@ export function cafeWallDots(side, style, { start = false, end = false, seed = 0
 
 // 背の高い酒棚（ロフトの南東向きの面）。下は扉の付いた戸棚、上は緑に光る3段の棚に色とりどりの瓶
 const BOTTLES = ['#3a6a3a', '#8a3a2a', '#d8b050', '#4a5a8a', '#c87a3a', '#e8e0c8', '#6a2a4a', '#2a7a6a', '#b0b8a0'];
-function backBar(v, z, seed) {
+function backBar(v, z) {
   if (v < 0.05 || v > 0.95) return WOOD.dark;
   if (z < 6) return WOOD.deep;
   if (z < 42) return (v > 0.12 && v < 0.46) || (v > 0.54 && v < 0.88) ? (z > 10 && z < 37 ? '#4a2e1c' : WOOD.mid) : WOOD.mid;
   if (z < 46) return z > 44 ? WOOD.lighter : WOOD.light;
   if (z > 122) return Math.abs(z - 125) < 0.8 ? WOOD.brass : WOOD.dark;
-  if ([[68, 70], [94, 96]].some(([a, b]) => z >= a && z <= b)) return '#4a3020';
-  const row = z < 70 ? 0 : z < 96 ? 1 : 2;
-  const bottom = [46, 70, 96][row];
-  const k = Math.floor(v * 14);
-  const f = v * 14 - k;
-  const hb = 13 + Math.floor(hash(k, row, seed) * 9);
-  const neck = z - bottom > hb * 0.62;
-  const inBottle = z - bottom <= hb && (neck ? f > 0.38 && f < 0.62 : f > 0.16 && f < 0.84) && hash(k, row, seed + 3) > 0.12;
-  if (inBottle) {
-    const col = BOTTLES[Math.floor(hash(k, row, seed + 9) * BOTTLES.length)];
-    return f < 0.3 && !neck ? mix(col, '#ffffff', 0.45) : col;
-  }
+  // 棚の奥の板（緑に光る。上の棚板の下は影）。棚板と瓶は shelfBottles で立体に描く
+  const bottom = z < 70 ? 46 : z < 96 ? 70 : 96;
+  const top = z < 70 ? 70 : z < 96 ? 96 : 122;
+  if (top - z < 4) return '#2e5a44';
   return mix('#4aa77a', '#a8e8c2', (z - bottom) / 26);
+}
+// 酒棚の棚板と瓶（棚の奥行きのある箱の中に立つ。棚板の上の面が見え、瓶は縦にまっすぐ立つ）
+const SHELF_IN = 0.7;   // 棚の奥の板の位置（u）
+function shelfBottles(c, seed) {
+  const { d, P } = c;
+  for (const zb of [46, 70, 96]) {
+    // 棚板（上の面と手前の縁）
+    d.fill(poly([P(SHELF_IN, 0.05, zb), P(1, 0.05, zb), P(1, 0.95, zb), P(SHELF_IN, 0.95, zb)]), (x, y) => ((x + y) % 7 === 0 ? WOOD.mid : WOOD.light), { line: false, group: 'board' });
+    d.fill(poly([P(1, 0.05, zb), P(1, 0.95, zb), P(1, 0.95, zb - 2), P(1, 0.05, zb - 2)]), flat(WOOD.lighter), { line: false, group: 'board' });
+    const row = [46, 70, 96].indexOf(zb);
+    const N = 7;
+    for (let k = 0; k < N; k++) {
+      if (hash(k, row, seed + 3) < 0.12) continue;
+      const v = 0.1 + (0.8 * (k + 0.5)) / N;
+      const u = SHELF_IN + 0.12 + 0.08 * hash(k, row, seed + 5);
+      const [x0, y0] = P(u, v, zb);
+      const x = Math.round(x0);
+      const y = Math.round(y0);
+      const hb = 13 + Math.floor(hash(k, row, seed) * 6);
+      const col = BOTTLES[Math.floor(hash(k, row, seed + 9) * BOTTLES.length)];
+      const shoulder = Math.round(hb * 0.6);
+      const wide = hash(k, row, seed + 11) < 0.35;   // 太い瓶（ウイスキーの角瓶のような）
+      const hw = wide ? 3 : 2;
+      d.fill((px, py) => {
+        const dx = px - x;
+        const dy = y - py;
+        if (dy < 0 || dy > hb) return false;
+        if (dy <= shoulder) return dx >= -hw && dx <= hw;
+        if (dy <= shoulder + 2) return dx >= -hw + 1 && dx <= hw - 1;
+        return dx >= -1 && dx <= 0;
+      }, (px, py) => {
+        const dx = px - x;
+        const dy = y - py;
+        if (dy >= hb - 1) return WOOD.deep;   // 栓
+        if (dy <= shoulder && dy > 3 && dy < shoulder - 2 && Math.abs(dx) < hw && hash(k, row, seed + 13) < 0.5) return '#e8e0c8';   // ラベル
+        if (dx === -hw || (dy > shoulder && dx === -1)) return mix(col, '#ffffff', 0.45);   // 光の当たる側
+        if (dx === hw || (dy > shoulder && dx === 0)) return mix(col, '#000000', 0.35);
+        return col;
+      }, { line: false, group: `bottle${zb}_${k}` });
+    }
+  }
 }
 // ガラスの飾り棚（青い光の中の、青いガラスの像）
 function vitrine(v, z) {
   if (v < 0.05 || v > 0.95) return WOOD.dark;
-  if (z < 46 || z > 122) return backBar(v, z, 0);
+  if (z < 46 || z > 122) return backBar(v, z);
   const dv = (v - 0.5) * 40;
   const body = (dv / 7) ** 2 + ((z - 74) / 16) ** 2 <= 1;
   const head = (dv / 8) ** 2 + ((z - 104) / 7) ** 2 <= 1;
@@ -403,7 +436,7 @@ export function tileBoxDots(kind, h, se, sw, face = 'panel', seed = 0) {
     : (u, v) => { const k = alongJ ? v : u; return k > 0.86 ? WOOD.lighter : k > 0.8 ? WOOD.mid : '#7a5234'; };
   const sePaint = (v, z) => {
     if (kind === 'stairs') return alongJ ? stringer(v, z) : riser(z);
-    if (face === 'backbar') return backBar(v, z, seed);
+    if (face === 'backbar') return backBar(v, z);
     if (face === 'vitrine') return vitrine(v, z);
     return PANEL(v, z, h);
   };
@@ -414,6 +447,7 @@ export function tileBoxDots(kind, h, se, sw, face = 'panel', seed = 0) {
   if (sw !== null && sw < h) box(c, 0, 1, 0, 1, sw, h, { sw: swPaint });
   if (se !== null && se < h) box(c, 0, 1, 0, 1, se, h, { se: sePaint });
   box(c, 0, 1, 0, 1, h, h, { top: topPaint });
+  if (kind === 'loft' && face === 'backbar' && se !== null && se < h) shelfBottles(c, seed);
   return done(c);
 }
 
@@ -580,22 +614,77 @@ const tufted = (s, z) => {
 };
 function boothBenchDots(dir) {
   const D = 1.92;   // 窓から部屋へ2マス
-  const c = iso(0, 1, 0, 2, 110);
-  const backFirst = dir === 'se';
-  const [b0, b1] = backFirst ? [0.06, 0.22] : [0.78, 0.94];
+  const c = iso(0, 1, 0, 2, 116);
+  const se = dir === 'se';
+  const T = 0.3;    // 背もたれの厚み（木の枠で囲んだ仕切り）
+  const BH = 100;   // 背もたれのてっぺん
+  const SZ = 22;    // 座面の下の木の台の高さ
+  const CZ = 34;    // 座面のクッションの上
+  const [b0, b1] = se ? [0, T] : [1 - T, 1];
+  const [s0, s1] = se ? [T, 0.94] : [0.06, 1 - T];
+  // 木の板張り（縦の板目と、はめ込みの板）
+  const boards = (s, z, z0, z1) => {
+    if (z < z0 + 5) return WOOD.deep;
+    if (z > z1 - 4) return WOOD.lighter;
+    const f = (s * 2.2) % 1;
+    if (f > 0.12 && f < 0.88 && z > z0 + 9 && z < z1 - 8) return Math.floor(s * 40) % 5 === 0 ? '#4a2e1c' : WOOD.mid;
+    return WOOD.light;
+  };
+  // 仕切りの端の板（部屋の側の面。上が尖ったアーチのはめ込み）
+  const endPanel = (u, z) => {
+    const k = (u - b0) / T;
+    if (z < 6) return WOOD.deep;
+    if (z > BH - 6) return WOOD.lighter;
+    if (k < 0.18 || k > 0.82) return WOOD.light;
+    const arch = BH - 20 - 10 * Math.abs(k - 0.5) * 2;
+    if (z > 14 && z < arch) return Math.abs(k - 0.5) < 0.04 ? WOOD.dark : WOOD.mid;
+    return z >= arch && z < arch + 2 ? WOOD.dark : WOOD.light;
+  };
   const back = () => {
-    box(c, b0, b1, 0, D, 0, 96, {
-      sw: (u, z) => (z > 90 ? WOOD.lighter : z < 26 ? WOOD.mid : backFirst ? WOOD.mid : WOOD.light),
-      se: backFirst
-        ? (v, z) => (z > 90 || v > D - 0.06 || v < 0.05 || z < 26 ? WOOD.light : tufted(v, z))
-        : (v, z) => (z < 6 ? WOOD.deep : z > 90 ? WOOD.light : Math.floor(v * 40) % 9 === 0 ? WOOD.dark : WOOD.mid),
-      top: () => WOOD.lighter,
+    box(c, b0, b1, 0, D, 0, BH, {
+      sw: endPanel,
+      se: se
+        ? (v, z) => {   // 座る側：木の枠の中に、ボタン留めの赤い背もたれ
+          if (z > BH - 6 || v > D - 0.08 || v < 0.06) return WOOD.light;
+          if (z < CZ) return WOOD.mid;
+          return tufted(v, z);
+        }
+        : (v, z) => boards(v, z, 0, BH),   // 背中の側：木の板張り
+      top: (u, v) => (Math.abs(u - (b0 + b1) / 2) < 0.03 ? WOOD.light : WOOD.lighter),
     });
   };
-  if (backFirst) back();
-  box(c, 0.08, 0.92, 0, D, 0, 20, { sw: (u, z) => (z < 5 ? WOOD.deep : WOOD.mid), se: (v, z) => (z < 5 ? WOOD.deep : WOOD.dark) });
-  box(c, 0.08, 0.92, 0, D, 20, 28, { sw: () => RED.dark, se: () => RED.dark, top: (u, v) => tufted(v, u * 20 + 40) === RED.mid ? RED.top : tufted(v, u * 20 + 40) });
-  if (!backFirst) back();
+  if (se) back();
+  // 座面の下の木の台と、厚いクッション
+  box(c, s0, s1, 0.03, D - 0.03, 0, SZ, { sw: (u, z) => boards(u * 2, z, 0, SZ), se: (v, z) => boards(v, z, 0, SZ) });
+  box(c, s0, s1, 0.03, D - 0.03, SZ, CZ, {
+    sw: (u, z) => (Math.abs(z - (SZ + CZ) / 2) < 0.6 && Math.floor(u * 40) % 3 === 0 ? RED.button : RED.dark),
+    se: (v, z) => (Math.abs(z - (SZ + CZ) / 2) < 0.6 && Math.floor(v * 40) % 3 === 0 ? RED.button : RED.dark),
+    top: (u, v) => { const t = tufted(v, u * 20 + 40); return t === RED.mid ? RED.top : t; },
+  });
+  if (!se) back();
+  return done(c);
+}
+
+// ボックス席の後ろの棚（参考：濃い木の引き出しの箪笥。部屋の側の面に4段の引き出しと真鍮のつまみ）
+function drawerChestDots() {
+  const c = iso(0, 1, 0, 1, 96);
+  const H = 84;
+  const drawers = (s, z) => {
+    if (z < 6) return WOOD.deep;
+    if (z > H - 5) return WOOD.light;
+    if (s < 0.1 || s > 0.9) return WOOD.dark;
+    const row = Math.floor((z - 6) / ((H - 11) / 4));
+    const z0 = 6 + row * ((H - 11) / 4);
+    const dz = z - z0;
+    if (dz < 2) return WOOD.deep;   // 引き出しの境目
+    for (const ks of [0.3, 0.7]) if (Math.abs((s - ks) * 40) < 1.3 && Math.abs(dz - 9) < 1.3) return WOOD.brass;   // つまみ
+    return dz > 15 ? '#4a2e1c' : '#3e2616';
+  };
+  box(c, 0.1, 0.9, 0.08, 0.92, 0, H, {
+    sw: (u, z) => drawers(u, z),
+    se: (v, z) => (z < 6 ? WOOD.deep : z > H - 5 ? WOOD.light : Math.floor(v * 40) % 9 === 0 ? WOOD.deep : WOOD.dark),
+    top: (u, v, x, y) => ((x + 2 * y) % 13 === 0 ? WOOD.mid : WOOD.light),
+  });
   return done(c);
 }
 
@@ -634,10 +723,10 @@ function pendantDots(z, top) {
   return done(c);
 }
 
-// 蓄音機（参考：小さな戸棚の上に、真鍮の縁の木の台。上に黒いレコードの盤、横にぜんまいを巻く取っ手、
-// 奥の角から立ち上がるアームが曲がって、朝顔の花のように開いた大きな真鍮のラッパにつながる。ラッパの口は手前の左上を向く）
+// 蓄音機（参考：彫りの飾りの付いた横長の木の箱。上に黒いレコードの盤、手前の左に丸い真鍮のサウンドボックス。
+// 奥の右の真鍮の支えから、ラッパの細い首が立ち上がり、左へ曲がりながら太くなって、口を左上へ大きく開く）
 function gramophoneDots() {
-  const c = iso(-0.3, 1, 0, 1.2, 140);
+  const c = iso(-0.5, 1, 0, 1.2, 150);
   const { d, P } = c;
   // 戸棚
   box(c, 0.12, 0.88, 0.12, 0.88, 0, 46, {
@@ -645,47 +734,71 @@ function gramophoneDots() {
     se: (v, z) => (z < 5 ? WOOD.deep : z > 8 && z < 40 && v > 0.2 && v < 0.8 ? '#3a2416' : WOOD.dark),
     top: () => WOOD.light,
   });
-  // 蓄音機の台（木の箱、上の縁は真鍮）
-  box(c, 0.22, 0.78, 0.22, 0.78, 46, 60, {
-    sw: (u, z) => (z > 57 ? WOOD.brass : '#6e4228'),
-    se: (v, z) => (z > 57 ? WOOD.brassDark : '#52301c'),
-    top: () => '#2a1c14',
+  // 蓄音機の箱（下に真鍮の縁、彫りのはめ込みの板と、真ん中に丸い飾り）
+  const carved = (s, z) => {
+    if (z < 49) return WOOD.brassDark;
+    if (z > 61) return WOOD.lighter;
+    if (s > 0.3 && s < 0.7 && z > 51 && z < 59) {
+      if (Math.hypot((s - 0.5) * 40, z - 55) < 2.2) return WOOD.brass;
+      return '#5a3420';
+    }
+    return '#7a4a2a';
+  };
+  box(c, 0.16, 0.84, 0.2, 0.8, 46, 63, {
+    sw: (u, z) => carved((u - 0.16) / 0.68, z),
+    se: (v, z) => (z < 49 ? WOOD.brassDark : z > 61 ? WOOD.light : (v > 0.3 && v < 0.7 && z > 51 && z < 59 ? '#3e2414' : '#5a3420')),
+    top: () => '#3a2416',
   });
-  // ぜんまいの取っ手（南東の面から外へ出て、先に握り）
-  const [hx, hy] = P(0.78, 0.5, 52);
-  d.fill(poly([[hx, hy - 1], [hx + 7, hy + 2], [hx + 7, hy + 4], [hx, hy + 1]]), flat(WOOD.brassDark), { group: 'crank' });
-  d.fill(ellipse(hx + 8, hy + 1, 2, 3), flat(WOOD.dark), { group: 'knob' });
   // レコード（黒い盤に溝の光、赤いラベル、真鍮の芯）
-  const [rx, ry] = P(0.5, 0.5, 61);
-  d.fill(ellipse(rx, ry, 12, 6), (x, y) => {
-    const r = Math.hypot((x + 0.5 - rx) / 12, (y + 0.5 - ry) / 6);
+  const [rx, ry] = P(0.48, 0.5, 64);
+  d.fill(ellipse(rx, ry, 11, 5.5), (x, y) => {
+    const r = Math.hypot((x + 0.5 - rx) / 11, (y + 0.5 - ry) / 5.5);
     if (r < 0.12) return WOOD.brassLight;
     if (r < 0.32) return '#c0392b';
     return Math.floor(r * 10) % 2 === 0 && x < rx ? '#3a3632' : '#1a1614';
   }, { group: 'disc' });
-  // アーム：奥の角から立ち上がり、曲がって手前の左上へ太くなりながらラッパへ
-  const base = P(0.72, 0.3, 60);
-  const ctrl = [base[0] + 4, base[1] - 34];
-  const bellC = [base[0] - 22, base[1] - 52];
-  for (let t = 0; t <= 1.001; t += 0.04) {
-    const x = (1 - t) ** 2 * base[0] + 2 * (1 - t) * t * ctrl[0] + t * t * bellC[0];
-    const y = (1 - t) ** 2 * base[1] + 2 * (1 - t) * t * ctrl[1] + t * t * bellC[1];
-    const r = 1.6 + 5 * t * t;
-    d.fill(ellipse(x, y, r, r), (px) => (px < x ? WOOD.brassLight : WOOD.brass), { group: 'horn' });
-  }
-  // ラッパの口（花びらのように波打つ縁、内側は暗い）
-  const petal = (x, y, k) => {
-    const dx = (x + 0.5 - bellC[0]) / 17;
-    const dy = (y + 0.5 - bellC[1]) / 14;
-    const a = Math.atan2(dy, dx);
-    return Math.hypot(dx, dy) <= k * (1 + 0.07 * Math.cos(8 * a));
+  // 奥の右の真鍮の支え
+  const [sx, sy] = P(0.74, 0.28, 63);
+  d.fill(poly([[sx - 2, sy], [sx + 2, sy], [sx + 2, sy - 12], [sx - 2, sy - 12]]), (x) => (x < sx ? WOOD.brassLight : WOOD.brassDark), { group: 'stand' });
+  // ラッパ：支えの上から、上へ立ち上がって左へ曲がる。首は細く、口へ向かって急に太くなる
+  const p0 = [sx, sy - 12];
+  const p1 = [sx + 6, sy - 40];
+  const p2 = [sx - 30, sy - 58];
+  const at = (t) => [(1 - t) ** 2 * p0[0] + 2 * (1 - t) * t * p1[0] + t * t * p2[0], (1 - t) ** 2 * p0[1] + 2 * (1 - t) * t * p1[1] + t * t * p2[1]];
+  const rad = (t) => 1.6 + 15 * t ** 3;
+  const pts = [];
+  for (let t = 0; t <= 1.0001; t += 0.02) pts.push([t, ...at(t), rad(t)]);
+  // ラッパの胴（真鍮。左上が明るく、右下が暗い）
+  d.fill((x, y) => pts.some(([, cx, cy, r]) => Math.hypot(x + 0.5 - cx, y + 0.5 - cy) <= r), (x, y) => {
+    // いちばん口に近い（太い）円で陰を決める
+    let best = pts[0];
+    for (const q of pts) if (Math.hypot(x + 0.5 - q[1], y + 0.5 - q[2]) <= q[3]) best = q;
+    const [, cx, cy, r] = best;
+    const k = ((x + 0.5 - cx) + (y + 0.5 - cy)) / (r * 1.4);
+    return k < -0.45 ? WOOD.brassLight : k > 0.4 ? WOOD.brassDark : WOOD.brass;
+  }, { group: 'horn' });
+  // ラッパの口：進む向きに垂直な楕円。内側は暗く、縁は明るい真鍮
+  const [ex, ey] = at(1);
+  const [qx, qy] = at(0.96);
+  const ang = Math.atan2(ey - qy, ex - qx);   // 口の向き
+  const R = rad(1) + 2;
+  const mouth = (k) => (x, y) => {
+    const dx = x + 0.5 - ex;
+    const dy = y + 0.5 - ey;
+    const a = dx * Math.cos(ang) + dy * Math.sin(ang);    // 口の向きの成分（縮む）
+    const b = -dx * Math.sin(ang) + dy * Math.cos(ang);   // 口の縁に沿う成分
+    return (a / (R * 0.42 * k)) ** 2 + (b / (R * k)) ** 2 <= 1;
   };
-  d.fill((x, y) => petal(x, y, 1), (x, y) => {
-    const a = Math.atan2(y + 0.5 - bellC[1], x + 0.5 - bellC[0]);
-    return Math.floor(((a + Math.PI) / (2 * Math.PI)) * 8) % 2 ? WOOD.brassLight : WOOD.brass;
+  d.fill(mouth(1), (x, y) => (y + 0.5 < ey ? WOOD.brassLight : WOOD.brass), { group: 'bell' });
+  d.fill(mouth(0.78), (x, y) => {
+    const r = Math.hypot(x + 0.5 - ex, y + 0.5 - ey) / R;
+    return r < 0.25 ? '#2a1c0c' : r < 0.5 ? '#5a3c18' : '#8a6a2a';
   }, { group: 'bell' });
-  d.fill((x, y) => petal(x, y, 0.62), (x, y) => (y + 0.5 > bellC[1] + 2 ? '#7a5420' : '#5a3c18'), { group: 'bellIn' });
-  d.fill(ellipse(bellC[0] + 1, bellC[1] + 1, 3, 2.5), flat('#2a1c0c'), { group: 'throat' });
+  // サウンドボックス（盤の上の手前の左。ラッパの首へ細い管でつながる）
+  const [bx, by] = P(0.36, 0.62, 66);
+  const [nx, ny] = at(0.45);
+  d.fill(capsule([bx, by], [nx, ny], 1.2), (x) => (x < bx ? WOOD.brassLight : WOOD.brass), { group: 'arm' });
+  d.fill(ellipse(bx, by, 3, 2.5), (x, y) => (y < by ? WOOD.brassLight : WOOD.brassDark), { group: 'arm' });
   return done(c);
 }
 
@@ -727,6 +840,7 @@ export const CAFE_PROPS = {
   boothBenchSE: () => boothBenchDots('se'),
   boothBenchNW: () => boothBenchDots('nw'),
   boothTable: () => boothTableDots(),
+  drawerChest: () => drawerChestDots(),
   gramophone: () => gramophoneDots(),
   pendant: () => pendantDots(150, CAFE.wallH - 12),
   pendantLoft: () => pendantDots(140, CAFE.wallH - CAFE.loftH - 12),

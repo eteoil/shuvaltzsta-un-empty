@@ -80,6 +80,7 @@
     { "art": "barChair", "at": [5, 8], "across": true },
     { "art": "pendant", "at": [4, 7], "blocks": false, "key": 11.9 },
     { "art": "gramophone", "at": [4, 0] },
+    { "art": "drawerChest", "at": [6, 0] },
     { "art": "boothBenchSE", "at": [7, 0], "size": [1, 2] },
     { "art": "boothTable", "at": [8, 0], "size": [1, 2], "across": true },
     { "art": "boothBenchNW", "at": [9, 0], "size": [1, 2] },
@@ -102,7 +103,7 @@
   "npcs": [
     { "id": "shalvis", "at": [3, 4], "dir": "se", "staff": true },
     { "id": "elena", "at": [3, 5], "dir": "se", "staff": true, "night": true },
-    { "id": "kou", "at": [7, 1], "dir": "se", "staff": true, "restDay": false, "sit": 28 }
+    { "id": "kou", "at": [7, 1], "dir": "se", "staff": true, "restDay": false, "sit": 34 }
   ],
   "encounters": []
 }
