@@ -860,12 +860,12 @@ function boothBenchDots(dir) {
   return done(c);
 }
 
-// ボックス席の後ろの棚（ボックス席の背もたれと同じ高さ・同じ厚みの木の棚。背もたれにくっつけて置く。板張りで、引き出しは無い）
+// ボックス席の後ろの棚（ボックス席の背もたれと同じ高さ・背もたれより厚い木の棚。背もたれにくっつけて置く。板張りで、引き出しは無い）
 function drawerChestDots() {
   const D = 1.92;
   const c = iso(0, 1, 0, 2, 90);
   const H = 76;
-  const T = 0.3;    // 厚み（背もたれと同じ）
+  const T = 0.45;   // 厚み（背もたれの1.5倍）
   const boards = (s, z) => {
     if (z < 5) return WOOD.deep;
     if (z > H - 4) return WOOD.lighter;
