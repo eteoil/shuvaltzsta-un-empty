@@ -50,7 +50,7 @@
     "4443210000000000",
     "4443210000000000"
   ],
-  "loftFront": ["panel", "panel", "vitrine", "backbar", "backbar", "backbar", "backbar", "vitrine", "panel", "panel", "panel"],
+  "loftFront": ["panel", "panel", "vitrine", "backbar", "backbar", "backbar", "backbar", "vitrine", "plaster", "panel", "panel"],
   "start": [0, 10, "ne"],
   "exits": [
     { "at": [0, 10], "edge": "sw", "to": "fest_01", "spawn": [5, 5, "se"], "label": "フェストへ" }
@@ -90,12 +90,15 @@
     { "art": "boothTable", "at": [14, 0], "size": [1, 2], "across": true },
     { "art": "boothBenchNW", "at": [15, 0], "size": [1, 2] },
     { "art": "pendantLow", "at": [14, 1], "blocks": false, "key": 15.5 },
-    { "art": "chairSW", "at": [9, 6] },
-    { "art": "roundTableBig", "at": [9, 7] },
-    { "art": "chairNE", "at": [9, 8] },
-    { "art": "chairSW", "at": [13, 5] },
-    { "art": "roundTableBig", "at": [13, 6] },
-    { "art": "chairNE", "at": [13, 7] }
+    { "art": "chairSW", "at": [8, 8] },
+    { "art": "roundTableBig", "at": [8, 9] },
+    { "art": "chairNE", "at": [8, 10] },
+    { "art": "chairSW", "at": [10, 4] },
+    { "art": "roundTableBig", "at": [10, 5] },
+    { "art": "chairNE", "at": [10, 6] },
+    { "art": "piano", "at": [12, 9], "size": [2, 1] },
+    { "art": "drums", "at": [14, 8] },
+    { "art": "micStand", "at": [15, 9] }
   ],
   "npcs": [
     { "id": "shalvis", "at": [3, 4], "dir": "se", "staff": true },
