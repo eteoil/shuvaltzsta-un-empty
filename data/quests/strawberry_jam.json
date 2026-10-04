@@ -8,7 +8,7 @@
       { "speaker": "エレナ", "text": "シャルの作ったイチゴジャムが食べたいわ" },
       { "speaker": "シャルヴィス", "text": "材料があれば作れるんだが……" }
     ],
-    "accept": { "label": "取ってくる", "lines": [{ "speaker": "エレナ", "text": "ありがとう、待ってるわね" }] },
+    "accept": { "label": "取ってくる", "lines": [{ "speaker": "エレナ", "text": "あら、いいの？ありがとう、待ってるわね" }] },
     "decline": { "label": "黙ってる", "lines": [{ "speaker": "エレナ", "text": "しかたがないわね" }] }
   },
   "waiting": [{ "speaker": "エレナ", "text": "シャルの作るイチゴジャム、本当に美味しいのよ？" }],
