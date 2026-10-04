@@ -514,8 +514,8 @@ function vitrineStatue(c) {
   d.fill((x, y) => shelf(x, y) && inside(x, y), (x, y) => ((x + y) % 5 === 0 ? '#bfe8ff' : '#5fa8dc'), { line: false, group: 'glassShelf' });
   const S = solid3d(c);
   const L = S.L;
-  const Uc = 0.8 * L;
-  const Vc = 0.36 * L;   // 奥に立つぶん画面では左へずれるので、正面から見て枠の真ん中に来る位置
+  const Uc = 0.85 * L;   // 台座がガラスの棚板の真ん中に乗る位置
+  const Vc = 0.5 * L;
   const lightC = (k) => (k > 0.6 ? '#e2f8fc' : k > 0.25 ? '#a6e6f2' : k > -0.15 ? '#6cc8de' : '#3f9ec6');
   const darkC = (k) => (k > 0.5 ? '#5a8ee0' : k > 0.1 ? '#3a6cc4' : '#2a52a4');
   const lp = (n) => lightC(S.shade(n));
@@ -526,7 +526,7 @@ function vitrineStatue(c) {
   // 脚
   for (const s of [-1.8, 1.8]) S.line([Uc, Vc + s, Z0 + 1], [Uc, Vc + s, Z0 + 15], 1.6, dp);
   // 裾（つぼみ）：大きくふくらんだ丸に、縦の花びらの筋。上に小さな花びらの段
-  S.ellipsoid([Uc, Vc, Z0 + 24], [9, 10.5, 9.5], (n) => {
+  S.ellipsoid([Uc, Vc, Z0 + 24], [8.5, 10, 9.5], (n) => {
     const a = Math.atan2(n[1], n[0]);
     const k = S.shade(n);
     if (n[2] < 0.6 && Math.abs(((a / (Math.PI * 2)) * 6 + 0.5) % 1 - 0.5) < 0.06) return darkC(k + 0.4);   // 花びらの境目
@@ -550,7 +550,7 @@ function vitrineStatue(c) {
   for (const s of [-1, 1]) {
     S.tube((t) => {
       const a = Math.PI * t;
-      return [Uc - 1, Vc + s * (4.5 + 8 * Math.sin(a)), Z0 + 45 - 22 * t];
+      return [Uc - 1, Vc + s * (4.5 + 6 * Math.sin(a)), Z0 + 45 - 22 * t];
     }, () => 1, (n) => lightC(S.shade(n) - 0.1));
   }
   S.flush('statue', { line: false }, inside);
