@@ -69,12 +69,11 @@
     { "art": "counter", "at": [4, 6], "across": true },
     { "art": "counter", "at": [4, 7], "across": true },
     { "art": "counterEnd", "at": [4, 8], "across": true },
-    { "art": "barChair", "at": [5, 3], "across": true },
-    { "art": "barChair", "at": [5, 4], "across": true },
-    { "art": "barChair", "at": [5, 5], "across": true },
-    { "art": "barChair", "at": [5, 6], "across": true },
-    { "art": "barChair", "at": [5, 7], "across": true },
-    { "art": "barChair", "at": [5, 8], "across": true },
+    { "art": "barChair", "at": [5, 3], "offset": [0, 0.1], "across": true, "blocks": false },
+    { "art": "barChair", "at": [5, 4], "offset": [0, 0.28], "across": true, "blocks": false },
+    { "art": "barChair", "at": [5, 5], "offset": [0, 0.46], "across": true, "blocks": false },
+    { "art": "barChair", "at": [5, 6], "offset": [0, 0.64], "across": true, "blocks": false },
+    { "art": "barChair", "at": [5, 7], "offset": [0, 0.82], "across": true, "blocks": false },
     { "art": "pendant", "at": [4, 7], "blocks": false, "key": 11.9 },
     { "art": "gramophone", "at": [4, 0] },
     { "art": "drawerChest", "at": [6, 0], "size": [1, 2] },
@@ -103,6 +102,7 @@
   "npcs": [
     { "id": "shalvis", "at": [3, 4], "dir": "se", "staff": true },
     { "id": "elena", "at": [3, 5], "dir": "se", "staff": true, "night": true },
+    { "id": "cafe_door", "at": [2, 1], "dir": "se" },
     { "id": "kou", "at": [7, 1], "dir": "se", "staff": true, "restDay": false, "sit": 34 }
   ],
   "encounters": []

@@ -1,0 +1,9 @@
+{
+  "id": "cafe_door",
+  "name": "",
+  "hidden": true,
+  "hideName": true,
+  "options": [
+    { "label": "休む", "rest": { "say": "扉の奥の自室のベッドで、ぐっすり眠った。今日は{date}だ" } }
+  ]
+}

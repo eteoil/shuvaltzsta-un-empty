@@ -417,7 +417,8 @@ export class FieldState {
     }
     for (const pr of this.map.props ?? []) {
       const [w, d] = pr.size ?? [1, 1];
-      const p = isoTop(pr.at[0], pr.at[1], ox, oy, tile);
+      // offset はマスの中でずらす量（[i, j]。カウンターの椅子を均等に並べる）。奥から描く順番は置いたマスのまま
+      const p = isoTop(pr.at[0] + (pr.offset?.[0] ?? 0), pr.at[1] + (pr.offset?.[1] ?? 0), ox, oy, tile);
       items.push({ key: pr.key ?? pr.at[0] + w - 1 + pr.at[1] + d - 1 - 0.4, draw: () => drawProp(g, pr.art, p.x, p.y - this.heightAt(...pr.at)) });
     }
 
