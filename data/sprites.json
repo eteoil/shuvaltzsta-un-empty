@@ -79,6 +79,9 @@
       "nw": "assets/img/cheru_nw.png",
       "se": "assets/img/cheru_se.png",
       "sw": "assets/img/cheru_sw.png"
+    },
+    "anims": {
+      "idle": { "count": 3, "size": [64, 96], "anchor": [32, 88], "fps": 4, "src": "assets/img/cheru_idle_{dir}.png" }
     }
   },
   "doru": {
@@ -106,6 +109,9 @@
       "nw": "assets/img/deru_nw.png",
       "se": "assets/img/deru_se.png",
       "sw": "assets/img/deru_sw.png"
+    },
+    "anims": {
+      "idle": { "count": 3, "size": [64, 96], "anchor": [32, 88], "fps": 4, "src": "assets/img/deru_idle_{dir}.png" }
     }
   },
   "floor_bank": {
