@@ -331,7 +331,8 @@ export function cafeWallDots(side, style, { start = false, end = false, seed = 0
     line(0.06, 44, 0.94, 44, LINE);
   } else {
     // plain・lamp：腰板と漆喰。lamp は真鍮の腕に下がったランタン。plainBeam は、酒棚から扉の上を通って続く梁も
-    wainscot(56);
+    // （plainBeam の腰板は、角でつながる水槽の窓の壁と同じ高さ）
+    wainscot(style === 'plainBeam' ? 40 : 56);
     post();
     if (style === 'plainBeam') {
       d.fill(band(0, 1, BEAM_Z, CAFE.loftH), (x, y) => (Math.abs(at(x, y)[1] - 125) < 0.8 ? WOOD.brass : WOOD.dark), plain);
@@ -665,12 +666,12 @@ function boothBenchDots(dir) {
   return done(c);
 }
 
-// ボックス席の後ろの棚（ボックス席の背もたれと同じ高さ・半分の厚みの木の棚。背もたれにくっつけて置く。板張りで、引き出しは無い）
+// ボックス席の後ろの棚（ボックス席の背もたれと同じ高さ・同じ厚みの木の棚。背もたれにくっつけて置く。板張りで、引き出しは無い）
 function drawerChestDots() {
   const D = 1.92;
   const c = iso(0, 1, 0, 2, 90);
   const H = 76;
-  const T = 0.15;   // 厚み（背もたれの半分）
+  const T = 0.3;    // 厚み（背もたれと同じ）
   const boards = (s, z) => {
     if (z < 5) return WOOD.deep;
     if (z > H - 4) return WOOD.lighter;
@@ -834,7 +835,7 @@ function gramophoneDots() {
   }
   for (let z = 65; z < 66.5; z += 0.25) plot(SB[0], SB[1] + 1, z, '#2a2420');
   // ラッパ：細い端は肘の上。上へ立ち上がり、手前へ弧を描いて、口を手前へ開く
-  tube(bez([[X, 0.24 * L, 76], [X, 0.08 * L, 112], [X, 0.62 * L, 128], [X, 1.15 * L, 122]]), (t) => 2.2 + 19 * t ** 3.4, { bell: true, steps: 420 });
+  tube(bez([[X, 0.24 * L, 76], [X, 0.16 * L, 94], [X, 0.43 * L, 102], [X, 0.7 * L, 99]]), (t) => 1.6 + 9.5 * t ** 3.4, { bell: true, steps: 300 });
   d.fill((x, y) => x >= 0 && y >= 0 && x < W && y < c.H && col[Math.floor(y) * W + Math.floor(x)] !== null,
     (x, y) => col[y * W + x], { group: 'horn' });
   return done(c);
