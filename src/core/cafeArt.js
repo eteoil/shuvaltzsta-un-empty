@@ -2,7 +2,7 @@
 // ロフトから降りる階段、右奥の壁に水槽をのぞくアーチ窓、窓の前の赤いボックス席、蓄音機、丸テーブルと椅子、スレートの石の床。
 // どれも 1ドット＝1px で、クォータービュー（床のマスは 80×40 のひし形）の角度で組み立てる。
 // 物の絵は { dots, ax, ay }：dots の (ax, ay) が、置いたマス（アンカーのマス）の上の頂点に来る。
-import { createDots, flat, poly, ellipse, capsule } from './dotArt.js';
+import { createDots, flat, poly, ellipse, capsule, linePoints } from './dotArt.js';
 
 // 水槽の窓の壁のてっぺん（酒棚から続く梁と同じ高さ。その上の壁は描かない）と、窓のてっぺん（壁のてっぺんの梁のすぐ下）
 export const WINDOW_WALL_TOP = 136;
@@ -795,7 +795,21 @@ function counterDots(end) {
     },
     top: (u, v, x, y) => (u > 0.82 ? WOOD.brass : (x + y * 3) % 23 === 0 ? '#7a4e30' : '#5a3420'),
   });
-  return done(c);
+  // 輪郭の線は手で引く。天板は隣のマスとつながる一枚板に見せたいので、マスの境目には線を引かない（手前の面の板の継ぎ目には引く）
+  const { d, P } = c;
+  const v1 = end ? 0.92 : 1;
+  const ln = (a, b) => d.stroke(linePoints(...a.map(Math.round), ...b.map(Math.round)), '#231815');
+  ln(P(0.1, 0, H), P(0.1, v1, H));     // 天板の奥の縁
+  ln(P(0.9, 0, H), P(0.9, v1, H));     // 天板の手前の縁
+  ln(P(0.9, 0, 0), P(0.9, v1, 0));     // 手前の面の下の縁
+  ln(P(0.9, 0, 0), P(0.9, 0, H));      // 手前の面の板の継ぎ目
+  if (end) {
+    ln(P(0.1, v1, H), P(0.9, v1, H));
+    ln(P(0.1, v1, 0), P(0.9, v1, 0));
+    ln(P(0.1, v1, 0), P(0.1, v1, H));
+    ln(P(0.9, v1, 0), P(0.9, v1, H));
+  }
+  return done(c, false);
 }
 
 // ボックス席の長椅子（参考：赤いボタン留めの高い背もたれを木の枠で囲み、窓から部屋のほうへ向かい合って並ぶ）。
