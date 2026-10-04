@@ -285,7 +285,9 @@ export class TalkState {
   }
 
   // 電車で別の町へ（駅員のチェルー・ドルー・デルー）。say を言ってから、会話を閉じて暗転し、to のマップの spawn へ
+  // 発車を告げるあいだは笑顔（絵に smile のモーションがあれば。駅員のバニーキャット）
   travel(t) {
+    this.expression = 'smile';
     const go = () => {
       this.close();
       this.game.states.top?.depart?.({ to: t.to, spawn: t.spawn });

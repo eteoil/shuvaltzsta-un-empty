@@ -81,7 +81,8 @@
       "sw": "assets/img/cheru_sw.png"
     },
     "anims": {
-      "idle": { "count": 3, "size": [64, 96], "anchor": [32, 88], "fps": 4, "src": "assets/img/cheru_idle_{dir}.png" }
+      "idle": { "count": 3, "size": [64, 96], "anchor": [32, 88], "fps": 4, "src": "assets/img/cheru_idle_{dir}.png" },
+      "smile": { "count": 3, "size": [64, 96], "anchor": [32, 88], "fps": 4, "src": "assets/img/cheru_smile_{dir}.png" }
     }
   },
   "doru": {
@@ -96,7 +97,8 @@
       "sw": "assets/img/doru_sw.png"
     },
     "anims": {
-      "idle": { "count": 3, "size": [64, 96], "anchor": [32, 88], "fps": 4, "src": "assets/img/doru_idle_{dir}.png" }
+      "idle": { "count": 3, "size": [64, 96], "anchor": [32, 88], "fps": 4, "src": "assets/img/doru_idle_{dir}.png" },
+      "smile": { "count": 3, "size": [64, 96], "anchor": [32, 88], "fps": 4, "src": "assets/img/doru_smile_{dir}.png" }
     }
   },
   "deru": {
@@ -111,7 +113,8 @@
       "sw": "assets/img/deru_sw.png"
     },
     "anims": {
-      "idle": { "count": 3, "size": [64, 96], "anchor": [32, 88], "fps": 4, "src": "assets/img/deru_idle_{dir}.png" }
+      "idle": { "count": 3, "size": [64, 96], "anchor": [32, 88], "fps": 4, "src": "assets/img/deru_idle_{dir}.png" },
+      "smile": { "count": 3, "size": [64, 96], "anchor": [32, 88], "fps": 4, "src": "assets/img/deru_smile_{dir}.png" }
     }
   },
   "floor_bank": {

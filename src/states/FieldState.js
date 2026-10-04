@@ -447,9 +447,13 @@ export class FieldState {
       // hidden の NPC は絵を描かない（銀行の窓口。壁の奥のバニーキャット）
       if (!def || def.hidden) continue;
       // 絵に idle のモーション（data/sprites.json）があれば、その場でくり返す（ドルー）
-      const idle = def.sprite && assets.def(def.sprite)?.anims?.idle;
+      // 話している最中に表情（TalkState の expression。駅員が発車を告げるときの笑顔）があり、絵にそのモーションがあれば、そちらをくり返す
+      const anims = def.sprite ? assets.def(def.sprite)?.anims : null;
+      const talk = this.game.states.top;
+      const face = talk?.npc === def && talk.expression && anims?.[talk.expression] ? talk.expression : null;
+      const idle = face ? anims[face] : anims?.idle;
       const frameN = idle ? Math.floor((performance.now() / 1000) * (idle.fps ?? 4)) : 0;
-      people.push({ sprite: def.sprite, object: def.object, frame: n.dir, anim: idle ? 'idle' : null, n: frameN, palette: def.palette, i: n.at[0], j: n.at[1], h: this.heightAt(...n.at), sit: n.sit, label: def.hideName ? null : def.name });
+      people.push({ sprite: def.sprite, object: def.object, frame: n.dir, anim: face ?? (idle ? 'idle' : null), n: frameN, palette: def.palette, i: n.at[0], j: n.at[1], h: this.heightAt(...n.at), sit: n.sit, label: def.hideName ? null : def.name });
     }
     for (const c of people) {
       items.push({ key: c.i + c.j, draw: () => {
