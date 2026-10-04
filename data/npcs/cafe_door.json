@@ -1,9 +1,11 @@
 {
   "id": "cafe_door",
-  "name": "",
+  "name": "扉",
   "hidden": true,
   "hideName": true,
+  "greet": "自室の扉だ。",
   "options": [
-    { "label": "休む", "rest": { "say": "扉の奥の自室のベッドで、ぐっすり眠った。今日は{date}だ" } }
+    { "label": "休む", "rest": { "say": "ぐっすり眠った。今日は{date}だ" } },
+    { "label": "休まない", "say": "まだ眠くない" }
   ]
 }
