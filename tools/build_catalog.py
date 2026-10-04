@@ -70,10 +70,13 @@ for npc_id, n in npcs.items():
         if s:
             day = {i: p for i, p, *_ in s.get('items', [])}
             night = {i: p for i, p, *_ in s.get('nightItems', [])}
+            limit = {i: lim[0] for i, p, *lim in s.get('items', []) + s.get('nightItems', []) if lim}
             for i in set(day) | set(night):
                 when = '' if not night else '昼' if i not in night else '夜' if i not in day else ''
                 price = day.get(i, night.get(i))
                 notes = [f"{when}だけ"] if when else []
+                if i in limit:
+                    notes.append(f"1日{limit[i]}個まで")
                 if s.get('festivalSale'):
                     notes.append(f"祭りの日は{round((1 - s['festivalSale']) * 100)}%引き")
                 where[i].append({'how': '買う', 'who': n['name'], 'price': price, 'note': '・'.join(notes)})

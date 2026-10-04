@@ -12,9 +12,9 @@
       "closedOnRestDay": true,
       "shop": {
         "prompt": "どれにするんだ？",
-        "items": [["onigiri", 300], ["ble_sand", 600], ["draco_egg", 1500], ["coffee", 1200]],
-        "nightItems": [["onigiri", 300], ["ble_sand", 600], ["draco_egg", 1500], ["rolling_star", 1200]],
-        "festivalItems": [["fried_draco", 900, 5]],
+        "items": [["onigiri", 300], ["ble_sand", 600], ["draco_egg", 900, 1], ["coffee", 1200]],
+        "nightItems": [["onigiri", 300], ["ble_sand", 600], ["draco_egg", 900, 1], ["rolling_star", 1200]],
+        "festivalItems": [["fried_draco", 1500, 5]],
         "soldOut": "今日の分は売り切れだ",
         "thanks": "いってらっしゃい",
         "poor": "金が足りないみたいだな"
