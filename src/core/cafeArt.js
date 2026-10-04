@@ -14,7 +14,7 @@ const DOOR_H = BEAM_Z;
 export const CAFE = {
   stepH: 34,      // 段の高さ（ロフトは4段＝136）
   loftH: 136,     // ロフトの床の高さ。主人公（約132）が下に立っても頭がぶつからない
-  wallH: 300,     // 壁の高さ。ロフトの上に、本棚と主人公の背丈ぶん
+  wallH: 270,     // 壁の高さ。ロフトの床から主人公の背丈ぶん
 };
 
 // 決まった乱数（同じ引数ならいつも同じ）
@@ -515,7 +515,7 @@ function vitrineStatue(c) {
   const S = solid3d(c);
   const L = S.L;
   const Uc = 0.8 * L;
-  const Vc = 0.32 * L;   // 奥に立つぶん画面では左へずれるので、正面から見て枠の真ん中に来る位置
+  const Vc = 0.36 * L;   // 奥に立つぶん画面では左へずれるので、正面から見て枠の真ん中に来る位置
   const lightC = (k) => (k > 0.6 ? '#e2f8fc' : k > 0.25 ? '#a6e6f2' : k > -0.15 ? '#6cc8de' : '#3f9ec6');
   const darkC = (k) => (k > 0.5 ? '#5a8ee0' : k > 0.1 ? '#3a6cc4' : '#2a52a4');
   const lp = (n) => lightC(S.shade(n));
@@ -753,15 +753,22 @@ function roundTableDots(big) {
   const c = iso(-0.2, 1.2, -0.2, 1.2, 76);
   const { d, P } = c;
   const [rx, ry, top] = big ? [33, 16.5, 50] : [22, 11, 46];
-  const [bx, by] = P(0.5, 0.5, 0);
-  d.fill(ellipse(bx, by, big ? 18 : 13, big ? 8 : 6), flat(WOOD.dark), { group: 'base' });
   const [tx, ty] = P(0.5, 0.5, top);
-  d.fill(poly([[bx - 4, by - 2], [bx + 4, by - 2], [tx + 4, ty], [tx - 4, ty]]), (x, y) => {
-    const k = (by - y) / (by - ty);
-    const w = 4 + (Math.abs(k - 0.45) < 0.1 ? 1.5 : 0);   // 真ん中のふくらみ（ろくろ挽き）
-    if (Math.abs(x - bx) > w) return null;
-    return x < bx - 1 ? WOOD.light : WOOD.mid;
-  }, { group: 'post' });
+  // 太い1本脚（ろくろ挽きの真ん中のふくらみ）が、床の近くで3本の足に分かれて、外へ反って床に着く
+  const S = solid3d(c);
+  const L = S.L;
+  const woodP = (n) => woodShade(S.shade(n));
+  const F = 14;   // 足が分かれる高さ
+  S.tube((t) => [L * 0.5, L * 0.5, F + t * (top - F - 2)], (t) => 3 + (Math.abs(t - 0.4) < 0.12 ? 1.5 : 0) + (t < 0.08 ? 1 : 0), woodP);
+  const reach = big ? 0.36 : 0.28;
+  for (let k = 0; k < 3; k++) {
+    const a = (k / 3) * Math.PI * 2 + Math.PI / 4;
+    S.tube((t) => {
+      const r = reach * Math.sin((t * Math.PI) / 2);
+      return [L * (0.5 + Math.cos(a) * r), L * (0.5 + Math.sin(a) * r), F * (1 - t) ** 1.6 + 1.5];
+    }, (t) => 2.4 - 0.9 * t, woodP);
+  }
+  S.flush('base');
   d.fill(ellipse(tx, ty + 4, rx, ry), flat('#3e2414'), { group: 'top' });
   d.fill(ellipse(tx, ty, rx, ry), (x, y) => (((x - tx + rx * 0.3) / (rx * 0.45)) ** 2 + ((y - ty + ry * 0.3) / (ry * 0.35)) ** 2 <= 1 ? '#7a4e30' : '#5e3a22'), { group: 'topFace' });
   d.finish();
@@ -874,11 +881,24 @@ function drawerChestDots() {
   return done(c);
 }
 
-// ボックス席のテーブル（窓から部屋へ2マスの長い天板。2本脚、上に花瓶とランプ）
+// ボックス席のテーブル（窓から部屋へ2マスの長い天板。天板の下に2本のろくろ挽きの脚があり、それぞれ床の近くで4本の短い足に開いて床に着く。
+// 上にランプと花瓶）
 function boothTableDots() {
   const c = iso(-0.2, 1.2, 0, 2, 80);
-  const { P } = c;
-  for (const v of [0.5, 1.5]) leg(c, P(0.5, v, 0), P(0.5, v, 42), 6, WOOD.mid);
+  const S = solid3d(c);
+  const L = S.L;
+  const woodP = (n) => woodShade(S.shade(n));
+  for (const v of [0.55, 1.45]) {
+    S.tube((t) => [L * 0.5, L * v, 10 + t * 30], (t) => 2.6 + (Math.abs(t - 0.45) < 0.12 ? 1.2 : 0) + (t < 0.08 ? 0.8 : 0), woodP);
+    for (let k = 0; k < 4; k++) {
+      const a = (k / 4) * Math.PI * 2 + Math.PI / 4;
+      S.tube((t) => {
+        const r = 0.22 * Math.sin((t * Math.PI) / 2);
+        return [L * (0.5 + Math.cos(a) * r), L * (v + Math.sin(a) * r), 10 * (1 - t) ** 1.6 + 1.5];
+      }, (t) => 2 - 0.7 * t, woodP);
+    }
+  }
+  S.flush('legs');
   box(c, -0.18, 1.18, 0.1, 1.86, 40, 45, { sw: () => '#3e2414', se: () => '#3e2414', top: (u, v, x, y) => ((x + y * 3) % 19 === 0 ? '#7a4e30' : '#5e3a22') });
   c.d.finish();
   const items = iso(-0.2, 1.2, 0, 2, 80);
