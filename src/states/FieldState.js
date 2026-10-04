@@ -178,7 +178,11 @@ export class FieldState {
     if (!this.isFloor(i, j) || this.encounterAt(i, j) || this.npcAt(i, j)) return false;
     const prop = this.propAt(i, j);
     if (prop && prop.blocks !== false) return false;
-    return !from || Math.abs(this.heightAt(i, j) - this.heightAt(...from)) <= (this.map.stepH ?? 0);
+    if (!from) return true;
+    // 階段の横の辺（段の並びと直角の向き）には手すりがあるので、高さの違うマスへは横から乗り降りできない
+    const axis = this.map.stairAxis;
+    if (axis && (axis === 'i' ? from[1] !== j : from[0] !== i) && this.heightAt(i, j) !== this.heightAt(...from)) return false;
+    return Math.abs(this.heightAt(i, j) - this.heightAt(...from)) <= (this.map.stepH ?? 0);
   }
 
   update(dt, presses) {
@@ -201,10 +205,17 @@ export class FieldState {
         // カウンターや椅子（props の across）が続いていれば、その向こうの人にも話しかけられる（丸椅子とカウンター越しのシャルヴィス）
         let [ti, tj] = [fi, fj];
         let npc = this.npcAt(ti, tj);
+        let crossed = false;
         for (let k = 0; k < 3 && !npc && this.propAt(ti, tj)?.across; k++) {
           ti += d.di;
           tj += d.dj;
+          crossed = true;
           npc = this.npcAt(ti, tj);
+        }
+        // カウンター越しで正面に人がいなければ、向こう側の同じ列（カウンターの内側）でいちばん近い人に話しかける
+        if (!npc && crossed) {
+          const along = (n) => (d.di !== 0 ? n.at[0] === ti && Math.abs(n.at[1] - tj) : n.at[1] === tj && Math.abs(n.at[0] - ti));
+          npc = this.presentNpcs().filter((n) => along(n) !== false && along(n) <= 6).sort((a, b) => along(a) - along(b))[0] ?? null;
         }
         if (npc && this.npcDefs[npc.id]) {
           this.game.sfx.play('confirm');
