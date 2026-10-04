@@ -41,11 +41,17 @@ def effect(i, d):
     if d.get('cure') == 'poison':
         out.append('毒が治る')
     if 'buff' in d:
-        out.append(f"{d.get('useText', '')}（{d['beats']}拍）")
+        # 効果が続く長さ（beats）と、当てた敵が毒・混乱になる長さ（poisonBeats・confuseBeats）は別に書く
+        t = d.get('useText', '').replace('しばらく', f"{d['beats']}拍のあいだ")
+        if 'poisonBeats' in d:
+            t = t.replace('毒を与える', f"当てた敵を{d['poisonBeats']}拍の毒にする")
+        if 'confuseBeats' in d:
+            t = t.replace('敵を混乱させる', f"当てた敵を{d['confuseBeats']}拍混乱させる")
+        out.append(t)
     if 'outcomes' in d:
         names = '・'.join(name(o) for o in d['outcomes'])
         if d.get('battleOnly'):
-            out.append(f"{names}のどれかの効果が出る" + ('（長さ2倍）' if d.get('durationRate') == 2 else ''))
+            out.append(f"{names}のどれかの効果が出る" + (f"（効果が続く長さは{d['durationRate']}倍。毒・混乱になる長さは変わらない）" if d.get('durationRate') else ''))
         else:
             out.append(f"食べると{names}のどちらか（コウが鑑定できる）")
     return '。'.join(out)
