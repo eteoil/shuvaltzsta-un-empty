@@ -395,7 +395,7 @@ export class FieldState {
           const drop = h - nb(a, b);
           if (loft ? drop <= step : drop < step || !along.includes(edge)) continue;
           const [z0, z1] = loft ? [h, h] : [zStart, zEnd];
-          items.push({ key: i + j + (edge === 'ne' ? -0.45 : 0.6), draw: () => drawRail(g, edge, Math.round(z0), Math.round(z1), p.x, p.y) });
+          items.push({ key: i + j + (edge === 'ne' ? -0.45 : 0.6), draw: () => drawRail(g, edge, Math.round(z0), Math.round(z1), p.x, p.y, loft ? null : h) });
         }
       }
     }

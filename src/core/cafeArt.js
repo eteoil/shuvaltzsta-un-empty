@@ -602,13 +602,15 @@ export function tileBoxDots(kind, h, se, sw, face = 'panel', seed = 0) {
   return done(c);
 }
 
-// 手すり（マス1つぶんの辺）。edge は 'se'・'sw'・'ne'。z0・z1 は辺の始め（北寄り）と終わりの床の高さ（階段は傾く）
-export function railDots(edge, z0, z1) {
+// 手すり（マス1つぶんの辺）。edge は 'se'・'sw'・'ne'。z0・z1 は辺の始め（北寄り）と終わりの手すりの下の線の高さ（階段は傾く）。
+// floor を渡すと（階段）、手すり子と親柱はその段の踏み面から立ち、下の横木は付けない（段ごとに手すり子の長さが変わる）
+export function railDots(edge, z0, z1, floor = null) {
   const RH = 30;
-  const c = iso(-0.1, 1.1, -0.1, 1.1, Math.max(z0, z1) + RH + 6);
+  const c = iso(-0.1, 1.1, -0.1, 1.1, Math.max(z0, z1) + RH + 6, { z0: Math.min(0, floor ?? 0) });
   const { d, P } = c;
   const at = (k) => (edge === 'se' ? [1, k] : edge === 'sw' ? [k, 1] : [k, 0]);
   const z = (k) => z0 + (z1 - z0) * k;
+  const base = (k) => (floor === null ? z(k) : floor);
   const seg = (k0, k1, dz0, dz1, w) => {
     const [ua, va] = at(k0);
     const [ub, vb] = at(k1);
@@ -617,16 +619,18 @@ export function railDots(edge, z0, z1) {
   // 手すり子（細い柱）
   for (let k = 0.0625; k < 1; k += 0.125) {
     const [u, v] = at(k);
-    const [x, y] = P(u, v, z(k));
-    d.fill(poly([[x - 1, y - 3], [x + 1, y - 3], [x + 1, y - RH + 3], [x - 1, y - RH + 3]]), (px) => (px < x ? WOOD.lighter : WOOD.mid), { group: 'rail' });
+    const [x, y0] = P(u, v, base(k));
+    const [, y1] = P(u, v, z(k) + RH);
+    d.fill(poly([[x - 1, y0 - 3], [x + 1, y0 - 3], [x + 1, y1 + 3], [x - 1, y1 + 3]]), (px) => (px < x ? WOOD.lighter : WOOD.mid), { group: 'rail' });
   }
-  d.fill(seg(0, 1, 2, 2, 3), flat(WOOD.mid), { group: 'rail' });
+  if (floor === null) d.fill(seg(0, 1, 2, 2, 3), flat(WOOD.mid), { group: 'rail' });
   d.fill(seg(0, 1, RH, RH, 4), (x, y) => (y % 2 ? WOOD.light : WOOD.lighter), { group: 'rail' });
   // 端の親柱
   for (const k of [0, 1]) {
     const [u, v] = at(k);
-    const [x, y] = P(u, v, z(k));
-    d.fill(poly([[x - 2, y], [x + 2, y], [x + 2, y - RH - 4], [x - 2, y - RH - 4]]), (px) => (px < x ? WOOD.light : WOOD.dark), { group: 'rail' });
+    const [x, y0] = P(u, v, base(k));
+    const [, y1] = P(u, v, z(k) + RH + 4);
+    d.fill(poly([[x - 2, y0], [x + 2, y0], [x + 2, y1], [x - 2, y1]]), (px) => (px < x ? WOOD.light : WOOD.dark), { group: 'rail' });
   }
   return done(c);
 }
@@ -639,29 +643,49 @@ const RED = { top: '#b03a48', mid: '#9a3040', dark: '#78202e', button: '#e2c9a8'
 // 細い脚（画面の2点を結ぶ）
 const leg = (c, a, b, w, col, opts = {}) => c.d.fill(capsule(a, b, w), (x) => (x < Math.min(a[0], b[0]) + w / 2 ? mix(col, '#ffffff', 0.15) : col), opts);
 
-// 木の椅子（テーブルのまわり。参考：丸い緑の座面のふちに真鍮の鋲、下に丸い木の枠、まっすぐな四角い脚。
-// 後ろの脚はそのまま背もたれの柱になり、上に花の彫りのある幅の広い笠木、その下の真ん中に彫りの背板）。dir は座った人の向き
+// 木の椅子（テーブルのまわり。参考：後ろの2本の柱はそのまま床まで続く後ろ脚で、下で少し後ろへ開く。柱の上に、座面の丸に沿って
+// 曲がった幅の広い笠木（真ん中に花の彫り）を渡し、笠木と座面のあいだは抜けている。丸い緑の座面のふちに真鍮の鋲、下に丸い木の枠、
+// 前の2本の脚はまっすぐ）。dir は座った人の向き
 const FACING = { se: [1, 0], nw: [-1, 0], sw: [0, 1], ne: [0, -1] };
 function chairDots(dir) {
-  const c = iso(-0.1, 1.1, -0.1, 1.1, 96);
+  const c = iso(-0.15, 1.15, -0.15, 1.15, 80);
   const S = solid3d(c);
   const L = S.L;
   const [fu, fv] = FACING[dir];
   const [su, sv] = [-fv, fu];   // 座った人の左右
   const at = (f, s, z) => [L * (0.5 + fu * f + su * s), L * (0.5 + fv * f + sv * s), z];
   const SEAT = 28;
-  const R = 0.27;   // 座面の半径（マス）
+  const TOP = 62;    // 笠木のてっぺん
+  const RAIL = 15;   // 笠木の幅（高さ）
+  const R = 0.27;    // 座面の半径（マス）
   const woodP = (n) => woodShade(S.shade(n));
-  // 脚：前の2本は座面まで、後ろの2本は背もたれの柱として上まで（少し後ろへ反る）
-  for (const s of [-0.19, 0.19]) S.line(at(0.19, s, 0), at(0.19, s, SEAT - 4), 1.6, woodP);
-  for (const s of [-0.2, 0.2]) S.tube((t) => (t < 0.38 ? at(-0.19, s, t / 0.38 * SEAT) : at(-0.19 - 0.06 * (t - 0.38) / 0.62, s, SEAT + (t - 0.38) / 0.62 * 48)), () => 1.7, woodP);
-  // 背もたれの真ん中の彫りの背板と、花の彫りの笠木
-  S.tube((t) => at(-0.23, 0, SEAT + 4 + t * 34), (t) => 1.2 + 1.3 * Math.sin(Math.PI * t), woodP);
-  S.tube((t) => at(-0.255 + 0.02 * Math.sin(Math.PI * t), -0.23 + 0.46 * t, SEAT + 44 + 3 * Math.sin(Math.PI * t)), () => 4, (n, t) => {
-    const k = S.shade(n);
-    if (Math.abs(t - 0.5) < 0.09 && k > -0.2) return Math.abs(t - 0.5) < 0.03 ? WOOD.deep : WOOD.dark;   // 花の彫り
-    return woodShade(k);
-  });
+  // 前の脚（まっすぐ）
+  for (const s of [-0.17, 0.17]) S.line(at(0.19, s, 0), at(0.19, s, SEAT - 4), 1.7, woodP);
+  // 後ろの脚＝背もたれの柱（床では少し後ろへ開き、上は笠木まで）
+  const A = 0.95;   // 柱の位置の角度（後ろから左右へ）
+  const postAt = (side, z) => {
+    const spread = z < SEAT ? (1 - z / SEAT) * 0.07 : 0;
+    const r = R * 0.96 + spread;
+    return at(-Math.cos(A) * r, side * Math.sin(A) * r, z);
+  };
+  for (const side of [-1, 1]) S.tube((t) => postAt(side, t * (TOP - 2)), () => 1.9, woodP);
+  // 笠木：座面の丸に沿って曲がった幅の広い板（厚み 2）。真ん中に花の彫り
+  for (let a = -A; a <= A; a += 0.015) {
+    for (const dr of [0, 1, 2]) {
+      const r = L * R * 0.96 + dr * 0.7;
+      const n = [-(fu * Math.cos(a)) + su * Math.sin(a), -(fv * Math.cos(a)) + sv * Math.sin(a), 0];
+      for (let z = TOP - RAIL; z <= TOP + 2 * Math.cos(a * 1.6); z += 0.5) {
+        const p = [L * 0.5 + n[0] * r, L * 0.5 + n[1] * r, z];
+        const k = S.shade(n);
+        const flower = Math.hypot(a * L * R * 0.96, z - (TOP - RAIL / 2)) < 4.5;
+        let color = woodShade(k);
+        if (z > TOP - 1.5) color = WOOD.lighter;
+        else if (z < TOP - RAIL + 1.5) color = WOOD.dark;
+        else if (flower) color = Math.hypot(a * L * R * 0.96, z - (TOP - RAIL / 2)) < 1.6 ? WOOD.deep : WOOD.dark;
+        S.plot(...p, color);
+      }
+    }
+  }
   // 座面：丸い木の枠と、緑のクッション（ふちに真鍮の鋲）
   S.disk(at(0, 0, SEAT - 1), L * R, 4, () => WOOD.mid, (n) => woodShade(S.shade(n)));
   S.ellipsoid(at(0, 0, SEAT), [L * R, L * R, 3.2], (n) => {

@@ -272,6 +272,7 @@ export function drawTileBox(g, kind, h, se, sw, face, seed, x, y) {
   drawScenery(g, `box/${kind}/${h}/${se}/${sw}/${face}/${seed}`, () => tileBoxDots(kind, h, se, sw, face, seed), x, y);
 }
 
-export function drawRail(g, edge, z0, z1, x, y) {
-  drawScenery(g, `rail/${edge}/${z0}/${z1}`, () => railDots(edge, z0, z1), x, y);
+// floor は手すり子が立つ床の高さ（階段はその段の踏み面。省くと手すりの線の高さ）
+export function drawRail(g, edge, z0, z1, x, y, floor = null) {
+  drawScenery(g, `rail/${edge}/${z0}/${z1}/${floor}`, () => railDots(edge, z0, z1, floor), x, y);
 }
