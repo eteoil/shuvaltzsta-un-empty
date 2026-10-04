@@ -212,10 +212,10 @@ export class FieldState {
           crossed = true;
           npc = this.npcAt(ti, tj);
         }
-        // カウンター越しで正面に人がいなければ、向こう側の同じ列（カウンターの内側）でいちばん近い人に話しかける
+        // カウンター越しで正面に人がいなければ、向こう側の同じ列（カウンターの内側）で左右1マスの人に話しかける
         if (!npc && crossed) {
           const along = (n) => (d.di !== 0 ? n.at[0] === ti && Math.abs(n.at[1] - tj) : n.at[1] === tj && Math.abs(n.at[0] - ti));
-          npc = this.presentNpcs().filter((n) => along(n) !== false && along(n) <= 6).sort((a, b) => along(a) - along(b))[0] ?? null;
+          npc = this.presentNpcs().filter((n) => along(n) !== false && along(n) <= 1).sort((a, b) => along(a) - along(b))[0] ?? null;
         }
         if (npc && this.npcDefs[npc.id]) {
           this.game.sfx.play('confirm');
