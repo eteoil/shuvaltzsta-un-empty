@@ -1,0 +1,159 @@
+<title>アンエプ図鑑</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=M+PLUS+1:wght@400;600;800&display=swap">
+<style>
+/* レイアウト：ゲームのメニュー窓のような枠の中に、アイテムとエネミーの一覧。上でタブと検索、下は表（狭い画面では1件ずつのカード） */
+:root {
+  --bg: #e7ebf3;          /* 明るい青みの灰 */
+  --panel: #f8f9fc;
+  --ink: #1d2236;
+  --muted: #5b6380;
+  --line: #c3cadc;
+  --brass: #9a6f1c;       /* 真鍮（見出しと値段） */
+  --heal: #2f8a5a;
+  --battle: #b0443a;
+  --other: #5a58b0;
+  --chip: #dde2ee;
+  --display: "DotGothic16", "M PLUS 1", system-ui, sans-serif;
+  --body: "M PLUS 1", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12142a; --panel: #1b1f3a; --ink: #e8e8f2; --muted: #9aa0c0; --line: #3a4068;
+    --brass: #e2bf6a; --heal: #6fd69a; --battle: #f08a7c; --other: #a9a7ff; --chip: #262b4d; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12142a; --panel: #1b1f3a; --ink: #e8e8f2; --muted: #9aa0c0; --line: #3a4068;
+  --brass: #e2bf6a; --heal: #6fd69a; --battle: #f08a7c; --other: #a9a7ff; --chip: #262b4d; color-scheme: dark;
+}
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); line-height: 1.6; padding-inline: 16px; padding-block: 24px 48px; }
+.wrap { max-width: 1100px; margin: 0 auto; display: grid; gap: 20px; }
+h1 { font-family: var(--display); font-weight: 400; font-size: 1.9rem; margin: 0; letter-spacing: 0.04em; text-wrap: balance; }
+h1 small { display: block; font-family: var(--body); font-size: 0.85rem; color: var(--muted); letter-spacing: 0; margin-top: 4px; }
+.bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; position: sticky; top: env(safe-area-inset-top, 0px); background: var(--bg); padding-block: 8px; z-index: 2; }
+.tabs { display: flex; gap: 6px; }
+.tab { font-family: var(--display); font-size: 1rem; border: 2px solid var(--line); background: var(--panel); color: var(--ink); padding: 6px 16px; border-radius: 4px; cursor: pointer; }
+.tab[aria-selected="true"] { border-color: var(--brass); color: var(--brass); }
+.tab:focus-visible, input:focus-visible, .chip:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+#q { flex: 1 1 200px; min-width: 0; font: inherit; padding: 7px 10px; border: 2px solid var(--line); border-radius: 4px; background: var(--panel); color: var(--ink); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: inherit; font-size: 0.85rem; border: 1px solid var(--line); background: var(--chip); color: var(--ink); padding: 3px 10px; border-radius: 999px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.panel { background: var(--panel); border: 2px solid var(--line); border-radius: 6px; padding: 4px 0; min-width: 0; }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+th { font-family: var(--display); font-weight: 400; text-align: left; color: var(--brass); padding: 10px 12px; border-bottom: 2px solid var(--line); white-space: nowrap; }
+td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+.num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.nm { font-weight: 800; white-space: nowrap; }
+.desc { color: var(--muted); font-size: 0.82rem; }
+.tag { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 0 7px; border-radius: 3px; border: 1px solid currentColor; margin-right: 4px; white-space: nowrap; }
+.k-回復 { color: var(--heal); } .k-戦闘 { color: var(--battle); } .k-その他 { color: var(--other); } .k-素材 { color: var(--muted); }
+ul.src { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.how { font-size: 0.75rem; color: var(--muted); margin-right: 6px; }
+.price { color: var(--brass); font-variant-numeric: tabular-nums; font-weight: 600; }
+.moves { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 0.85rem; }
+.moves span b { font-variant-numeric: tabular-nums; }
+.none { color: var(--muted); }
+.notes { font-size: 0.85rem; color: var(--muted); display: grid; gap: 4px; padding-left: 1.2em; margin: 0; }
+.empty { padding: 20px; color: var(--muted); }
+@media (max-width: 720px) {
+  table, thead, tbody, tr, td { display: block; }
+  thead { display: none; }
+  tr { padding: 12px 14px; border-bottom: 1px solid var(--line); }
+  tr:last-child { border-bottom: 0; }
+  td { border: 0; padding: 2px 0; }
+  td[data-l]::before { content: attr(data-l); display: inline-block; min-width: 5.5em; font-size: 0.75rem; color: var(--brass); font-family: var(--display); }
+  .num { text-align: left; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <h1>アンエプ図鑑<small>シュバルツスタ-ʌ'n*empty- のアイテムとエネミー。ゲームのデータから作った一覧（数値はいまのデータのまま）</small></h1>
+
+  <div class="bar">
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="t-items" aria-selected="true">アイテム</button>
+      <button class="tab" role="tab" id="t-enemies" aria-selected="false">エネミー</button>
+    </div>
+    <input id="q" type="search" placeholder="名前・効果・場所でさがす" aria-label="さがす">
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <section class="panel" id="items-view"><div class="scroll"><table>
+    <thead><tr><th>名前</th><th>種類</th><th>効果</th><th>手に入る所</th><th>売れる所</th></tr></thead>
+    <tbody id="items"></tbody></table></div></section>
+
+  <section class="panel" id="enemies-view" hidden><div class="scroll"><table>
+    <thead><tr><th>名前</th><th class="num">HP</th><th>攻撃</th><th class="num">寄ってくる距離</th><th>落とす物</th><th>出る所</th><th class="num">倒した点</th></tr></thead>
+    <tbody id="enemies"></tbody></table></div></section>
+
+  <ul class="notes" id="notes"></ul>
+</div>
+
+<script>
+const DATA = /*DATA*/null;
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const yen = (n) => `${n.toLocaleString('ja-JP')}$`;
+let tab = 'items';
+let kind = 'すべて';
+try { tab = localStorage.getItem('tab') || 'items'; } catch (e) {}
+
+function itemRow(it) {
+  const src = it.where.length ? `<ul class="src">${it.where.map((w) => `<li><span class="how">${esc(w.how)}</span>${esc(w.who)}${w.price != null ? ` <span class="price">${yen(w.price)}</span>` : ''}${w.note ? ` <span class="desc">${esc(w.note)}</span>` : ''}</li>`).join('')}</ul>` : '<span class="none">—</span>';
+  const sell = it.sell.length ? `<ul class="src">${it.sell.map((s) => `<li>${esc(s.who)} <span class="price">${yen(s.price)}</span></li>`).join('')}</ul>` : '<span class="none">—</span>';
+  return `<tr><td><div class="nm">${esc(it.name)}</div><div class="desc">${esc(it.desc)}</div></td>
+    <td data-l="種類"><span class="tag k-${it.kind}">${esc(it.kind)}</span>${it.battleOnly ? '<span class="desc">戦闘中だけ</span>' : ''}</td>
+    <td data-l="効果">${it.effect ? esc(it.effect) : '<span class="none">使えない</span>'}</td>
+    <td data-l="手に入る所">${src}</td><td data-l="売れる所">${sell}</td></tr>`;
+}
+function enemyRow(e) {
+  const atk = e.min == null ? '—' : e.min === e.max ? e.min : `${e.min}〜${e.max}`;
+  const moves = `<div class="moves">${e.moves.map((m) => `<span>${esc(m.area)} <b>${m.power}</b></span>`).join('')}</div>`;
+  const where = e.where.length ? e.where.map((w) => `<span class="nm" style="font-weight:400">${esc(w.map)}${e.boss ? '' : ` ×${w.n}`}</span>`).join('<br>') : '—';
+  return `<tr><td><div class="nm">${esc(e.name)}</div>${e.boss ? '<span class="tag k-戦闘">ボス</span>' : ''}${e.faints ? '<div class="desc">倒すと気絶して残る</div>' : ''}</td>
+    <td class="num" data-l="HP">${e.hp}</td>
+    <td data-l="攻撃"><b>${atk}</b>${moves}</td>
+    <td class="num" data-l="寄ってくる">${e.aggro != null ? `${e.aggro}マス` : '—'}</td>
+    <td data-l="落とす物">${e.drop ? esc(e.drop) : '<span class="none">—</span>'}</td>
+    <td data-l="出る所">${where}</td>
+    <td class="num" data-l="倒した点">${e.score != null ? e.score : '<span class="desc">勝利ボーナス</span>'}</td></tr>`;
+}
+function render() {
+  const q = $('#q').value.trim();
+  const hit = (o) => !q || JSON.stringify(o).includes(q);
+  $('#items-view').hidden = tab !== 'items';
+  $('#enemies-view').hidden = tab !== 'enemies';
+  $('#t-items').setAttribute('aria-selected', tab === 'items');
+  $('#t-enemies').setAttribute('aria-selected', tab === 'enemies');
+  $('#chips').hidden = tab !== 'items';
+  const items = DATA.items.filter((it) => (kind === 'すべて' || it.kind === kind) && hit(it));
+  $('#items').innerHTML = items.length ? items.map(itemRow).join('') : '<tr><td class="empty" colspan="5">見つからなかった</td></tr>';
+  const enemies = DATA.enemies.filter(hit);
+  $('#enemies').innerHTML = enemies.length ? enemies.map(enemyRow).join('') : '<tr><td class="empty" colspan="7">見つからなかった</td></tr>';
+}
+const kinds = ['すべて', '回復', '戦闘', 'その他', '素材'];
+$('#chips').innerHTML = kinds.map((k) => `<button class="chip" aria-pressed="${k === kind}">${k}</button>`).join('');
+$('#chips').addEventListener('click', (ev) => {
+  const b = ev.target.closest('.chip'); if (!b) return;
+  kind = b.textContent;
+  document.querySelectorAll('.chip').forEach((c) => c.setAttribute('aria-pressed', c === b));
+  render();
+});
+for (const t of ['items', 'enemies']) $(`#t-${t}`).addEventListener('click', () => { tab = t; try { localStorage.setItem('tab', t); } catch (e) {} render(); });
+$('#q').addEventListener('input', render);
+const r = DATA.rules;
+$('#notes').innerHTML = [
+  `回復の % は最大HPに対する割合。最大HPは ${r.heroHp}（レベルが1上がるごとに ${r.hpPerLevel} 増える）`,
+  `天赦日はダンジョンの敵の HP と攻撃が ${r.rest} 倍、忌み月の戦闘は ${r.taboo} 倍`,
+  '攻撃の数字は技ごとのダメージ。「まわり」は自分のまわり1マス',
+  '名前に（仮）の付いた場所や、TODO.md の「確認待ち」にある数値は、まだ仮',
+].map((s) => `<li>${esc(s)}</li>`).join('');
+render();
+</script>

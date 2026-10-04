@@ -203,6 +203,7 @@ assets/
   bgm/battle.mp3      戦闘曲
 art/reference/        ドット絵の元にした参考画像
 tools/extract_sprites.py  参考画像 → チップ・タイトル線画 の変換
+tools/build_catalog.py    アイテムとエネミーの一覧表（アンエプ図鑑）のページを、ゲームのデータから作る（見た目は tools/catalog_template.html）
 tools/animate_sprites.py  静止チップ → 歩き・走り・攻撃・回避のコマ（パーツを割ってずらす）
 ```
 
@@ -253,6 +254,7 @@ EventTrack は `system`（`system.*` と `bgm.*`）が1本と、敵の一団ご�
 - **敵を増やす**：`data/enemies/` に JSON を足し、町のマップの `encounters`（1対1の戦闘）か、ダンジョンの `spawns` から呼ぶ。見た目は `sprite` と `palette`（色の置き換え表）で決まる。`"boss": true` なら毒でも逃げない。`aggro` を書くとザコになり、その距離より遠いとうろつく。
 - **調整する**：テンポ・判定幅・ダメージ・先読み拍数・戦場の広さ・歩く速さは `data/gameConfig.json`。
 - **モーション**：`tools/animate_sprites.py` が静止チップを上半身・左脚・右脚に割り、ずらして歩き（4コマ）・走り（4コマ）・攻撃（3コマ）・回避（3コマ）のシートを作る。1コマの動きはスクリプト内の `MOTIONS` で調整する。手描きのコマができたら、`assets/img/an_{モーション}_{向き}.png` を同じ並びのシートで置き換えればよい（`data/sprites.json` の `anims`）。
+- **アイテムとエネミーの一覧表（アンエプ図鑑）を作り直す**：`python3 tools/build_catalog.py 出力先.html`。`data/items.json`・`data/enemies/`・`data/patterns/`・`data/npcs/`（お店・交換・買い取り・鑑定）・`data/maps/`（拾える物・敵の数）・`data/gameConfig.json` から、効果・値段・手に入る所・売れる所、HP・攻撃・出る所を集める。アーティファクト https://claude.ai/artifact/7dGnG8USXzwVWcw6knxU3d に載せている
 - **ドット絵を差し替える**：`art/reference/` の画像を差し替えて `python3 tools/extract_sprites.py`（要 Pillow）。画像が無い間は仮の絵で動く。タイトルの線画（`title.png`）は、縮小率・2値化の濃さ・消す範囲（手描きのメニュー文字）をスクリプト内の `TITLE` で調整する。
 
 ブラウザのコンソールで `game` を見ると、今の State・EventTrack・敵AIの選択履歴を覗ける。
