@@ -106,10 +106,101 @@ function box(c, u0, u1, v0, v1, z0, z1, paint, opts = {}) {
   if (paint.top) d.fill(poly([P(u0, v0, z1), P(u1, v0, z1), P(u1, v1, z1), P(u0, v1, z1)]), (x, y) => paint.top(...c.onTop(z1, x, y), x, y), opts);
 }
 
-// 床に置いた楕円（u, v の中心、z の高さ、横 rx・縦 ry ドット）
-const disc = (c, u, v, z, rx, ry) => { const [x, y] = c.P(u, v, z); return ellipse(x, y, rx, ry); };
-
 const done = (c, outline = true) => { c.d.finish({ outline }); return { dots: c.d.result(), ax: c.ax, ay: c.ay }; };
+
+// 立体の部品を点で描く道具（世界の座標：U = u×L, V = v×L, Z = 高さ。手前の点が奥の点を隠す）。
+// 丸い物（椅子の座面・脚、像）を、見る向きと光の向きから陰を付けて描く。最後に flush(group) で絵に移す
+const SOLID_L = 48;   // 1マスの辺の長さ（高さの1ドットと同じ尺度）
+function solid3d(c) {
+  const L = SOLID_L;
+  const { P } = c;
+  const view = (() => { const k = 40 / L; const n = Math.hypot(1, 1, k); return [1 / n, 1 / n, k / n]; })();
+  const light = (() => { const v = [-0.5, 0.35, 1]; const n = Math.hypot(...v); return v.map((a) => a / n); })();
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const norm = (a) => { const n = Math.hypot(...a) || 1; return a.map((x) => x / n); };
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const W = c.W;
+  const zbuf = new Float64Array(W * c.H).fill(-Infinity);
+  const col = new Array(W * c.H).fill(null);
+  const plot = (U, V, Z, color) => {
+    if (!color) return;
+    const [x, y] = P(U / L, V / L, Z);
+    const xi = Math.floor(x);
+    const yi = Math.floor(y);
+    if (xi < 0 || yi < 0 || xi >= W || yi >= c.H) return;
+    const depth = dot([U, V, Z], view);
+    const k = yi * W + xi;
+    if (depth > zbuf[k]) { zbuf[k] = depth; col[k] = color; }
+  };
+  const shade = (n) => dot(n, light);
+  // 楕円体（中心 C、半径 R=[ru, rv, rz]）。paint(n, p) が色を返す（n は面の向き、p は面の点）
+  const ellipsoid = (C, R, paint) => {
+    const m = Math.max(...R);
+    const nt = Math.ceil(m * 4);
+    const np = Math.ceil(m * 8);
+    for (let i = 0; i <= nt; i++) {
+      const th = (i / nt) * Math.PI;
+      for (let j = 0; j < np; j++) {
+        const ph = (j / np) * Math.PI * 2;
+        const e = [Math.sin(th) * Math.cos(ph), Math.sin(th) * Math.sin(ph), Math.cos(th)];
+        const p = [C[0] + R[0] * e[0], C[1] + R[1] * e[1], C[2] + R[2] * e[2]];
+        plot(...p, paint(norm([e[0] / R[0], e[1] / R[1], e[2] / R[2]]), p));
+      }
+    }
+  };
+  // 管（中心線 path(t)、太さ rad(t)）。paint(n, t, th) が色を返す。ends なら両端に蓋
+  const tube = (path, rad, paint, { steps = 0, ends = true } = {}) => {
+    const a0 = path(0);
+    const a1 = path(1);
+    const len = Math.hypot(a1[0] - a0[0], a1[1] - a0[1], a1[2] - a0[2]);
+    const n = steps || Math.max(8, Math.ceil(len * 3));
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      const C = path(t);
+      const C2 = path(Math.min(1, t + 0.01));
+      const C1 = path(Math.max(0, t - 0.01));
+      const T = norm([C2[0] - C1[0], C2[1] - C1[1], C2[2] - C1[2]]);
+      const ref = Math.abs(T[2]) > 0.9 ? [1, 0, 0] : [0, 0, 1];
+      const B = norm(cross(T, ref));
+      const N = cross(B, T);
+      const r = rad(t);
+      const na = Math.max(10, Math.ceil(r * 9));
+      const cap = ends && (i === 0 || i === n);
+      for (let rr = cap ? 0 : r; rr <= r + 0.01; rr += 0.35) {
+        for (let k = 0; k < na; k++) {
+          const th = (k / na) * Math.PI * 2;
+          const nn = [0, 1, 2].map((q) => Math.cos(th) * N[q] + Math.sin(th) * B[q]);
+          plot(...[0, 1, 2].map((q) => C[q] + rr * nn[q]), paint(rr < r - 0.2 ? (i === 0 ? T.map((x) => -x) : T) : nn, t, th));
+        }
+      }
+    }
+  };
+  const line = (a, b, r, paint) => tube((t) => [0, 1, 2].map((q) => a[q] + (b[q] - a[q]) * t), () => r, paint);
+  // 平たい円盤（中心 C、半径 r、厚み h、上向き）。top(rr, th) と side(n) が色を返す
+  const disk = (C, r, h, top, side) => {
+    const na = Math.ceil(r * 9);
+    for (let z = 0; z <= h; z += 0.4) {
+      for (let k = 0; k < na; k++) {
+        const th = (k / na) * Math.PI * 2;
+        const n = [Math.cos(th), Math.sin(th), 0];
+        plot(C[0] + r * n[0], C[1] + r * n[1], C[2] - h + z, side(n, z / h, th));
+      }
+    }
+    for (let rr = 0; rr <= r; rr += 0.35) {
+      for (let k = 0; k < na; k++) {
+        const th = (k / na) * Math.PI * 2;
+        plot(C[0] + rr * Math.cos(th), C[1] + rr * Math.sin(th), C[2], top(rr / r, th));
+      }
+    }
+  };
+  // clip(x, y) を渡すと、その中だけを絵に移す（飾り棚の枠の内側など）
+  const flush = (group, opts = {}, clip = null) => {
+    c.d.fill((x, y) => x >= 0 && y >= 0 && x < W && y < c.H && col[Math.floor(y) * W + Math.floor(x)] !== null && (!clip || clip(x, y)), (x, y) => col[y * W + x], { group, ...opts });
+  };
+  return { L, plot, shade, ellipsoid, tube, line, disk, flush, dot, light, view };
+}
+// 木の陰（光の当たる側ほど明るい）
+const woodShade = (k) => (k > 0.55 ? WOOD.lighter : k > 0.15 ? WOOD.light : k > -0.3 ? WOOD.mid : WOOD.dark);
 
 const WOOD = {
   dark: '#3e2818', mid: '#5a3a24', light: '#7a5030', lighter: '#946440', deep: '#2c1c12',
@@ -405,19 +496,66 @@ function shelfBottles(c, seed) {
     }
   }
 }
-// ガラスの飾り棚（青い光の中の、青いガラスの像）
+// ガラスの飾り棚（奥行きのある箱の中を青く照らし、ガラスの台に水晶の像が立つ）。面は奥の板の色だけで、像は vitrineStatue で立体に描く
 function vitrine(v, z) {
   if (v < 0.05 || v > 0.95) return WOOD.dark;
   if (z < 46 || z > 122) return backBar(v, z);
-  const dv = (v - 0.5) * 40;
-  const body = (dv / 7) ** 2 + ((z - 74) / 16) ** 2 <= 1;
-  const head = (dv / 8) ** 2 + ((z - 104) / 7) ** 2 <= 1;
-  const neck = Math.abs(dv) < 2.2 && z > 88 && z < 100;
-  const base = Math.abs(dv) < 7 && z < 54;
-  if (base) return '#3a5a8a';
-  if (body || head || neck) return dv < -2 && (body || head) ? '#bfe8ff' : (dv > 3 ? '#2a6ab8' : '#3fa0e8');
+  if (z > 118) return '#0f2440';   // 上の板の下の影
   return mix('#173a62', '#3f86c8', (z - 46) / 76);
 }
+// 水晶の像（レピコ像）：丸い台、細い脚、花のつぼみのようにふくらんだ裾、胸の前で手を組んでバラを持ち、
+// おかっぱの髪にカチューシャと横にバラ、肩から裾の横へ輪を描いて下がるリボン。肌は濃い青、髪と服は明るい水色。南東（手前の右）を向く
+function vitrineStatue(c) {
+  const { d, P } = c;
+  // 枠の内側（正面の面の上で、柱と上下の板にかからない所）だけに描く
+  const inside = (x, y) => { const [v, z] = c.onSE(1, x, y); return v > 0.06 && v < 0.94 && z > 44 && z < 118; };
+  // ガラスの棚板（上の面）
+  const shelf = poly([P(SHELF_IN, 0.05, 46), P(1, 0.05, 46), P(1, 0.95, 46), P(SHELF_IN, 0.95, 46)]);
+  d.fill((x, y) => shelf(x, y) && inside(x, y), (x, y) => ((x + y) % 5 === 0 ? '#bfe8ff' : '#5fa8dc'), { line: false, group: 'glassShelf' });
+  const S = solid3d(c);
+  const L = S.L;
+  const Uc = 0.8 * L;
+  const Vc = 0.32 * L;   // 奥に立つぶん画面では左へずれるので、正面から見て枠の真ん中に来る位置
+  const lightC = (k) => (k > 0.6 ? '#e2f8fc' : k > 0.25 ? '#a6e6f2' : k > -0.15 ? '#6cc8de' : '#3f9ec6');
+  const darkC = (k) => (k > 0.5 ? '#5a8ee0' : k > 0.1 ? '#3a6cc4' : '#2a52a4');
+  const lp = (n) => lightC(S.shade(n));
+  const dp = (n) => darkC(S.shade(n));
+  const Z0 = 47;
+  // 台（水たまりのような丸い台）
+  S.disk([Uc, Vc, Z0 + 1.5], 9, 1.5, (r) => (r > 0.85 ? '#3f9ec6' : '#8fd8ea'), (n) => lightC(S.shade(n)));
+  // 脚
+  for (const s of [-1.8, 1.8]) S.line([Uc, Vc + s, Z0 + 1], [Uc, Vc + s, Z0 + 15], 1.6, dp);
+  // 裾（つぼみ）：大きくふくらんだ丸に、縦の花びらの筋。上に小さな花びらの段
+  S.ellipsoid([Uc, Vc, Z0 + 24], [9, 10.5, 9.5], (n) => {
+    const a = Math.atan2(n[1], n[0]);
+    const k = S.shade(n);
+    if (n[2] < 0.6 && Math.abs(((a / (Math.PI * 2)) * 6 + 0.5) % 1 - 0.5) < 0.06) return darkC(k + 0.4);   // 花びらの境目
+    return lightC(k);
+  });
+  S.ellipsoid([Uc, Vc, Z0 + 32.5], [6, 7, 3.2], (n) => lightC(S.shade(n) + 0.15));
+  // 胴（濃い青）と、肩から胸の前で組んだ腕、胸のバラ
+  S.ellipsoid([Uc, Vc, Z0 + 40], [3.5, 4.5, 6], dp);
+  for (const s of [-1, 1]) S.tube((t) => [Uc + 3.5 * Math.sin(Math.PI * t * 0.9), Vc + s * (5 - 3.8 * t), Z0 + 45 - 6 * t], () => 1.3, dp);
+  S.ellipsoid([Uc + 4.2, Vc, Z0 + 40.5], [1.8, 2.2, 2.2], (n) => (S.shade(n) > 0.3 ? '#f0fcff' : '#a6e6f2'));
+  // 首と頭（顔は濃い青で手前の右を向き、まわりはおかっぱの髪。上にカチューシャ、横にバラ）
+  S.line([Uc, Vc, Z0 + 45], [Uc, Vc, Z0 + 49], 1.4, dp);
+  S.ellipsoid([Uc, Vc, Z0 + 56], [6.5, 7, 8], (n) => {
+    const k = S.shade(n);
+    if (n[0] > 0.45 && n[2] < 0.45 && n[2] > -0.75 && Math.abs(n[1]) < 0.55) return darkC(k);   // 顔
+    if (n[2] > 0.5 && n[2] < 0.72) return '#f0fcff';   // カチューシャ
+    return lightC(k);
+  });
+  S.ellipsoid([Uc - 0.5, Vc - 6, Z0 + 59], [2, 2.2, 2.2], (n) => (S.shade(n) > 0.3 ? '#f0fcff' : '#a6e6f2'));
+  // リボン：両肩から外へ輪を描いて、裾の横へ
+  for (const s of [-1, 1]) {
+    S.tube((t) => {
+      const a = Math.PI * t;
+      return [Uc - 1, Vc + s * (4.5 + 8 * Math.sin(a)), Z0 + 45 - 22 * t];
+    }, () => 1, (n) => lightC(S.shade(n) - 0.1));
+  }
+  S.flush('statue', { line: false }, inside);
+}
+
 // 扉の右の壁と同じ作りの面（腰板の上に漆喰、てっぺんに酒棚から続く梁）。バーの奥の、飾り棚と階段のあいだ
 const PLASTER = (v, z) => {
   const C = WALL_COL.nw;
@@ -460,6 +598,7 @@ export function tileBoxDots(kind, h, se, sw, face = 'panel', seed = 0) {
   if (se !== null && se < h) box(c, 0, 1, 0, 1, se, h, { se: sePaint });
   box(c, 0, 1, 0, 1, h, h, { top: topPaint });
   if (kind === 'loft' && face === 'backbar' && se !== null && se < h) shelfBottles(c, seed);
+  if (kind === 'loft' && face === 'vitrine' && se !== null && se < h) vitrineStatue(c);
   return done(c);
 }
 
@@ -500,62 +639,75 @@ const RED = { top: '#b03a48', mid: '#9a3040', dark: '#78202e', button: '#e2c9a8'
 // 細い脚（画面の2点を結ぶ）
 const leg = (c, a, b, w, col, opts = {}) => c.d.fill(capsule(a, b, w), (x) => (x < Math.min(a[0], b[0]) + w / 2 ? mix(col, '#ffffff', 0.15) : col), opts);
 
-// 椅子の背もたれ（参考：上が丸く盛り上がった笠木、真ん中に縦の背板、両脇の柱）。
-// 面は、座った人の向き（dir）と反対側に立つ。dir が 'se'・'nw' なら u が一定の面、'sw'・'ne' なら v が一定の面
-function chairBack(c, dir, z0, z1, crown) {
-  const { d, P } = c;
-  const alongV = dir === 'se' || dir === 'nw';
-  const k = { se: 0.28, nw: 0.72, sw: 0.28, ne: 0.72 }[dir];
-  const at = (s, z) => (alongV ? P(k, s, z) : P(s, k, z));
-  const pts = [];
-  for (let n = 0; n <= 12; n++) { const s = 0.28 + (0.44 * n) / 12; pts.push(at(s, z1 + crown * Math.sin(Math.PI * n / 12))); }
-  pts.push(at(0.72, z0), at(0.28, z0));
-  const [mx] = at(0.5, 0);
-  d.fill(poly(pts), (x, y) => {
-    const [, ty] = at(0.5, z1 - 4);
-    if (Math.abs(x - mx) < 3.5 && y > ty) return Math.abs(x - mx) < 1 && y > ty + 6 && y < ty + 14 ? WOOD.deep : WOOD.light;   // 背板（真ん中に細い透かし）
-    const [lx] = at(0.32, 0);
-    const [rx] = at(0.68, 0);
-    if (Math.abs(x - lx) < 2 || Math.abs(x - rx) < 2) return WOOD.mid;
-    return y < at(0.5, z1 - 6)[1] ? WOOD.light : WOOD.dark;   // 笠木と、その下の抜け
-  }, { group: 'back' });
-}
-
-// 丸いクッション（緑、ふちに真鍮の鋲）
-function cushion(c, z, rx, ry, th) {
-  const { d, P } = c;
-  const [cx, cy] = P(0.5, 0.5, z);
-  d.fill(poly([[cx - rx, cy], [cx + rx, cy], [cx + rx, cy + th], [cx - rx, cy + th]]), (x, y) => (y === Math.round(cy + th / 2) && x % 3 === 0 ? WOOD.brass : CUSHION.side), { group: 'seat' });
-  d.fill(ellipse(cx, cy + th, rx, ry), (x, y) => (y > cy + th + ry - 2 && x % 3 === 0 ? WOOD.brass : CUSHION.side), { group: 'seat' });
-  d.fill(ellipse(cx, cy, rx, ry), (x, y) => (y < cy - 1 && x < cx ? CUSHION.top : CUSHION.mid), { group: 'seatTop' });
-}
-
-// 木の椅子（テーブルのまわり）。dir は座った人の向き。背もたれが奥なら先に、手前なら最後に描く
+// 木の椅子（テーブルのまわり。参考：丸い緑の座面のふちに真鍮の鋲、下に丸い木の枠、まっすぐな四角い脚。
+// 後ろの脚はそのまま背もたれの柱になり、上に花の彫りのある幅の広い笠木、その下の真ん中に彫りの背板）。dir は座った人の向き
+const FACING = { se: [1, 0], nw: [-1, 0], sw: [0, 1], ne: [0, -1] };
 function chairDots(dir) {
-  const c = iso(0, 1, 0, 1, 90);
-  const { P } = c;
-  const seat = 28;
-  const backFirst = dir === 'se' || dir === 'sw';
-  if (backFirst) chairBack(c, dir, seat, 74, 6);
-  const legs = [[0.3, 0.3], [0.7, 0.3], [0.3, 0.7], [0.7, 0.7]];
-  [0, 1].forEach((k) => leg(c, P(...legs[k], seat), P(...legs[k], 0), 3, WOOD.mid));
-  cushion(c, seat, 13, 6.5, 4);
-  [2, 3].forEach((k) => leg(c, P(...legs[k], seat - 2), P(...legs[k], 0), 3, WOOD.mid));
-  if (!backFirst) chairBack(c, dir, seat, 74, 6);
+  const c = iso(-0.1, 1.1, -0.1, 1.1, 96);
+  const S = solid3d(c);
+  const L = S.L;
+  const [fu, fv] = FACING[dir];
+  const [su, sv] = [-fv, fu];   // 座った人の左右
+  const at = (f, s, z) => [L * (0.5 + fu * f + su * s), L * (0.5 + fv * f + sv * s), z];
+  const SEAT = 28;
+  const R = 0.27;   // 座面の半径（マス）
+  const woodP = (n) => woodShade(S.shade(n));
+  // 脚：前の2本は座面まで、後ろの2本は背もたれの柱として上まで（少し後ろへ反る）
+  for (const s of [-0.19, 0.19]) S.line(at(0.19, s, 0), at(0.19, s, SEAT - 4), 1.6, woodP);
+  for (const s of [-0.2, 0.2]) S.tube((t) => (t < 0.38 ? at(-0.19, s, t / 0.38 * SEAT) : at(-0.19 - 0.06 * (t - 0.38) / 0.62, s, SEAT + (t - 0.38) / 0.62 * 48)), () => 1.7, woodP);
+  // 背もたれの真ん中の彫りの背板と、花の彫りの笠木
+  S.tube((t) => at(-0.23, 0, SEAT + 4 + t * 34), (t) => 1.2 + 1.3 * Math.sin(Math.PI * t), woodP);
+  S.tube((t) => at(-0.255 + 0.02 * Math.sin(Math.PI * t), -0.23 + 0.46 * t, SEAT + 44 + 3 * Math.sin(Math.PI * t)), () => 4, (n, t) => {
+    const k = S.shade(n);
+    if (Math.abs(t - 0.5) < 0.09 && k > -0.2) return Math.abs(t - 0.5) < 0.03 ? WOOD.deep : WOOD.dark;   // 花の彫り
+    return woodShade(k);
+  });
+  // 座面：丸い木の枠と、緑のクッション（ふちに真鍮の鋲）
+  S.disk(at(0, 0, SEAT - 1), L * R, 4, () => WOOD.mid, (n) => woodShade(S.shade(n)));
+  S.ellipsoid(at(0, 0, SEAT), [L * R, L * R, 3.2], (n) => {
+    if (n[2] < 0.35) return Math.floor((Math.atan2(n[1], n[0]) + 7) * 9) % 2 ? WOOD.brassLight : '#2e463a';   // 鋲
+    const k = S.shade(n);
+    return k > 0.7 ? '#6a8c7a' : k > 0.4 ? CUSHION.top : CUSHION.mid;
+  });
+  S.flush('chair');
   return done(c);
 }
 
-// カウンターの前の背もたれ付きの高い椅子（参考：細い4本脚、真鍮の足かけ、低い背もたれ、緑のクッション）。客はカウンター（北西）を向く
+// カウンターの前の高い椅子（参考：細い4本脚が少し開いて、真ん中より下に木の輪の足かけ。丸い座面は木の枠に花の飾り、上に緑のクッション。
+// 背もたれは2本の柱に、上が反った笠木と下の横木、そのあいだに細い縦の桟が3本で、真ん中は矢のような形）。客はカウンター（北西）を向く
 function barChairDots() {
-  const c = iso(0, 1, 0, 1, 90);
-  const { d, P } = c;
-  const seat = 44;
-  const legs = [[0.32, 0.32], [0.68, 0.32], [0.32, 0.68], [0.68, 0.68]];
-  [0, 1].forEach((k) => leg(c, P(...legs[k], seat - 2), P(legs[k][0] + (legs[k][0] - 0.5) * 0.3, legs[k][1] + (legs[k][1] - 0.5) * 0.3, 0), 3, WOOD.mid));
-  d.fill((x, y) => disc(c, 0.5, 0.5, 16, 12, 6)(x, y) && !disc(c, 0.5, 0.5, 16, 9.5, 4.5)(x, y), flat(WOOD.brass), { group: 'ring' });
-  [2, 3].forEach((k) => leg(c, P(...legs[k], seat - 2), P(legs[k][0] + (legs[k][0] - 0.5) * 0.3, legs[k][1] + (legs[k][1] - 0.5) * 0.3, 0), 3, WOOD.mid));
-  cushion(c, seat, 12, 6, 4);
-  chairBack(c, 'nw', seat, 70, 4);
+  const c = iso(-0.1, 1.1, -0.1, 1.1, 96);
+  const S = solid3d(c);
+  const L = S.L;
+  const SEAT = 44;
+  const R = 0.25;
+  const P = (u, v, z) => [L * u, L * v, z];
+  const woodP = (n) => woodShade(S.shade(n));
+  // 脚（下へ少し開く。上に挽き物の輪）
+  const legs = [[0.33, 0.33], [0.67, 0.33], [0.33, 0.67], [0.67, 0.67]];
+  for (const [u, v] of legs) {
+    S.tube((t) => P(u + (u - 0.5) * 0.35 * (1 - t), v + (v - 0.5) * 0.35 * (1 - t), t * (SEAT - 5)), (t) => (t > 0.9 ? 2 : 1.3 + 0.4 * t), woodP);
+  }
+  // 木の輪の足かけ（高さ 16）
+  S.tube((t) => { const a = t * Math.PI * 2; return P(0.5 + 0.215 * Math.cos(a), 0.5 + 0.215 * Math.sin(a), 16); }, () => 1.1, woodP, { steps: 160, ends: false });
+  // 背もたれ（座る人の後ろ＝南東の側。2本の柱、下の横木、反った笠木、縦の桟3本）
+  const bu = 0.5 + 0.21;
+  for (const v of [0.3, 0.7]) S.line(P(bu, v, SEAT), P(bu + 0.03, v, SEAT + 28), 1.4, woodP);
+  S.line(P(bu + 0.01, 0.3, SEAT + 8), P(bu + 0.01, 0.7, SEAT + 8), 1.1, woodP);
+  S.tube((t) => P(bu + 0.03, 0.28 + 0.44 * t, SEAT + 27 + 2.5 * Math.sin(Math.PI * t)), () => 1.8, woodP);
+  for (const v of [0.4, 0.6]) S.line(P(bu + 0.02, v, SEAT + 8), P(bu + 0.03, v, SEAT + 26), 0.8, woodP);
+  S.line(P(bu + 0.02, 0.5, SEAT + 8), P(bu + 0.03, 0.5, SEAT + 23), 0.8, woodP);
+  S.ellipsoid(P(bu + 0.03, 0.5, SEAT + 23), [1.2, 2.2, 2.2], woodP);   // 真ん中の矢の頭
+  // 座面：木の枠（手前に花の飾り）と緑のクッション
+  S.disk(P(0.5, 0.5, SEAT - 1), L * R, 6, () => WOOD.mid, (n, f, th) => {
+    if (Math.abs(Math.atan2(n[1], n[0]) - Math.PI / 4) < 0.18 && f > 0.25 && f < 0.85) return WOOD.brass;   // 花の飾り
+    return woodShade(S.shade(n));
+  });
+  S.ellipsoid(P(0.5, 0.5, SEAT), [L * R, L * R, 3], (n) => {
+    const k = S.shade(n);
+    return k > 0.7 ? '#6a8c7a' : k > 0.4 ? CUSHION.top : n[2] < 0.3 ? CUSHION.side : CUSHION.mid;
+  });
+  S.flush('chair');
   return done(c);
 }
 
@@ -846,8 +998,8 @@ function gramophoneDots() {
     }
   }
   for (let k = 0; k <= 10; k++) plot(SB[0], SB[1] + 0.8 + 0.1 * k, SB[2] - 3.2 - 0.25 * k, '#d8d8d0');   // 針（銀）
-  // ラッパ：細い端は肘の上。斜め上・手前へゆるく反りながら伸び、先へ行くほど急に太くなって、口を手前の少し上へ開く
-  tube(bez([[X, 0.32 * L, BZ + 9], [X, 0.38 * L, BZ + 22], [X, 0.62 * L, BZ + 33], [X, 0.92 * L, BZ + 42]]), (t) => 1.3 * Math.exp(2.15 * t) - 0.1, { bell: true, steps: 300 });
+  // ラッパ：細い端は肘の上。短い首から斜め上・手前へ伸び、先で一気に大きく開いて、広い口を手前の上へ向ける（チューリップのような形）
+  tube(bez([[X, 0.32 * L, BZ + 9], [X, 0.35 * L, BZ + 16], [X, 0.48 * L, BZ + 22], [X, 0.68 * L, BZ + 30]]), (t) => 1.3 + 16 * t ** 3, { bell: true, steps: 300 });
   d.fill((x, y) => x >= 0 && y >= 0 && x < W && y < c.H && col[Math.floor(y) * W + Math.floor(x)] !== null,
     (x, y) => col[y * W + x], { group: 'horn' });
   return done(c);

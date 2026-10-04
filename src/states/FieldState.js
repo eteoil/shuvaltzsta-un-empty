@@ -386,8 +386,9 @@ export class FieldState {
         const hPrev = this.heightAt(pi0, pj0);
         const hNext = this.drawnFloor(pi1, pj1) ? this.heightAt(pi1, pj1) : 0;
         const run = (x) => Math.abs(x - h) === step;
-        const zStart = run(hPrev) ? (h + hPrev) / 2 : run(hNext) ? h + (h - hNext) / 2 : h;
-        const zEnd = run(hNext) ? (h + hNext) / 2 : run(hPrev) ? h - (hPrev - h) / 2 : h;
+        // 階段の手すりは段の角（隣と高い方の高さ）を結ぶ線に沿う。てっぺんはロフトの手すりと同じ高さになる
+        const zStart = run(hPrev) ? Math.max(h, hPrev) : h;
+        const zEnd = run(hNext) ? Math.max(h, hNext) : h;
         const along = axis === 'i' ? ['ne', 'sw'] : ['se'];
         for (const [edge, a, b] of [['ne', i, j - 1], ['se', i + 1, j], ['sw', i, j + 1]]) {
           if (b < 0 || a >= cols || b >= rows || !this.drawnFloor(a, b)) continue;   // 床の無い側（壁の向こう）には付けない
