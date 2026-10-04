@@ -96,9 +96,9 @@
     { "art": "chairSW", "at": [10, 4] },
     { "art": "roundTableBig", "at": [10, 5] },
     { "art": "chairNE", "at": [10, 6] },
-    { "art": "piano", "at": [12, 9], "size": [2, 1] },
-    { "art": "drums", "at": [14, 8] },
-    { "art": "micStand", "at": [15, 9] }
+    { "art": "piano", "at": [15, 7], "size": [1, 2] },
+    { "art": "drums", "at": [14, 9], "size": [2, 2] },
+    { "art": "micStand", "at": [12, 8] }
   ],
   "npcs": [
     { "id": "shalvis", "at": [3, 4], "dir": "se", "staff": true },

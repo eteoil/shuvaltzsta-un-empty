@@ -855,61 +855,40 @@ function gramophoneDots() {
 
 // ---------------------------------------------------------------- 演奏の場所（右の手前の角）
 
-// 縦型のピアノ（2マスの幅。鍵盤は南西＝手前の左を向く）。黒い塗りに、鍵盤・譜面台・足元のペダル。
-// 大きさは実物から（主人公を 160cm として：高さ約 120cm、鍵盤の高さ約 72cm）
+// 大きさは主人公の体に合わせる（主人公の高さ 132：膝 約32・腰 約50・手 約47・肩 約85・口 約92。座る所の高さは椅子と同じ 28）
+
+// 縦型のピアノ（奥行き2マスぶんの長さ。鍵盤は北西＝お客さんのいる部屋のほうを向き、こちらからは背中と横の面が見える）。
+// 黒い塗り。高さ 98（立った主人公の肩より少し上）、鍵盤の高さ 58（座った主人公の手の高さ）
 function pianoDots() {
-  const c = iso(0, 2, 0, 1, 112);
-  const { d, P } = c;
+  const c = iso(0, 1, 0, 2, 112);
   const BLK = '#1e1a1c';
   const GL = '#3a3438';
-  const H = 98;   // 胴のてっぺん
-  const K = 58;   // 鍵盤の高さ
+  const H = 98;
+  const K = 58;
   const lacquer = (z, z1) => (z > z1 - 2 ? GL : z < 4 ? '#141012' : BLK);
-  // 上の胴（鍵盤より奥）：手前の面に譜面台の板と、ろうそく立ての金具
-  box(c, 0.06, 1.94, 0.2, 0.56, 0, H, {
-    sw: (u, z) => {
-      if (z > K + 10 && z < K + 30 && u > 0.55 && u < 1.45) return z > K + 27 ? GL : '#2a2426';   // 譜面台
-      if (z > H - 22 && z < H - 8 && (Math.abs(u - 0.3) < 0.025 || Math.abs(u - 1.7) < 0.025)) return WOOD.brass;   // ろうそく立て
-      if ((u > 0.2 && u < 0.5 || u > 1.5 && u < 1.8) && z > K + 12 && z < H - 28) return '#2a2426';   // はめ込みの板
-      return lacquer(z, H);
-    },
-    se: (v, z) => lacquer(z, H),
+  // 鍵盤（胴の向こう。こちらからは横の端だけが少し見える）
+  box(c, 0.04, 0.44, 0.08, 1.92, K - 4, K, { sw: () => '#d8d2c4', top: (u, v) => (Math.floor(v * 26) % 7 === 2 ? '#1a1414' : '#f2eee2') });
+  box(c, 0.04, 0.44, 1.84, 1.94, K - 4, K + 6, { sw: () => BLK, se: () => GL, top: () => GL });
+  // 下の胴と上の胴。背中（南東の面）は板を縦に並べ、横木を渡した裏板
+  const back = (v, z, z1) => {
+    if (z > z1 - 2) return GL;
+    if (z < 4) return '#141012';
+    if (Math.abs(z - 34) < 2 || Math.abs(z - 74) < 2) return '#2c2628';   // 横木
+    return Math.floor(v * 40) % 9 === 0 ? '#141012' : BLK;
+  };
+  box(c, 0.3, 0.8, 0.06, 1.94, 0, K - 4, { sw: (u, z) => lacquer(z, K - 4), se: (v, z) => back(v, z, K - 4) });
+  box(c, 0.44, 0.8, 0.06, 1.94, K - 4, H, {
+    sw: (u, z) => (z > H - 24 && z < H - 10 && Math.abs(u - 0.62) < 0.1 ? '#2a2426' : lacquer(z, H)),
+    se: (v, z) => back(v, z, H),
     top: () => GL,
   });
-  // 下の胴（鍵盤の下）：手前の面にはめ込みの板とペダル
-  box(c, 0.06, 1.94, 0.2, 0.7, 0, K - 4, {
-    sw: (u, z) => {
-      if (z < 7 && [0.88, 1.0, 1.12].some((k) => Math.abs(u - k) < 0.025)) return WOOD.brass;
-      if (u > 0.25 && u < 1.75 && z > 14 && z < K - 14) return '#2a2426';
-      return lacquer(z, K - 4);
-    },
-    se: (v, z) => lacquer(z, K - 4),
-  });
-  // 鍵盤の両脇の腕と、鍵盤（白鍵と、2つと3つの黒鍵の並び）
-  box(c, 0.06, 0.16, 0.56, 0.96, K - 4, K + 6, { sw: () => BLK, se: () => GL, top: () => GL });
-  box(c, 0.16, 1.84, 0.56, 0.94, K - 4, K, {
-    sw: () => '#d8d2c4',
-    top: (u, v) => {
-      const k = ((u - 0.16) / 1.68) * 52;   // 白鍵 52 本ぶん
-      if (v < 0.68) return BLK;
-      const n = Math.floor(k) % 7;
-      const f = k % 1;
-      if (v < 0.82 && [0, 1, 3, 4, 5].includes(n) && f > 0.65) return '#1a1414';   // 黒鍵
-      if (v < 0.82 && [1, 2, 4, 5, 6].includes(n) && f < 0.35) return '#1a1414';
-      return f < 0.1 ? '#b8b0a0' : '#f2eee2';
-    },
-  });
-  box(c, 1.84, 1.94, 0.56, 0.96, K - 4, K + 6, { sw: () => BLK, se: () => GL, top: () => GL });
-  // 譜面台の楽譜
-  const [mx, my] = P(1, 0.57, K + 20);
-  d.fill(poly([[mx - 9, my - 2], [mx + 7, my - 10], [mx + 7, my - 1], [mx - 9, my + 7]]), (x, y) => (Math.floor(y - my + (x - mx) * 0.5) % 3 === 0 ? '#bcb29c' : '#ece4d0'), { group: 'sheet' });
   return done(c);
 }
 
-// ドラムセット（1マス。手前の左＝南西へ向く）。赤い胴の大太鼓、その上のタム、小太鼓、床のタム、ハイハットとシンバル、奥に椅子。
-// 大きさは実物から（大太鼓は直径約 45cm、小太鼓は高さ約 65cm、シンバルは約 100〜110cm）
+// ドラムセット（2×2マス。お客さんのいる北西を向き、叩く人は南東の側に座る。こちらからは叩く人の側から見える）。
+// 赤い胴の大太鼓（直径 44）、その上のタム2つ、叩く人の左に小太鼓とハイハット、右に床のタム、シンバル2枚、椅子
 function drumsDots() {
-  const c = iso(-0.4, 1.4, -0.4, 1.4, 120);
+  const c = iso(-0.4, 2.4, -0.4, 2.4, 120);
   const { d, P } = c;
   const L = 48;
   const view = (() => { const k = 40 / L; const n = Math.hypot(1, 1, k); return [1 / n, 1 / n, k / n]; })();
@@ -951,50 +930,62 @@ function drumsDots() {
     }
   };
   const pole = (x, y, z0, z1) => { for (let z = z0; z <= z1; z += 0.4) for (const [dx, dy] of [[0, 0], [0.5, 0], [0, 0.5]]) plot(x + dx, y + dy, z, '#a8acb0'); };
-  const shell = (k, f) => (f < 0.08 || f > 0.92 ? '#d0d4d8' : k > 0.4 ? '#c03848' : k > -0.2 ? '#9a2232' : '#6a1622');
+  const tripod = (x, y, r) => { for (let k = 0; k < 3; k++) { const a = (k / 3) * Math.PI * 2 + 0.5; for (let t = 0; t <= 1; t += 0.05) plot(x + Math.cos(a) * r * t, y + Math.sin(a) * r * t, 10 * (1 - t), '#7a7e84'); } };
+  const shell = (k, f) => (f < 0.07 || f > 0.93 ? '#d0d4d8' : k > 0.4 ? '#c03848' : k > -0.2 ? '#9a2232' : '#6a1622');
   const head = (r) => (r > 0.9 ? '#d0d4d8' : '#ece6d6');
   const cym = (C, r, tilt) => {
+    const na = Math.ceil(r * 9);
     for (let rr = 0; rr <= r; rr += 0.3) {
-      for (let a = 0; a < Math.ceil(r * 9); a++) {
-        const th = (a / Math.ceil(r * 9)) * Math.PI * 2;
-        const dz = Math.sin(th) * rr * tilt + (r - rr) * 0.15;
-        plot(C[0] + rr * Math.cos(th), C[1] + rr * Math.sin(th), C[2] + dz, rr < 1.2 ? '#8a6a2a' : Math.floor(rr) % 2 ? '#e2c060' : '#c9a24a');
+      for (let a = 0; a < na; a++) {
+        const th = (a / na) * Math.PI * 2;
+        const dz = Math.cos(th) * rr * tilt + (r - rr) * 0.12;   // 叩く人のほう（南東）へ少し傾く
+        plot(C[0] + rr * Math.cos(th), C[1] + rr * Math.sin(th), C[2] - dz, rr < 1.5 ? '#8a6a2a' : Math.floor(rr * 0.8) % 2 ? '#e2c060' : '#c9a24a');
       }
     }
   };
-  // 椅子（奥）
-  pole(0.5 * L, 0.12 * L, 0, 36);
-  cyl([0.5 * L, 0.12 * L, 38], [0, 0, 1], 7, 4, () => '#2a2426', () => '#3a3436');
-  // 床のタム（右）
-  for (const [dx, dy] of [[-6, -6], [6, -6], [0, 7]]) pole(0.9 * L + dx, 0.4 * L + dy, 0, 14);
-  cyl([0.9 * L, 0.4 * L, 30], [0, 0, 1], 10, 26, shell, head);
-  // 大太鼓（真ん中。膜が手前を向いて立つ）
-  cyl([0.5 * L, 0.62 * L, 18], [0, 1, 0], 18, 18, shell, (r, th) => (r > 0.9 ? '#d0d4d8' : r > 0.55 && r < 0.62 ? '#c03848' : '#ece6d6'));
-  // 大太鼓の上のタム
-  cyl([0.4 * L, 0.5 * L, 46], [0, 0.4, 0.92], 7.5, 10, shell, head);
-  cyl([0.62 * L, 0.5 * L, 46], [0, 0.4, 0.92], 8, 11, shell, head);
-  // 小太鼓（左）と、そのスタンド
-  pole(0.12 * L, 0.42 * L, 0, 48);
-  cyl([0.12 * L, 0.42 * L, 52], [0, 0, 1], 9, 7, (k, f) => (f < 0.15 || f > 0.85 ? '#d0d4d8' : k > 0 ? '#e8eaec' : '#b8bcc0'), head);
-  // ハイハット（左の手前）とシンバル（右の手前）
-  pole(-0.08 * L, 0.7 * L, 0, 74);
-  cym([-0.08 * L, 0.7 * L, 74], 9, 0);
-  cym([-0.08 * L, 0.7 * L, 77], 9, 0);
-  pole(1.05 * L, 0.78 * L, 0, 88);
-  cym([1.05 * L, 0.78 * L, 88], 13, 0.25);
+  // 椅子（叩く人の側）
+  tripod(72, 48, 8);
+  pole(72, 48, 0, 26);
+  cyl([72, 48, 28], [0, 0, 1], 8, 4, () => '#2a2426', () => '#3a3436');
+  // 大太鼓（膜が北西と南東を向いて立つ）と、叩く人の側のペダル
+  cyl([30, 48, 22], [1, 0, 0], 22, 18, shell, (r) => (r > 0.92 ? '#d0d4d8' : r > 0.5 && r < 0.56 ? '#c03848' : '#ece6d6'));
+  for (let u = 40; u <= 50; u += 0.5) for (let v = 45; v <= 51; v += 0.5) plot(u, v, 2, '#3a3a3e');
+  // 大太鼓の上のタム2つ（叩く人のほうへ傾く）
+  const tilt = [0.42, 0, 0.91];
+  cyl([34, 36, 52], tilt, 10, 11, shell, head);
+  cyl([34, 60, 52], tilt, 11, 12, shell, head);
+  // 床のタム（叩く人の右）
+  for (const [dx, dy] of [[-9, -9], [9, -9], [0, 11]]) pole(64 + dx, 82 + dy, 0, 12);
+  cyl([64, 82, 26], [0, 0, 1], 14, 30, shell, head);
+  // 小太鼓（叩く人の左）とハイハット
+  tripod(60, 20, 9);
+  pole(60, 20, 0, 40);
+  cyl([60, 20, 44], [0, 0, 1], 12, 8, (k, f) => (f < 0.15 || f > 0.85 ? '#d0d4d8' : k > 0 ? '#e8eaec' : '#b8bcc0'), head);
+  tripod(52, 0, 10);
+  pole(52, 0, 0, 62);
+  cym([52, 0, 62], 13, 0);
+  cym([52, 0, 65], 13, 0);
+  // シンバル（左の奥と右）
+  tripod(18, 12, 10);
+  pole(18, 12, 0, 80);
+  cym([18, 12, 80], 16, 0.2);
+  tripod(40, 92, 10);
+  pole(40, 92, 0, 76);
+  cym([40, 92, 76], 18, 0.2);
   d.fill((x, y) => x >= 0 && y >= 0 && x < W && y < c.H && col[Math.floor(y) * W + Math.floor(x)] !== null, (x, y) => col[y * W + x], { group: 'drums' });
   return done(c);
 }
 
-// マイクスタンド（三脚の台、銀の柱、上に黒い頭の丸いマイク）
+// マイクスタンド（三脚の台、銀の柱、上に黒い頭の丸いマイク。マイクは主人公の口の少し下の高さで、歌う人の立つ南東へ向く）
 function micStandDots() {
-  const c = iso(0, 1, 0, 1, 136);
+  const c = iso(0, 1, 0, 1, 100);
   const { d, P } = c;
-  const top = P(0.5, 0.5, 120);
+  const top = P(0.5, 0.5, 80);
+  const head = P(0.66, 0.5, 86);
   for (const [u, v] of [[0.3, 0.3], [0.78, 0.45], [0.45, 0.78]]) leg(c, P(0.5, 0.5, 8), P(u, v, 0), 1.5, '#7a7e84');
   leg(c, P(0.5, 0.5, 0), top, 1.6, '#b8bcc0');
-  d.fill(poly([[top[0] - 1, top[1]], [top[0] + 1, top[1]], [top[0] - 4, top[1] - 6], [top[0] - 6, top[1] - 6]]), flat('#3a3a3e'), { group: 'mic' });
-  d.fill(ellipse(top[0] - 6, top[1] - 8, 2.6, 3), (x, y) => ((x + y) % 2 ? '#9a9ea4' : '#5a5e64'), { group: 'micHead' });
+  leg(c, top, head, 1.2, '#3a3a3e', { group: 'mic' });
+  d.fill(ellipse(head[0] + 1, head[1] - 1, 2.6, 3), (x, y) => ((x + y) % 2 ? '#9a9ea4' : '#5a5e64'), { group: 'micHead' });
   return done(c);
 }
 
