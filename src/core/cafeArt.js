@@ -899,7 +899,12 @@ function boothTableDots() {
     }
   }
   S.flush('legs');
-  box(c, -0.18, 1.18, 0.1, 1.86, 40, 45, { sw: () => '#3e2414', se: () => '#3e2414', top: (u, v, x, y) => ((x + y * 3) % 19 === 0 ? '#7a4e30' : '#5e3a22') });
+  // 天板。ランプのまわりは、丸テーブルと同じように灯りが照り返して明るい
+  const [lx, ly] = c.P(0.5, 1, 45);
+  box(c, -0.18, 1.18, 0.1, 1.86, 40, 45, { sw: () => '#3e2414', se: () => '#3e2414', top: (u, v, x, y) => {
+    if (((x - lx + 9) / 13) ** 2 + ((y - ly + 2) / 6.5) ** 2 <= 1) return '#7a4e30';
+    return (x + y * 3) % 19 === 0 ? '#7a4e30' : '#5e3a22';
+  } });
   c.d.finish();
   const items = iso(-0.2, 1.2, 0, 2, 80);
   tableItems(items, 0.5, 1, 45);
@@ -912,7 +917,7 @@ function boothTableDots() {
 // 天井から下がるランタン（真鍮の鎖に、六角の枠のガラスの箱。2つの見える面が光り、上に屋根、下に台）。
 // z はランタンの下の端の高さ、top は天井の高さ（どちらもそのマスの床から。ロフトの上は天井が低い）
 function pendantDots(z, top) {
-  const c = iso(0, 1, 0, 1, top + 4);
+  const c = iso(0, 1, 0, 1, Math.max(top, z + 27) + 4);
   const { d, P } = c;
   const [k0, k1] = [0.4, 0.6];
   const glassTop = z + 18;
@@ -1172,12 +1177,12 @@ function drumsDots() {
   return done(c);
 }
 
-// マイクスタンド（三脚の台、銀の柱、上に黒い頭の丸いマイク。マイクは主人公の口の少し下の高さで、歌う人の立つ南東へ向く）
+// マイクスタンド（三脚の台、銀の柱、上に黒い頭の丸いマイク。マイクは主人公の胸の高さで、歌う人の立つ南東へ向く）
 function micStandDots() {
   const c = iso(0, 1, 0, 1, 100);
   const { d, P } = c;
-  const top = P(0.5, 0.5, 80);
-  const head = P(0.66, 0.5, 86);
+  const top = P(0.5, 0.5, 68);
+  const head = P(0.66, 0.5, 74);
   for (const [u, v] of [[0.3, 0.3], [0.78, 0.45], [0.45, 0.78]]) leg(c, P(0.5, 0.5, 8), P(u, v, 0), 1.5, '#7a7e84');
   leg(c, P(0.5, 0.5, 0), top, 1.6, '#b8bcc0');
   leg(c, top, head, 1.2, '#3a3a3e', { group: 'mic' });
@@ -1229,7 +1234,7 @@ export const CAFE_PROPS = {
   micStand: () => micStandDots(),
   gramophone: () => gramophoneDots(),
   pendant: () => pendantDots(150, CAFE.wallH - 12),
-  pendantLoft: () => pendantDots(140, CAFE.wallH - CAFE.loftH - 12),
+  pendantLoft: () => pendantDots(136, 136 + 27 + 8),   // ロフトの上（主人公の頭のすぐ上。鎖は短い）
   pendantLow: () => pendantDots(96, WINDOW_WALL_TOP - 12),   // 水槽の窓の側（壁が低い。ボックス席のテーブルの上に下がる）
   loftShelf: () => loftShelfDots(false),
   loftShelfEnd: () => loftShelfDots(true),
