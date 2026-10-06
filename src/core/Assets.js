@@ -93,7 +93,7 @@ export class Assets {
     if (!this.cache.has(id)) {
       let img = palette ? this.get(key, frame) : this.images.get(`${key}/${frame}`);
       if (!img) img = placeholder(this.defs[key], frame);
-      if (palette) img = recolor(img, palette);
+      if (palette) img = recolor(img, palette, this.defs[key].shades);
       this.cache.set(id, img);
     }
     return this.cache.get(id);
@@ -107,13 +107,27 @@ function canvasOf(w, h) {
   return c;
 }
 
-function recolor(src, palette) {
+// 色替え。shades（絵の定義の { 陰や光の色: その元の色 }）があれば、元の色の置き換え先から陰や光の色も作る。
+// 明るさだけを見て、元の色より暗い陰は置き換え先を同じ割合で暗く、明るい光は同じ割合で白へ寄せる（主人公の絵の髪・服の陰。色味は置き換え先のまま）
+const lum = ([r, g, b]) => 0.299 * r + 0.587 * g + 0.114 * b;
+function shadeOf(shade, base, to) {
+  const [s, b] = [lum(rgb(shade)), lum(rgb(base))];
+  if (s <= b) return to.map((t) => Math.round((t * s) / Math.max(1, b)));
+  const k = (s - b) / Math.max(1, 255 - b);
+  return to.map((t) => Math.round(t + (255 - t) * k));
+}
+
+function recolor(src, palette, shades = null) {
   const c = canvasOf(src.width, src.height);
   const g = c.getContext('2d');
   g.drawImage(src, 0, 0);
   const img = g.getImageData(0, 0, c.width, c.height);
   const d = img.data;
   const map = new Map(Object.entries(palette.map || {}).map(([k, v]) => [k.toLowerCase(), rgb(v)]));
+  for (const [shade, base] of Object.entries(shades ?? {})) {
+    const to = map.get(base.toLowerCase());
+    if (to && !map.has(shade.toLowerCase())) map.set(shade.toLowerCase(), shadeOf(shade, base, to));
+  }
   const all = palette.all ? rgb(palette.all) : null;
   for (let i = 0; i < d.length; i += 4) {
     if (d[i + 3] < 128) continue;

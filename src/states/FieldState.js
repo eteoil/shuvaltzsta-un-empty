@@ -433,7 +433,9 @@ export class FieldState {
       items.push({ key: pr.key ?? pr.at[0] + w - 1 + pr.at[1] + d - 1 - 0.4, draw: () => drawProp(g, pr.art, p.x, p.y - this.heightAt(...pr.at)) });
     }
 
-    const people = [{ sprite: 'player', frame: this.p.dir, anim: this.move ? 'walk' : null, n: Math.floor(this.stride * 2), palette: null, i: pi, j: pj, h: ph }];
+    // 主人公：歩いているあいだは歩きのコマ、立っているあいだは待機のコマ（data/sprites.json の idle。fps は1秒のコマ数）
+    const idleFps = assets.def('player')?.anims?.idle?.fps ?? 4;
+    const people = [{ sprite: 'player', frame: this.p.dir, anim: this.move ? 'walk' : 'idle', n: this.move ? Math.floor(this.stride * 2) : Math.floor((performance.now() / 1000) * idleFps), palette: null, i: pi, j: pj, h: ph }];
     for (const enc of this.map.encounters) {
       const def = this.enemyDefs[enc.id];
       if (!def) continue;

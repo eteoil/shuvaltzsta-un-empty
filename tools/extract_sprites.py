@@ -20,11 +20,10 @@ REF = ROOT / "art" / "reference"
 OUT = ROOT / "assets" / "img"
 
 # 出力名: (参考画像, 1ドットの大きさ, 幅, 高さ)
+# 主人公の手前向き（an_sw・an_se と an_idle_sw・an_idle_se）は描いた本番の絵に差し替えたので、ここでは作らない（上書きしない）
 JOBS = {
     "an_nw": ("an_nw.png", 12.5, 64, 136),
     "an_ne": ("an_ne.png", 12.5, 64, 136),
-    "an_sw": ("an_sw.png", 12.5, 64, 136),
-    "an_se": ("an_se.png", 12.5, 64, 136),
     "floor_block": ("floor_block.png", 10.0, 80, 80),
 }
 

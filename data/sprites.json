@@ -9,7 +9,23 @@
       "se": "assets/img/an_se.png",
       "sw": "assets/img/an_sw.png"
     },
+    "shades": {
+      "#432a4d": "#394660",
+      "#796887": "#394660",
+      "#5e305c": "#801e6b",
+      "#56345a": "#801e6b",
+      "#4e5d85": "#187fc4",
+      "#dba367": "#f5c939",
+      "#a87b5d": "#f5c939"
+    },
     "anims": {
+      "idle": {
+        "count": 4,
+        "size": [64, 136],
+        "anchor": [32, 128],
+        "fps": 4,
+        "src": "assets/img/an_idle_{dir}.png"
+      },
       "walk": {
         "count": 4,
         "size": [64, 152],

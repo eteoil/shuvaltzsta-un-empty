@@ -773,14 +773,14 @@ export class BattleState {
       if (a?.kind === 'attack' && age < 0.5) return { anim: 'attack', n: at(0.5, 3) };
       if (a?.kind === 'dodge' && age < 0.6) return { anim: 'dodge', n: at(0.6, 3) };
       if (this.player.move) return { anim: 'run', n: Math.floor(this.runPhase * 2) };
-      return { anim: null, n: 0 };
+      return { anim: 'idle', n: Math.floor(beat) };   // 立っているあいだは拍に合わせて待機のコマを進める（絵に idle が無ければ静止画）
     }
     if ((a?.kind === 'windup' && age < 1) || (a?.kind === 'feint' && age < 0.5)) return { anim: 'attack', n: 0 };
     if (a?.kind === 'strike' && age < 0.6) return { anim: 'attack', n: age < 0.25 ? 1 : 2 };
     const actor = this.actors[id];
     const moved = beat - actor.movedBeat;
     if (actor.from && moved < 0.5) return { anim: 'run', n: Math.floor((moved / 0.5) * 4) };
-    return { anim: null, n: 0 };
+    return { anim: 'idle', n: Math.floor(beat) };
   }
 
   // 描画用の位置（歩きと敵の移動をなめらかにつなぐ）
