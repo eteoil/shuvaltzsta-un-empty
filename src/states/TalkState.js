@@ -272,6 +272,8 @@ export class TalkState {
     const sell = () => {
       for (let k = 0; k < n; k++) takeItem(this.session, id);
       this.session.money += price;
+      // count があれば、売った回数を session.counts に数える（シャルヴィスに食材を渡した回数。称号「もはや業者」）
+      if (b.count) { this.session.counts ??= {}; this.session.counts[b.count] = (this.session.counts[b.count] ?? 0) + 1; }
       this.game.sfx.play('confirm');
       if (b.got) this.sayLines([{ text: b.yes }, { speaker: '', text: b.got.replace('{price}', money(price)) }]);
       else this.say(b.yes);

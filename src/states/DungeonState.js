@@ -163,10 +163,14 @@ export class DungeonState extends BattleState {
     this.game.sfx.play('ko');
     const a = this.actors[unit.actorIds[0]];
     if (!unit.def.drop || !a) return;
-    // 2個目からは、倒れたマスのまわりの空いている床に置く
-    const spots = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]]
-      .map(([di, dj]) => [a.i + di, a.j + dj])
-      .filter(([i, j]) => this.inArena(i, j) && !this.drops.at(i, j));
+    // 倒れたマスから近い順に、空いている床に置く。出口と崖のマスには置かない（拾おうとして乗ると移ってしまう）
+    const around = [];
+    for (let r = 0; r <= 3; r++) {
+      for (let dj = -r; dj <= r; dj++) {
+        for (let di = -r; di <= r; di++) if (Math.max(Math.abs(di), Math.abs(dj)) === r) around.push([a.i + di, a.j + dj]);
+      }
+    }
+    const spots = around.filter(([i, j]) => this.inArena(i, j) && !this.drops.at(i, j) && !this.exitAt(i, j) && !this.warpAt(i, j));
     const n = this.dayRates.dropCount;
     for (let k = 0; k < n; k++) this.drops.drop(unit.def.drop, spots[k] ?? [a.i, a.j]);
   }

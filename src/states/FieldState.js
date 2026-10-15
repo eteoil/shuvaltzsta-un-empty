@@ -60,7 +60,9 @@ export class FieldState {
   }
 
   // 主人公・NPC・敵のいるマスと、その周り8マス。拾い物は取りにくいので置かない
+  // 人のそばと、出口のマス（拾おうとして乗ると外へ出てしまう）には物を置かない
   nearCharacter(i, j) {
+    if (this.exitAt(i, j)) return true;
     const people = [
       [this.p.i, this.p.j],
       ...(this.map.npcs ?? []).map((n) => n.at),

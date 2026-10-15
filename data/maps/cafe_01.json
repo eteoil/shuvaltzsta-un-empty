@@ -1,8 +1,7 @@
 {
   "id": "cafe_01",
   "kind": "town",
-  "name": "シャルヴィスのカフェ",
-  "nightName": "シャルヴィスのバー",
+  "name": "カフェ&バー：Biotop",
   "hours": [900, 1380],
   "floorSprite": "floor_cafe",
   "wallArt": "cafe",

@@ -1,9 +1,10 @@
 {
-  "_about": "称号。dex に items か enemies を書くと、その図鑑を全部埋めたときに取れる。quest: true ははじめてクエストを受けたとき、faint: true は HP が 0 になったときに取れる。並び順はポーズメニューの「称号」の順。取ったら「称号獲得：name」と出る。desc はポーズメニューの「称号」で、取った称号の下に出る説明",
+  "_about": "称号。dex に items か enemies を書くと、その図鑑を全部埋めたときに取れる。quest: true ははじめてクエストを受けたとき、faint: true は HP が 0 になったとき、count: [名前, 回数] は session.counts のその回数に届いたときに取れる。並び順はポーズメニューの「称号」の順。取ったら「称号獲得：name」と出る。desc はポーズメニューの「称号」で、取った称号の下に出る説明",
   "titles": [
     { "id": "item_doctor", "name": "我こそはアイテム博士！", "dex": "items", "desc": "アイテム図鑑をすべて埋めた" },
     { "id": "enemy_doctor", "name": "我こそはエネミー博士！", "dex": "enemies", "desc": "エネミー図鑑をすべて埋めた" },
     { "id": "first_quest", "name": "はじめて の おつかい", "quest": true, "desc": "はじめて クエストを受けた" },
-    { "id": "first_faint", "name": "はじめて の おしまい", "faint": true, "desc": "はじめて HP が 0 になった" }
+    { "id": "first_faint", "name": "はじめて の おしまい", "faint": true, "desc": "はじめて HP が 0 になった" },
+    { "id": "supplier", "name": "もはや業者", "count": ["shalvis_food", 100], "desc": "シャルヴィスに食材を100回渡した" }
   ]
 }

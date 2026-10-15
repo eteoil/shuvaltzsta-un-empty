@@ -1,5 +1,5 @@
 // 称号。条件を満たしたら session.titles に覚えて、画面の上に「称号獲得：〇〇」を出す。
-// 中身は data/titles.json。条件は、図鑑（core/Dex.js）を全部埋めること（dex: items / enemies）・はじめてクエストを受けること（quest）・HP が 0 になること（faint）
+// 中身は data/titles.json。条件は、図鑑（core/Dex.js）を全部埋めること（dex: items / enemies）・はじめてクエストを受けること（quest）・HP が 0 になること（faint）・回数が届くこと（count: [session.counts の名前, 回数]）
 import { loadJSON } from './Data.js';
 import { loadDex, hasSeenItem, hasMetEnemy } from './Dex.js';
 import { loadItems } from './Items.js';
@@ -32,6 +32,7 @@ export class Titles {
     if (d.dex) return this.complete(session, d.dex);
     if (d.quest) return Object.keys(session.quests ?? {}).length > 0;   // 受けたクエスト（受注中・完了）が1つでもある
     if (d.faint) return session.hero.hp <= 0;
+    if (d.count) return (session.counts?.[d.count[0]] ?? 0) >= d.count[1];
     return false;
   }
 
