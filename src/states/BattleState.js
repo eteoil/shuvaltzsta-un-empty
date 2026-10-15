@@ -503,10 +503,9 @@ export class BattleState {
     const target = this.adjacentActor();
     if (target) this.player.dir = faceToward(this.tile, this.actors[target]);
     this.anim('player', 'attack', b);
-    let grade = this.judge.grade(this.beats.deltaMs(t, slot));
+    const grade = this.attackGrade(this.beats.deltaMs(t, slot));
     if (!grade) return this.fail(b, 'MISS');
     if (!target) return this.fail(b, 'とどかない');
-    if (this.buffs.perfect) grade = 'perfect';
     const back = this.behind(target);
     if (!back && this.spanAt('enemy.guard', slot, target)) {
       this.combo = 0;
@@ -568,6 +567,13 @@ export class BattleState {
     this.success(this.dodgeGrade(this.beats.deltaMs(t, target.beat)), 'dodge', b);
     this.game.sfx.play('dodge');
     return undefined;
+  }
+
+  // 攻撃の判定。コーヒーの間は、拍から attackWindowMs 以内ならすべて PERFECT（ローリングスターの回避と同じ）
+  attackGrade(deltaMs) {
+    const perfect = this.buffs.perfect;
+    if (!perfect) return this.judge.grade(deltaMs);
+    return Math.abs(deltaMs) <= perfect.def.attackWindowMs ? 'perfect' : null;
   }
 
   // 回避の判定。ローリングスター（酔拳）の間は、拍から dodgeWindowMs 以内ならすべて PERFECT
