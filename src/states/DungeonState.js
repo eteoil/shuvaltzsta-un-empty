@@ -13,16 +13,16 @@ import { BattleState } from './BattleState.js';
 // - 敵を倒すと消える。全部倒しても勝ちにはならず、出口に乗ると終わる（EXIT）
 // - 隣に敵がいないときの A は、足元か目の前に落ちている物を拾う（拍の判定はしない）
 // - 倒れたら LOSE。どちらもリザルトのあと町へ戻る
-// - 敵データに faints のある敵（監獄の看守）は、倒しても消えずに気絶した姿で残る（そのマスは通れない）
+// - 敵データに faints のある敵（監獄の看守）は、倒しても消えずに気絶した姿で残る（そのマスはすり抜けられる）
 // - マップの npcs に、話しかけると出口まで連れて行ってくれる NPC を置ける（NPC の escort。奈落の鬼灯）。
 //   話しかけると、NPC が先に立って出口へ歩き、主人公はその後ろをついて歩く（その間は操作できない）。
-//   NPC は出口の手前で脇へよけ、主人公が出口に乗って終わる。歩く間は escort.sound の音を鳴らし続ける
-// - 出口の hole は穴（奈落へ落ちる）。マップの fallIn は、主人公が上から落ちてきて始まる
+//   NPC は出口の手前で脇へよけ、主人公が出口に乗って終わる。話しかけたときに1回だけ escort.sound の音と「ホヨヨ〜ン」を出す
+// - 出口の hole は穴の絵で描く。マップの fallIn は、主人公が上から落ちてきて始まる
 // - マップの warps は、同じマップの中の別の場所へ移るマス（森の崖）。乗ると暗くなって to のマスへ移り、
 //   fall なら上から落ちてくる、slide なら崖を滑り落ちてくる。ダンジョンは続くので、リザルトもスコアも分かれない
-// - マップの areas（from〜to の四角）ごとに、名前（左上の帯）と色味（tint）を変えられる（森と深い森）
+// - マップの areas（from〜to の四角）ごとに、名前（左上の帯）と色味（tint）を変えられる（森と深い森、監獄と奈落）。
+//   silent の場所（奈落）は曲の音を消す（拍は進み続ける。決着したらアウトロから音が戻る）
 const ESCORT_SEC = 0.34;         // 鬼灯と歩く1マスの秒数
-const ESCORT_SOUND_SEC = 1.3;    // 歩く間に音を鳴らす間隔
 const FALL_SEC = 0.7;            // 落ちてくる秒数
 const WARP_SEC = 0.3;            // 崖へ乗ってから暗くなるまで（と、明るくなるまで）の秒数
 const SLIDE_SEC = 0.6;           // 崖を滑り落ちてくる秒数
@@ -126,6 +126,10 @@ export class DungeonState extends BattleState {
       this.fall.t += dt;
       if (this.fall.t >= FALL_SEC) { this.fall = null; this.game.sfx.play('block'); this.shakeAt = performance.now(); }
     }
+    // silent の場所（奈落）にいる間は曲の音を消す
+    // （決着したあとは切り替えない。アウトロが始まるときに Bgm が音を戻す）
+    const silent = !!this.area()?.silent;
+    if (!this.outcome && silent !== this.game.bgm.muted) this.game.bgm.mute(silent);
     super.update(dt, presses);
     this.drops.tick(dt);
     // 倒れた敵は1拍のあいだ点滅してから消える（気絶する敵は残る）
@@ -237,20 +241,15 @@ export class DungeonState extends BattleState {
       .find(([i, j]) => this.inArena(i, j) && !(i === exit.at[0] && j === exit.at[1]) && !(i === before[0] && j === before[1]));
     steps.push(side ? { npc: side, player: stop } : { player: stop });
     steps.push({ player: exit.at });
-    this.escort = { npc, steps, k: -1, t: ESCORT_SEC, soundT: 0 };
+    this.escort = { npc, steps, k: -1, t: ESCORT_SEC };
     this.player.move = null;
+    this.game.sfx.play(npc.def.escort.sound);
+    this.popup('ホヨヨ〜ン', COLORS.perfect, `npc:${npc.id}`);
   }
 
   // 1マスずつ、NPC と主人公を同時に動かす
   stepEscort(dt) {
     const e = this.escort;
-    const sound = e.npc.def.escort.sound;
-    e.soundT -= dt;
-    if (e.soundT <= 0) {
-      e.soundT = ESCORT_SOUND_SEC;
-      this.game.sfx.play(sound);
-      this.popup('ホヨヨ〜ン', COLORS.perfect, `npc:${e.npc.id}`);
-    }
     e.t += dt;
     const p = this.player;
     if (p.move) p.move.t = Math.min(1, e.t / ESCORT_SEC);

@@ -206,8 +206,9 @@ export class BattleState {
     return { i: this.player.i, j: this.player.j };
   }
 
+  // 倒れた敵（気絶して残っている看守も）のマスは通れる
   actorAt(i, j) {
-    return Object.keys(this.actors).find((id) => this.actors[id].i === i && this.actors[id].j === j) ?? null;
+    return Object.keys(this.actors).find((id) => this.actors[id].i === i && this.actors[id].j === j && !this.actors[id].unit?.dead) ?? null;
   }
 
   // 一団のうち、向かう先にいちばん近い者までの距離（確定済み区間の先頭時点の位置で）。向かう先が無ければ遠いことにする

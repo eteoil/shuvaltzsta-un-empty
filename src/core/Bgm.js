@@ -7,12 +7,13 @@ export class Bgm {
     this.buffers = {};
     this.leads = {};            // 曲の頭の無音（秒）。デコードしたものから測る
     this.bus = clock.ctx.createGain();
-    this.bus.gain.value = config.volume?.bgm ?? 0.8;
+    this.bus.gain.value = this.volume;
     this.bus.connect(clock.master);
     this.voices = [];
     this.click = null;
     this.current = null;
     this.outroEndsAt = 0;       // アウトロが鳴り終わる AudioContext 時刻
+    this.muted = false;         // 曲の音を消しているか（mute）
   }
 
   get spb() {
@@ -66,6 +67,7 @@ export class Bgm {
     }
     this.current = { key, def, offset };
     this.outroEndsAt = Infinity;
+    if (this.muted) this.mute(false, 0.01);   // 前の戦闘で消したままにしない
     return at - startSec;
   }
 
@@ -92,6 +94,7 @@ export class Bgm {
   outro(at) {
     const cur = this.current;
     if (!cur) return;
+    if (this.muted) this.mute(false, 0.004, at);   // 音を消していた（奈落）なら、アウトロから戻す
     for (const v of this.voices) this.fade(v, at, 0.004);
     const buffer = this.buffers[cur.key];
     if (buffer) {
@@ -104,6 +107,21 @@ export class Bgm {
       this.outroEndsAt = at + 2 * this.spb + 0.2;
     }
     this.current = null;
+  }
+
+  // 曲の音だけ消す・戻す（拍は鳴っている曲に合わせて進み続ける。奈落）
+  mute(on, fadeSec = 0.4, at = this.clock.now) {
+    this.muted = on;
+    const g = this.bus.gain;
+    const t = Math.max(at, this.clock.now);
+    g.cancelScheduledValues(this.clock.now);
+    g.setValueAtTime(g.value, this.clock.now);
+    g.setValueAtTime(g.value, t);
+    g.linearRampToValueAtTime(on ? 0 : this.volume, t + fadeSec);
+  }
+
+  get volume() {
+    return this.config.volume?.bgm ?? 0.8;
   }
 
   stop(fadeSec = 0.3) {
