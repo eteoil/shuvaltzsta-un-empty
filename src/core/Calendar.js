@@ -38,7 +38,7 @@ export function clockText(minute) {
 }
 
 // その日の行事。labels は画面に出す短い名前、wake はベッドで起きたときの一言。
-// festival（祭りの日）・rest（天赦日。restDays.phases の月相（新月・上弦・満月）の末日）・taboo（忌み月）は、その日の効果に使う。
+// festival（祭りの日）・rest（天赦日。restDays.phases の月相（新月・上弦・満月）の末日。21〜23区の無い忌み月（水亀節）には無い）・taboo（忌み月）は、その日の効果に使う。
 // tabooWeek（忌み週。tabooWeek.phase の月相＝天赦日の無い下弦の間）は、いまは名前と一言だけ
 export function eventsOf(calendar, n) {
   const d = dateOf(calendar, n);
@@ -47,8 +47,10 @@ export function eventsOf(calendar, n) {
   const festival = (calendar.festivals ?? []).find((f) => f.month === d.month && f.day === d.day) ?? null;
   if (festival) { labels.push(festival.name); wake.push(festival.wake); }
   const moon = moonDayOf(calendar, n);
+  const tabooMonth = calendar.tabooMonth;
+  const taboo = !!tabooMonth && d.month === tabooMonth.month;
   const restDays = calendar.restDays;
-  const rest = !!restDays && !!moon && moon.last && restDays.phases.includes(moon.phase);
+  const rest = !!restDays && !taboo && !!moon && moon.last && restDays.phases.includes(moon.phase);
   if (rest) { labels.push(restDays.name); wake.push(restDays.wake); }
   const tabooWeekDef = calendar.tabooWeek;
   const tabooWeek = !!tabooWeekDef && !!moon && moon.phase === tabooWeekDef.phase;
@@ -56,8 +58,6 @@ export function eventsOf(calendar, n) {
     labels.push(tabooWeekDef.name);
     if (moon.first) wake.push(tabooWeekDef.wake);   // 忌み週の一言は初日だけ
   }
-  const tabooMonth = calendar.tabooMonth;
-  const taboo = !!tabooMonth && d.month === tabooMonth.month;
   if (taboo) {
     labels.push(tabooMonth.name);
     if (d.day === 1) wake.push(tabooMonth.wake);   // 忌み月の一言は月の初日だけ
