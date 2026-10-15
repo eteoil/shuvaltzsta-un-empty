@@ -1,0 +1,4 @@
+{
+  "_about": "図鑑に載せる敵と並び順。敵を増やしたらここにも足す。アイテムは items.json の順にすべて載る",
+  "enemies": ["slime", "wolf", "gorotsuki", "guard", "chuck_zipper"]
+}

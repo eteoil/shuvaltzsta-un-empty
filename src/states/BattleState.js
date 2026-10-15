@@ -12,6 +12,7 @@ import { areaTiles } from '../battle/areas.js';
 import { DialogState } from './DialogState.js';
 import { poisonTick, regen, regenStep, attackMultiplier } from '../core/Hero.js';
 import { passTime, eventsOf, moonOf } from '../core/Calendar.js';
+import { meetEnemy } from '../core/Dex.js';
 
 const THREATS = new Set(['enemy.attack', 'enemy.feint']);
 const LANE = { y: 280, h: 40, judgeX: 44 };
@@ -267,6 +268,9 @@ export class BattleState {
     for (const p of presses) this.onPress(p);
     this.walk(dt);
     this.expire();
+    // 上の帯に名前が出た敵は、図鑑に載せる
+    const seen = this.focusUnit();
+    if (seen && !seen.dead && seen.def.id) meetEnemy(this.game.session, seen.def.id);
     this.profile.prune(beat);
   }
 

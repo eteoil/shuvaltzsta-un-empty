@@ -1,7 +1,8 @@
 import { STATES } from '../core/constants.js';
-import { COLORS, text, panel, gauge, wrap } from '../core/draw.js';
+import { COLORS, text, panel, gauge, wrap, sprite } from '../core/draw.js';
 import { loadItems, money, useItem, count } from '../core/Items.js';
 import { loadJSON } from '../core/Data.js';
+import { loadDex, hasSeenItem, hasMetEnemy } from '../core/Dex.js';
 import { saveOptions } from '../core/Options.js';
 import { dateOf, dateText, dateNumber, timeText, clockText, eventsOf, moonOf, passTime } from '../core/Calendar.js';
 import { levelOf, scoreFor, setTotalScore } from '../core/Level.js';
@@ -27,6 +28,7 @@ export class MenuState {
       { label: 'さいかい', run: () => this.game.states.pop() },
       { label: 'アイテム', run: () => { this.mode = 'items'; this.itemSel = 0; } },
       { label: 'クエスト', run: () => this.openQuests() },
+      { label: '図鑑', run: () => this.openDex() },
       { label: '時間を進める', run: () => this.openWait() },
       { label: () => `チート：${this.game.options.cheat ? 'ON' : 'OFF'}`, run: () => this.toggleCheat() },
       { label: 'タイトルへ', run: () => this.game.toTitle() },
@@ -66,6 +68,37 @@ export class MenuState {
     const n = this.questDefs?.length ?? 0;
     if (n && (btn === 'up' || btn === 'down')) {
       this.questSel = (this.questSel + n + (btn === 'up' ? -1 : 1)) % n;
+      this.game.sfx.play('select');
+    }
+  }
+
+  // 図鑑。◀▶ でアイテム図鑑とエネミー図鑑を切り替える。手に入れていないアイテム・出会っていない敵は ???
+  openDex() {
+    this.mode = 'dex';
+    this.dexTab = 'items';
+    this.dexSel = 0;
+    this.dexEnemies = null;
+    loadDex()
+      .then((d) => Promise.all(d.enemies.map((id) => loadJSON(`data/enemies/${id}.json`))))
+      .then((defs) => { this.dexEnemies = defs; });
+    loadJSON('data/races.json').then((r) => { this.races = r; });
+  }
+
+  dexList() {
+    return this.dexTab === 'items' ? Object.keys(this.defs ?? {}) : this.dexEnemies ?? [];
+  }
+
+  updateDex(btn) {
+    if (btn === 'b' || btn === 'pause' || btn === 'start') { this.mode = 'main'; return; }
+    if (btn === 'left' || btn === 'right') {
+      this.dexTab = this.dexTab === 'items' ? 'enemies' : 'items';
+      this.dexSel = 0;
+      this.game.sfx.play('select');
+      return;
+    }
+    const n = this.dexList().length;
+    if (n && (btn === 'up' || btn === 'down')) {
+      this.dexSel = (this.dexSel + n + (btn === 'up' ? -1 : 1)) % n;
       this.game.sfx.play('select');
     }
   }
@@ -165,6 +198,7 @@ export class MenuState {
       if (this.mode === 'items') { this.updateItems(btn); continue; }
       if (this.mode === 'wait') { this.updateWait(btn); continue; }
       if (this.mode === 'quests') { this.updateQuests(btn); continue; }
+      if (this.mode === 'dex') { this.updateDex(btn); continue; }
       if (btn === 'up' || btn === 'down') {
         this.sel = (this.sel + this.items.length + (btn === 'up' ? -1 : 1)) % this.items.length;
         this.game.sfx.play('select');
@@ -205,9 +239,11 @@ export class MenuState {
     g.fillRect(0, 0, W, H);
     if (this.mode === 'items') this.renderItems(g, W, H);
     else if (this.mode === 'quests') this.renderQuests(g, W, H);
+    else if (this.mode === 'dex') this.renderDex(g, W, H);
     else this.renderMain(g, W);
     if (this.mode === 'wait') this.renderWait(g, W);
     this.renderStatus(g, W);
+    if (this.mode === 'dex') this.renderDexPortrait(g, W, H);
     // 長い行は枠の幅で折り返し、行数に合わせて枠を高くする
     if (this.message) {
       const lines = this.message.lines.flatMap((l) => wrap(g, l, W - 152)).slice(-5);
@@ -226,6 +262,7 @@ export class MenuState {
     const moon = moonOf(cal, s.day);
     const lines = [...(moon ? [moon] : []), ...eventsOf(cal, s.day).labels, ...(tags.length ? [tags.join(' ')] : [])];
     panel(g, W - 176, 8, 168, 96 + lines.length * 16);
+    this.statusBottom = 8 + 96 + lines.length * 16;
     text(g, `${dateText(cal, s.day)}(${dateNumber(cal, s.day)})`, W - 164, 64, { size: 12, color: COLORS.muted });
     text(g, `${timeText(cal, s.minute)}(${clockText(s.minute)})`, W - 164, 80, { size: 12, color: COLORS.muted });
     lines.forEach((l, i) => text(g, l, W - 164, 96 + i * 16, { size: 12, color: COLORS.brass }));
@@ -317,5 +354,59 @@ export class MenuState {
     g.fillRect(24, 226, W - 220, 1);
     wrap(g, d.desc, W - 236).slice(0, 2).forEach((l, i) => text(g, l, 28, 236 + i * 22));
     if (d.battleOnly) text(g, '戦闘中のみ', 28, 282, { size: 12, color: COLORS.brass });
+  }
+
+  // 上に一覧（番号と名前。まだなら ???）、線の下に選んでいるものの説明。敵は一覧の右に姿も出す
+  renderDex(g, W, H) {
+    panel(g, 12, 8, W - 196, H - 16);
+    const items = this.dexTab === 'items';
+    text(g, `◀ ${items ? 'アイテム図鑑' : 'エネミー図鑑'} ▶`, 28, 20, { color: COLORS.brass });
+    const list = this.dexList();
+    if (!list.length) { text(g, '…', 28, 56, { color: COLORS.muted }); return; }
+    const s = this.session;
+    const known = (x) => (items ? hasSeenItem(s, x) : hasMetEnemy(s, x.id));
+    const name = (x) => (items ? this.defs[x].name : x.name);
+    text(g, `${list.filter(known).length}/${list.length}`, W - 200, 20, { align: 'right', color: COLORS.muted });
+    const first = Math.max(0, Math.min(this.dexSel - ROWS + 1, list.length - ROWS));
+    list.slice(first, first + ROWS).forEach((x, k) => {
+      const i = first + k;
+      const y = 50 + k * 24;
+      const on = i === this.dexSel;
+      if (on) text(g, '▶', 26, y, { color: COLORS.signal });
+      text(g, `No.${String(i + 1).padStart(2, '0')}`, 44, y, { size: 12, color: COLORS.dim });
+      text(g, known(x) ? name(x) : '???', 92, y, { color: on ? COLORS.ink : COLORS.muted });
+    });
+    const x = list[this.dexSel];
+    g.fillStyle = COLORS.line;
+    g.fillRect(24, 226, W - 220, 1);
+    if (!known(x)) {
+      text(g, items ? 'まだ手に入れていない' : 'まだ出会っていない', 28, 236, { color: COLORS.muted });
+      return;
+    }
+    if (items) {
+      const d = this.defs[x];
+      wrap(g, d.desc, W - 236).slice(0, 2).forEach((l, i) => text(g, l, 28, 236 + i * 22));
+      if (d.battleOnly) text(g, '戦闘中のみ', 28, 282, { size: 12, color: COLORS.brass });
+      return;
+    }
+    // 敵：種族・HP・落とす物（落とす物を手に入れていなければ ???）と、姿
+    const race = this.races?.[x.race];
+    if (race) text(g, `${race.name}（${race.label}）`, 28, 236, { color: COLORS.ink });
+    const drop = x.drop ? (hasSeenItem(s, x.drop) ? this.defs?.[x.drop]?.name ?? x.drop : '???') : 'なし';
+    text(g, `HP ${x.hp}　落とす物：${drop}`, 28, 258, { color: COLORS.muted });
+    if (x.boss) text(g, 'ボス', 28, 282, { size: 12, color: COLORS.rose });
+  }
+
+  // エネミー図鑑で選んでいる敵の姿。右の状態の枠の下に、別の枠を出して描く（出会っていなければ出さない）
+  renderDexPortrait(g, W, H) {
+    const x = this.dexTab === 'enemies' && this.dexList()[this.dexSel];
+    if (!x || !hasMetEnemy(this.session, x.id)) return;
+    const top = this.statusBottom + 6;
+    panel(g, W - 176, top, 168, H - 8 - top);
+    // 小さい敵は枠のまん中あたりに、大きい敵は足元を枠の下に合わせる
+    const poses = (x.actors ?? []).map((a) => this.game.assets.pose(a.sprite, 'sw', null, 0, a.palette));
+    const tall = Math.max(...poses.map((p) => p.def.anchor[1]));
+    const foot = Math.min(H - 18, (top + H - 8) / 2 + tall / 2);
+    poses.forEach(({ img, def }, k) => sprite(g, img, def, W - 92 + (k - (poses.length - 1) / 2) * 52, foot));
   }
 }

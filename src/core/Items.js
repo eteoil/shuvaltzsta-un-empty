@@ -2,6 +2,7 @@
 // 効果はデータのフィールドの組み合わせで決まる：heal / regen / damage / poison / cure / buff / outcomes
 import { loadJSON } from './Data.js';
 import { poison, cure, startRegen } from './Hero.js';
+import { seeItem } from './Dex.js';
 
 export const loadItems = () => loadJSON('data/items.json');
 
@@ -19,6 +20,7 @@ export function count(session, id) {
 
 export function addItem(session, id, n = 1) {
   session.items[id] = count(session, id) + n;
+  seeItem(session, id);   // 図鑑に載せる
 }
 
 export function takeItem(session, id) {

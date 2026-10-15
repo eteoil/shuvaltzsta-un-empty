@@ -91,6 +91,7 @@ export class Game {
       pickups: {},        // マップの id → 落ちている物と、次に現れるまでの秒（FieldState）
       bank: { balance: 0, day: 1 },   // 銀行の預金と、最後に利息を付けた日（core/Bank.js）
       totalScore: 0,
+      dex: { items: Object.fromEntries(Object.keys(start.items).map((id) => [id, true])), enemies: {} },   // 図鑑（core/Dex.js）
     };
     this.states.change(new FieldState(this));
   }
