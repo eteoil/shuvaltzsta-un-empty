@@ -273,10 +273,10 @@ export class TalkState {
       for (let k = 0; k < n; k++) takeItem(this.session, id);
       this.session.money += price;
       // count があれば、売った回数を session.counts に数える（シャルヴィスに食材を渡した回数。称号「もはや業者」）
-      // countItems があれば、売った個数も数える（称号「大量納品」）
+      // countMax があれば、1回でまとめて渡した個数の最高を覚える（称号「大量納品」。小分けにして渡したぶんは足さない）
       const counts = (this.session.counts ??= {});
       if (b.count) counts[b.count] = (counts[b.count] ?? 0) + 1;
-      if (b.countItems) counts[b.countItems] = (counts[b.countItems] ?? 0) + n;
+      if (b.countMax) counts[b.countMax] = Math.max(counts[b.countMax] ?? 0, n);
       this.game.sfx.play('confirm');
       if (b.got) this.sayLines([{ text: b.yes }, { speaker: '', text: b.got.replace('{price}', money(price)) }]);
       else this.say(b.yes);
