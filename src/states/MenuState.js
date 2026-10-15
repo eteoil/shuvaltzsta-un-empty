@@ -256,9 +256,8 @@ export class MenuState {
     else this.renderMain(g, W);
     if (this.mode === 'wait') this.renderWait(g, W);
     this.renderStatus(g, W);
-    // 右下の枠：エネミー図鑑では敵の姿、ほかは図鑑と称号の埋まり具合
-    if (this.mode === 'dex' && this.dexTab === 'enemies') this.renderDexPortrait(g, W, H);
-    else this.renderRecord(g, W, H);
+    // 右下の枠：エネミー図鑑で出会った敵を選んでいるときは敵の姿、ほかは図鑑と称号の埋まり具合
+    if (!(this.mode === 'dex' && this.renderDexPortrait(g, W, H))) this.renderRecord(g, W, H);
     // 長い行は枠の幅で折り返し、行数に合わせて枠を高くする
     if (this.message) {
       const lines = this.message.lines.flatMap((l) => wrap(g, l, W - 152)).slice(-5);
@@ -446,10 +445,11 @@ export class MenuState {
     if (x.boss) text(g, 'ボス', 28, 282, { size: 12, color: COLORS.rose });
   }
 
-  // エネミー図鑑で選んでいる敵の姿。右の状態の枠の下に、別の枠を出して描く（出会っていなければ出さない）
+  // エネミー図鑑で選んでいる敵の姿。右の状態の枠の下に、別の枠を出して描く。
+  // 出会っていない敵（とアイテム図鑑）では描かずに false を返し、代わりに「きろく」の枠を出す
   renderDexPortrait(g, W, H) {
     const x = this.dexTab === 'enemies' && this.dexList()[this.dexSel];
-    if (!x || !hasMetEnemy(this.session, x.id)) return;
+    if (!x || !hasMetEnemy(this.session, x.id)) return false;
     const top = this.statusBottom + 6;
     panel(g, W - 176, top, 168, H - 8 - top);
     // 小さい敵は枠のまん中あたりに、大きい敵は足元を枠の下に合わせる
@@ -457,6 +457,7 @@ export class MenuState {
     const tall = Math.max(...poses.map((p) => p.def.anchor[1]));
     const foot = Math.min(H - 18, (top + H - 8) / 2 + tall / 2);
     poses.forEach(({ img, def }, k) => sprite(g, img, def, W - 92 + (k - (poses.length - 1) / 2) * 52, foot));
+    return true;
   }
 
   renderTitles(g, W, H) {
