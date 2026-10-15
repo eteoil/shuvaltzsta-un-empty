@@ -256,7 +256,9 @@ export class MenuState {
     else this.renderMain(g, W);
     if (this.mode === 'wait') this.renderWait(g, W);
     this.renderStatus(g, W);
-    if (this.mode === 'dex') this.renderDexPortrait(g, W, H);
+    // 右下の枠：エネミー図鑑では敵の姿、ほかは図鑑と称号の埋まり具合
+    if (this.mode === 'dex' && this.dexTab === 'enemies') this.renderDexPortrait(g, W, H);
+    else this.renderRecord(g, W, H);
     // 長い行は枠の幅で折り返し、行数に合わせて枠を高くする
     if (this.message) {
       const lines = this.message.lines.flatMap((l) => wrap(g, l, W - 152)).slice(-5);
@@ -266,39 +268,71 @@ export class MenuState {
     }
   }
 
+  // 右上の枠：HP・レベルとお金・日付と時刻・月相と行事（1行ずつ）・CHEAT / DEV
   renderStatus(g, W) {
     const s = this.session;
     if (!s) return;
     const tags = [this.game.options.cheat && 'CHEAT', this.game.dev && 'DEV'].filter(Boolean);
-    // 日付と時刻（すぐ後ろに括弧で数字）。その下に月相、その日の行事（祭り・天赦日・忌み月）を1行ずつ、最後に CHEAT / DEV
     const cal = this.game.calendar;
     const moon = moonOf(cal, s.day);
     const lines = [...(moon ? [moon] : []), ...eventsOf(cal, s.day).labels, ...(tags.length ? [tags.join(' ')] : [])];
-    panel(g, W - 176, 8, 168, 96 + lines.length * 16);
-    this.statusBottom = 8 + 96 + lines.length * 16;
-    text(g, `${dateText(cal, s.day)}(${dateNumber(cal, s.day)})`, W - 164, 64, { size: 12, color: COLORS.muted });
-    text(g, `${timeText(cal, s.minute)}(${clockText(s.minute)})`, W - 164, 80, { size: 12, color: COLORS.muted });
-    lines.forEach((l, i) => text(g, l, W - 164, 96 + i * 16, { size: 12, color: COLORS.brass }));
-    text(g, `Lv ${this.level}`, W - 164, 48, { color: COLORS.ink });
-    text(g, 'HP', W - 164, 18, { color: COLORS.signal });
-    gauge(g, W - 136, 23, 90, 8, s.hero.hp / s.hero.maxHp, COLORS.signal);
-    if (s.hero.poisoned) text(g, '毒', W - 40, 18, { color: COLORS.unguard });
-    text(g, `${s.hero.hp} / ${s.hero.maxHp}`, W - 136, 34, { size: 12, color: COLORS.muted });
-    text(g, money(s.money), W - 18, 48, { align: 'right', color: COLORS.perfect });
+    const x = W - 164;
+    const h = 120 + lines.length * 16;
+    panel(g, W - 176, 8, 168, h);
+    this.statusBottom = 8 + h;
+    text(g, 'HP', x, 20, { color: COLORS.signal });
+    gauge(g, x + 28, 25, 90, 8, s.hero.hp / s.hero.maxHp, COLORS.signal);
+    if (s.hero.poisoned) text(g, '毒', W - 40, 20, { color: COLORS.unguard });
+    text(g, `${s.hero.hp} / ${s.hero.maxHp}`, x + 28, 37, { size: 12, color: COLORS.muted });
+    text(g, `Lv ${this.level}`, x, 56, { color: COLORS.ink });
+    text(g, money(s.money), W - 20, 56, { align: 'right', color: COLORS.perfect });
+    g.fillStyle = COLORS.line;
+    g.fillRect(x, 77, 144, 1);
+    text(g, `${dateText(cal, s.day)}(${dateNumber(cal, s.day)})`, x, 84, { size: 12, color: COLORS.muted });
+    text(g, `${timeText(cal, s.minute)}(${clockText(s.minute)})`, x, 100, { size: 12, color: COLORS.muted });
+    lines.forEach((l, i) => text(g, l, x, 118 + i * 16, { size: 12, color: COLORS.brass }));
   }
 
-  renderMain(g, W) {
-    // 項目が多い（開発モード）ときは、画面の下にはみ出さないよう行を詰める
-    const H = this.game.config.screen.height;
-    const step = Math.min(28, (H - 84 - 64 - 8) / this.items.length);
-    panel(g, W / 2 - 110, 84, 220, 64 + this.items.length * step);
-    text(g, 'PAUSE', W / 2, 98, { size: 24, color: COLORS.brass, align: 'center' });
-    this.items.forEach((it, i) => {
-      const y = 140 + i * step;
-      if (i === this.sel) text(g, '▶', W / 2 - 82, y, { color: COLORS.signal });
-      const label = typeof it.label === 'function' ? it.label() : it.label;
-      text(g, label, W / 2 - 60, y, { color: i === this.sel ? COLORS.ink : COLORS.muted });
+  // 右下の枠：図鑑と称号がどれだけ埋まったか
+  renderRecord(g, W, H) {
+    const s = this.session;
+    const t = this.game.titles;
+    if (!s || !t) return;
+    const top = this.statusBottom + 6;
+    panel(g, W - 176, top, 168, H - 8 - top);
+    const x = W - 164;
+    const n = (kind, has) => `${t.all[kind].filter(has).length}/${t.all[kind].length}`;
+    const rows = [
+      ['アイテム図鑑', n('items', (id) => hasSeenItem(s, id))],
+      ['エネミー図鑑', n('enemies', (id) => hasMetEnemy(s, id))],
+      ['称号', `${t.defs.filter((d) => s.titles?.[d.id]).length}/${t.defs.length}`],
+    ];
+    text(g, 'きろく', x, top + 12, { size: 12, color: COLORS.brass });
+    rows.forEach(([label, v], i) => {
+      const y = top + 32 + i * 20;
+      text(g, label, x, y, { size: 12, color: COLORS.muted });
+      text(g, v, W - 20, y, { size: 12, align: 'right', color: COLORS.ink });
     });
+  }
+
+  // 左の大きな枠に項目を並べる（項目の画面と同じ枠）。下に操作の案内
+  renderMain(g, W) {
+    const H = this.game.config.screen.height;
+    panel(g, 12, 8, W - 196, H - 16);
+    text(g, 'PAUSE', 28, 20, { color: COLORS.brass });
+    g.fillStyle = COLORS.line;
+    g.fillRect(24, 44, W - 220, 1);
+    // 項目が多い（開発モード）ときは、案内の上に収まるよう行を詰める
+    const top = 58;
+    const step = Math.min(30, (H - 44 - top) / this.items.length);
+    this.items.forEach((it, i) => {
+      const y = top + i * step;
+      const on = i === this.sel;
+      if (on) text(g, '▶', 26, y, { color: COLORS.signal });
+      const label = typeof it.label === 'function' ? it.label() : it.label;
+      text(g, label, 44, y, { color: on ? COLORS.ink : COLORS.muted });
+    });
+    text(g, 'A：けってい　B：とじる', 28, H - 34, { size: 12, color: COLORS.dim });
   }
 
   // 1件を2行で：名前と、受注中／完了・進み具合
@@ -337,13 +371,15 @@ export class MenuState {
     const cal = this.game.calendar;
     const after = { ...this.session };
     passTime(after, this.waitHours * 60);
-    const x = W / 2 - 90;
-    const y = 132;
-    panel(g, x, y, 180, 96);
-    text(g, '時間を進める', W / 2, y + 12, { size: 12, align: 'center', color: COLORS.brass });
-    text(g, `◀ ${this.waitHours}時間 ▶`, W / 2, y + 34, { align: 'center', color: COLORS.ink });
-    text(g, `${dateText(cal, after.day)}　${timeText(cal, after.minute)}`, W / 2, y + 60, { size: 12, align: 'center', color: COLORS.muted });
-    text(g, `(${dateNumber(cal, after.day)} ${clockText(after.minute)})　A：決定`, W / 2, y + 76, { size: 12, align: 'center', color: COLORS.dim });
+    // 左の枠のまん中に重ねる
+    const cx = 12 + (W - 196) / 2;
+    const x = cx - 100;
+    const y = 112;
+    panel(g, x, y, 200, 108);
+    text(g, '時間を進める', cx, y + 14, { size: 12, align: 'center', color: COLORS.brass });
+    text(g, `◀ ${this.waitHours}時間 ▶`, cx, y + 38, { align: 'center', color: COLORS.ink });
+    text(g, `${dateText(cal, after.day)}　${timeText(cal, after.minute)}`, cx, y + 66, { size: 12, align: 'center', color: COLORS.muted });
+    text(g, `(${dateNumber(cal, after.day)} ${clockText(after.minute)})　A：決定`, cx, y + 84, { size: 12, align: 'center', color: COLORS.dim });
   }
 
   renderItems(g, W, H) {

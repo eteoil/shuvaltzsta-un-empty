@@ -1,7 +1,7 @@
 {
   "id": "desert_dungeon_01",
   "kind": "dungeon",
-  "name": "砂漠（仮）",
+  "name": "白夜砂漠",
   "tint": "rgba(236,186,96,0.34)",
   "floor": [
     "####..........",
@@ -19,7 +19,7 @@
   ],
   "start": [1, 1, "se"],
   "exits": [
-    { "at": [8, 11], "to": "desert_01", "spawn": [8, 4, "nw"], "label": "白夜砂漠の村" }
+    { "at": [8, 11], "to": "desert_01", "spawn": [8, 4, "nw"], "label": "カズカ：白夜村" }
   ],
   "spawns": [
     { "enemy": "slime", "at": [5, 3] },

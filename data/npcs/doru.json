@@ -4,8 +4,8 @@
   "sprite": "doru",
   "greet": "どちらまで行きますかニャ？",
   "options": [
-    { "label": "ラボ", "travel": { "to": "lab_01", "spawn": [3, 2, "ne"], "say": "ラボ行き、発車しミャーす！" } },
-    { "label": "白夜砂漠の村", "travel": { "to": "desert_01", "spawn": [4, 2, "ne"], "say": "白夜砂漠の村行き、発車しミャーす！" } },
+    { "label": "ラボ：ラグナ", "travel": { "to": "lab_01", "spawn": [3, 2, "ne"], "say": "ラボ：ラグナ行き、発車しミャーす！" } },
+    { "label": "カズカ：白夜村", "travel": { "to": "desert_01", "spawn": [4, 2, "ne"], "say": "カズカ：白夜村行き、発車しミャーす！" } },
     { "label": "なんでもない", "say": "またのご利用お待ちしてますニャ！", "cancel": true }
   ]
 }

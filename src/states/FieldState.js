@@ -5,7 +5,7 @@ import { loadItems, money, addItem } from '../core/Items.js';
 import { poisonTick, regen, regenStep } from '../core/Hero.js';
 import { drawPickup, drawExit, drawObject, objectHeight, drawWall, drawProp, drawTileBox, drawRail } from '../core/icons.js';
 import { Pickups } from '../core/Pickups.js';
-import { passTime, isNight, isMapOpen, eventsOf } from '../core/Calendar.js';
+import { passTime, isNight, isMapOpen, isOpen, eventsOf } from '../core/Calendar.js';
 import { DIRS, FACE_STEP } from '../core/grid.js';
 
 // 探索。リズム入力は受け付けない（憲法③）。町のマップ（kind: town）では TOWN として動く。
@@ -102,14 +102,15 @@ export class FieldState {
 
   // 営業時間のある場所の店の人（map の npcs で staff: true）は、時間外はいない。night: true の人は夜だけ（バーのエレナ）。
   // restDay: true の人は天赦日だけ、restDay: false の人は天赦日以外だけいる（天赦日のコウはカフェでなく、フェストの東の端の、図書館と森へ行く道の入り口の前）
+  // hours（[出る, いなくなる] の分）のある人は、その時間だけいる（銀行員 9:00〜15:00、プレスト 9:00〜17:00）
   presentNpcs() {
     const rest = eventsOf(this.game.calendar, this.session.day).rest;
-    return (this.map.npcs ?? []).filter((n) => (!n.staff || this.open) && (!n.night || this.night)
+    return (this.map.npcs ?? []).filter((n) => (!n.staff || this.open) && (!n.night || this.night) && isOpen(n.hours, this.session.minute)
       && (n.restDay === undefined || n.restDay === rest));
   }
 
   // 出口に乗ったら行き先へ。requires のフラグ（勝った戦闘など）が無ければ通れない。
-  // 行き先のマップが営業時間外（hours の外。天赦日に休む店は天赦日も）なら、closedText を出して入れない（薬屋）
+  // 行き先のマップが営業時間外（hours の外。天赦日に休む店は天赦日も）なら、closedText を出して入れない（万屋）
   // edge の付いた出口（カフェのロフトの奥の端）は、乗っても出ない。そのマスから edge の向きへ進もうとしたときに出る
   takeExit(dir = null) {
     const exit = this.exitAt(this.p.i, this.p.j);
@@ -494,7 +495,7 @@ export class FieldState {
       text(g, c.label, pos.x, Math.max(30, pos.y - c.h - height - 16), { size: 12, align: 'center', color: COLORS.brass });
     }
 
-    // 夜は少し暗く（演出）。brightNight のマップ（白夜砂漠の村）は夜も明るいまま
+    // 夜は少し暗く（演出）。brightNight のマップ（カズカ：白夜村）は夜も明るいまま
     if (this.night && !this.map.brightNight) {
       g.fillStyle = 'rgba(10,14,40,0.38)';
       g.fillRect(0, 0, W, H);

@@ -5,6 +5,7 @@
     { "id": "enemy_doctor", "name": "我こそはエネミー博士！", "dex": "enemies", "desc": "エネミー図鑑をすべて埋めた" },
     { "id": "first_quest", "name": "はじめて の おつかい", "quest": true, "desc": "はじめて クエストを受けた" },
     { "id": "first_faint", "name": "はじめて の おしまい", "faint": true, "desc": "はじめて HP が 0 になった" },
-    { "id": "supplier", "name": "もはや業者", "count": ["shalvis_food", 100], "desc": "シャルヴィスに食材を100回渡した" }
+    { "id": "supplier", "name": "もはや業者", "count": ["shalvis_food", 100], "desc": "シャルヴィスに食材を100回渡した" },
+    { "id": "bulk_delivery", "name": "大量納品", "count": ["shalvis_food_items", 100], "desc": "シャルヴィスに食材を100個渡した" }
   ]
 }

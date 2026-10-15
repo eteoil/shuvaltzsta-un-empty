@@ -106,7 +106,7 @@ export function isOpen(hours, minute) {
   return !hours || within(minute, hours);
 }
 
-// その場所が開いているか。営業時間（hours）の外と、closedOnRestDay の場所（薬屋）の天赦日は閉まっている
+// その場所が開いているか。営業時間（hours）の外と、closedOnRestDay の場所（万屋）の天赦日は閉まっている
 export function isMapOpen(calendar, map, day, minute) {
   return isOpen(map?.hours, minute) && !(map?.closedOnRestDay && eventsOf(calendar, day).rest);
 }
