@@ -21,7 +21,7 @@ import { BattleState } from './BattleState.js';
 // - マップの warps は、同じマップの中の別の場所へ移るマス（森の崖）。乗ると暗くなって to のマスへ移り、
 //   fall なら上から落ちてくる、slide なら崖を滑り落ちてくる。ダンジョンは続くので、リザルトもスコアも分かれない
 // - マップの areas（from〜to の四角）ごとに、名前（左上の帯）と色味（tint）を変えられる（森と深い森、監獄と奈落）。
-//   silent の場所（奈落）は曲の音を消す（拍は進み続ける。決着したらアウトロから音が戻る）
+//   silent の場所（奈落）は曲の音を消す（拍は進み続ける。そこで決着したらアウトロも鳴らさない）
 const ESCORT_SEC = 0.34;         // 鬼灯と歩く1マスの秒数
 const FALL_SEC = 0.7;            // 落ちてくる秒数
 const WARP_SEC = 0.3;            // 崖へ乗ってから暗くなるまで（と、明るくなるまで）の秒数
@@ -127,7 +127,7 @@ export class DungeonState extends BattleState {
       if (this.fall.t >= FALL_SEC) { this.fall = null; this.game.sfx.play('block'); this.shakeAt = performance.now(); }
     }
     // silent の場所（奈落）にいる間は曲の音を消す
-    // （決着したあとは切り替えない。アウトロが始まるときに Bgm が音を戻す）
+    // （決着したあとは切り替えない。消したまま決着したらアウトロも鳴らさない。次の曲を鳴らすときに Bgm が音を戻す）
     const silent = !!this.area()?.silent;
     if (!this.outcome && silent !== this.game.bgm.muted) this.game.bgm.mute(silent);
     super.update(dt, presses);

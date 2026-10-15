@@ -113,7 +113,7 @@
       "loopFromBar": 9,
       "loopToBar": 25,
       "outroFromBar": 25,
-      "outroJoinBars": [17, 25],
+      "outroJoinBars": [11, 13, 15, 17, 19, 21, 23, 25],
       "offsetMs": 23
     }
   },

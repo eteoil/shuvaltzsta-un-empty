@@ -94,8 +94,14 @@ export class Bgm {
   outro(at) {
     const cur = this.current;
     if (!cur) return;
-    if (this.muted) this.mute(false, 0.004, at);   // 音を消していた（奈落）なら、アウトロから戻す
     for (const v of this.voices) this.fade(v, at, 0.004);
+    // 音を消している（奈落）なら、アウトロも鳴らさない。リザルトもアウトロを待たずに閉じられる
+    if (this.muted) {
+      this.click = null;
+      this.outroEndsAt = at;
+      this.current = null;
+      return;
+    }
     const buffer = this.buffers[cur.key];
     if (buffer) {
       const from = this.barTime(cur.def.outroFromBar) + cur.offset;
