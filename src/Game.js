@@ -17,6 +17,7 @@ import { loadOptions } from './core/Options.js';
 import { cure } from './core/Hero.js';
 import { maxHpOf, setTotalScore } from './core/Level.js';
 import { loadCalendar } from './core/Calendar.js';
+import { Titles } from './core/Titles.js';
 import { faint } from './core/Bank.js';
 import { money } from './core/Items.js';
 
@@ -46,7 +47,8 @@ export class Game {
     const font = document.fonts ? Promise.race([document.fonts.load(`16px ${FONT}`), wait(3000)]) : null;
     const calendar = loadCalendar().then((c) => { this.calendar = c; });
     const races = loadJSON('data/races.json').then((r) => { this.races = r; });
-    await Promise.all([font, calendar, races, this.assets.loadSprites('data/sprites.json'), this.bgm.load('battle')]);
+    this.titles = new Titles(this);
+    await Promise.all([font, calendar, races, this.titles.load(), this.assets.loadSprites('data/sprites.json'), this.bgm.load('battle')]);
   }
 
   start() {
@@ -63,6 +65,8 @@ export class Game {
     this.bgm.tick();
     this.g.imageSmoothingEnabled = false;
     this.states.render(this.g, ms);
+    this.titles.check();            // 称号（図鑑を埋めたなど）を取ったら、どの画面の上にも知らせを出す
+    this.titles.render(this.g);
     requestAnimationFrame(this.frame);
   };
 
@@ -91,6 +95,7 @@ export class Game {
       pickups: {},        // マップの id → 落ちている物と、次に現れるまでの秒（FieldState）
       bank: { balance: 0, day: 1 },   // 銀行の預金と、最後に利息を付けた日（core/Bank.js）
       totalScore: 0,
+      titles: {},         // 取った称号の id（core/Titles.js）
       dex: { items: Object.fromEntries(Object.keys(start.items).map((id) => [id, true])), enemies: {} },   // 図鑑（core/Dex.js）
     };
     this.states.change(new FieldState(this));
