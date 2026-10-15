@@ -31,6 +31,10 @@
     "jobMinutes": 180,
     "waitMaxHours": 24
   },
+  "moon": {
+    "enemyHp": { "新月": 1, "上弦": 1.1, "満月": 1.2, "下弦": 1.1 },
+    "enemyPower": { "新月": 1, "上弦": 1.1, "満月": 1.2, "下弦": 1.1 }
+  },
   "taboo": {
     "enemyHp": 1.5,
     "enemyPower": 1.5,

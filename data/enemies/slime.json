@@ -1,6 +1,7 @@
 {
   "id": "slime",
   "name": "スライム",
+  "race": "zelfos",
   "hp": 30,
   "aggro": 4,
   "drop": "slime_jelly",

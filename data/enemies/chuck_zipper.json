@@ -1,6 +1,7 @@
 {
   "id": "chuck_zipper",
   "name": "チャック＆ジッパー",
+  "race": "aurin",
   "boss": true,
   "tagline": "リズムに合わせてコンボをキメろ！",
   "hp": 480,

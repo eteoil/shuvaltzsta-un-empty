@@ -3,7 +3,7 @@ import { COLORS, text, panel, gauge, wrap } from '../core/draw.js';
 import { loadItems, money, useItem, count } from '../core/Items.js';
 import { loadJSON } from '../core/Data.js';
 import { saveOptions } from '../core/Options.js';
-import { dateOf, dateText, dateNumber, timeText, clockText, eventsOf, passTime } from '../core/Calendar.js';
+import { dateOf, dateText, dateNumber, timeText, clockText, eventsOf, moonOf, passTime } from '../core/Calendar.js';
 import { levelOf, scoreFor, setTotalScore } from '../core/Level.js';
 
 const ROWS = 7;
@@ -221,9 +221,10 @@ export class MenuState {
     const s = this.session;
     if (!s) return;
     const tags = [this.game.options.cheat && 'CHEAT', this.game.dev && 'DEV'].filter(Boolean);
-    // 日付と時刻（すぐ後ろに括弧で数字）。その下に、その日の行事（祭り・天赦日・忌み月）を1行ずつ、最後に CHEAT / DEV
+    // 日付と時刻（すぐ後ろに括弧で数字）。その下に月相、その日の行事（祭り・天赦日・忌み月）を1行ずつ、最後に CHEAT / DEV
     const cal = this.game.calendar;
-    const lines = [...eventsOf(cal, s.day).labels, ...(tags.length ? [tags.join(' ')] : [])];
+    const moon = moonOf(cal, s.day);
+    const lines = [...(moon ? [moon] : []), ...eventsOf(cal, s.day).labels, ...(tags.length ? [tags.join(' ')] : [])];
     panel(g, W - 176, 8, 168, 96 + lines.length * 16);
     text(g, `${dateText(cal, s.day)}(${dateNumber(cal, s.day)})`, W - 164, 64, { size: 12, color: COLORS.muted });
     text(g, `${timeText(cal, s.minute)}(${clockText(s.minute)})`, W - 164, 80, { size: 12, color: COLORS.muted });

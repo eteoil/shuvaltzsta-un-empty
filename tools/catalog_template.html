@@ -117,7 +117,7 @@ function enemyRow(e) {
   const atk = e.min == null ? '—' : e.min === e.max ? e.min : `${e.min}〜${e.max}`;
   const moves = `<div class="moves">${e.moves.map((m) => `<span>${esc(m.area)} <b>${m.power}</b></span>`).join('')}</div>`;
   const where = e.where.length ? e.where.map((w) => `<span class="nm" style="font-weight:400">${esc(w.map)}${e.boss ? '' : ` ×${w.n}`}</span>`).join('<br>') : '—';
-  return `<tr><td><div class="nm">${esc(e.name)}</div>${e.boss ? '<span class="tag k-戦闘">ボス</span>' : ''}${e.faints ? '<div class="desc">倒すと気絶して残る</div>' : ''}</td>
+  return `<tr><td><div class="nm">${esc(e.name)}</div>${e.race ? `<div class="desc">${esc(e.race)}</div>` : ''}${e.boss ? '<span class="tag k-戦闘">ボス</span>' : ''}${e.faints ? '<div class="desc">倒すと気絶して残る</div>' : ''}</td>
     <td class="num" data-l="HP">${e.hp}</td>
     <td data-l="攻撃"><b>${atk}</b>${moves}</td>
     <td class="num" data-l="寄ってくる">${e.aggro != null ? `${e.aggro}マス` : '—'}</td>
@@ -152,6 +152,7 @@ const r = DATA.rules;
 $('#notes').innerHTML = [
   `回復の % は最大HPに対する割合。最大HPは ${r.heroHp}（レベルが1上がるごとに ${r.hpPerLevel} 増える）`,
   `天赦日はダンジョンの敵の HP と攻撃が ${r.rest} 倍、忌み月の戦闘は ${r.taboo} 倍`,
+  `月相（ひと月で 新月→上弦→満月→下弦 と一周）でも雑魚の HP と攻撃が変わる：${r.moon}。天赦日・忌み月の倍率とは別に計算して掛け合わせる。ボスは変わらない`,
   '攻撃の数字は技ごとのダメージ。「まわり」は自分のまわり1マス',
   '名前に（仮）の付いた場所や、TODO.md の「確認待ち」にある数値は、まだ仮',
 ].map((s) => `<li>${esc(s)}</li>`).join('');

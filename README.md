@@ -110,6 +110,8 @@ python3 -m http.server 8000
   - 忌み月：ザコの HP と攻撃力が 1.5 倍、落とす物が2個（`gameConfig.json` の `taboo`）。忌み月の祭り（水亀節20区のクイン＝ド＝レンチ）は、強さがふだんどおりで落とす物が3個（`taboo.withFestival`）
   - 祭りの日：落とす物が2個（`festival`）
   - 行事で強さが変わるのはザコ（敵データに `boss` の無い敵）だけ。町でもダンジョンでも同じで、ボス（チャック＆ジッパー）はいつも同じ強さ
+- 月相：新月・上弦・満月・下弦の4つが、ひと月（1節）で一周する。節を日数で4つに分け、23区の節は 1〜6区が新月、7〜12区が上弦、13〜18区が満月、19〜23区が下弦（20区の水亀節は 5区ずつ）。ポーズ画面の時刻の下に出る（`data/calendar.json` の `moon`、数え方は `core/Calendar.js` の `moonOf`）。
+  - 月が満ちるほどザコの HP と攻撃力が上がる：新月 1 倍・上弦と下弦 1.1 倍・満月 1.2 倍（`gameConfig.json` の `moon`）。天赦日・忌み月・祭りの倍率とは別に計算して掛け合わせる（例：天赦日の下弦は 0.7×1.1＝0.77 倍）。ボスは変わらない
 - 時刻：町・ダンジョン・戦闘にいる間だけ、実時間1秒でゲーム内1分進む（会話中とポーズ中は止まる）。ベッドで眠ると、画面が暗転して休んだときのメロディが流れ、朝8時（天の泥刻）に起きる（0時より前に寝たら次の日の朝、0時を過ぎてから寝たらその日の朝）。数値は `gameConfig.json` の `time`（`wakeMinute` が起きる時刻）。バイトは3時間かかる。
 - 時刻の書き方：天（午前）／地（午後）と、2時間ごとの陽（0・12時）・雷（2時）・炎（4時）・氷（6時）・泥（8時）・星（10時）。奇数の時は「半」を足し、分は「片」（例：3:00 は天の雷刻半、18:25 は地の氷刻25片）。ポーズ画面に、日付と時刻が数字つきで出る（例：風竜節4区(1/4)、地の雷刻(14:00)。数字は名前のすぐ後ろ）。
 - 出口や扉を通るときは、足音（ザッザッザッ）が鳴って画面が暗くなり、着いた先で明るくなる（`gameConfig.json` の `field.fadeSec`、0.4秒）。戦闘やダンジョンから町へ戻ったときの会話とレベルアップの知らせは、明るくなりきってから出る。
@@ -191,7 +193,8 @@ src/
 data/
   gameConfig.json     ゲーム性に関わる定数はすべてここ（憲法⑯）
   sprites.json        ドット絵の大きさ・足元の位置・ファイル
-  enemies/*.json      敵（HP・Pattern の一覧・見た目・立ち位置・ボスか・うろつく距離）
+  enemies/*.json      敵（HP・Pattern の一覧・見た目・立ち位置・ボスか・うろつく距離・種族の `race`）
+  races.json          種族と分類（名前・（ ）の中の呼び名・大分類・亜種の元）。敵の `race` はここのキー
   patterns/*.json     敵の行動部品（数拍ぶんのイベント列）
   maps/*.json         マップ（kind が town か dungeon・# が床）・出口・NPC・遭遇・敵の配置（spawns）・落ちている物（pickups）
   dialogs/*.json      会話
@@ -251,11 +254,11 @@ EventTrack は `system`（`system.*` と `bgm.*`）が1本と、敵の一団ご�
 - **町の内装**（カフェ）：マップの `heights`（`floor` と同じ並びの数字。1＝`stepH` ドット）で床に高さを付けられる（ロフトと階段）。高さが1段（`stepH`）より違うマスへは歩いて行けない。`loftH` 以上のマスはロフトの箱（手前の面は `loftFront` の並び：`backbar`・`vitrine`・`panel`・`plaster`）、それより低いマスは階段の段になり、低い隣との縁に手すりが付く。`floor` の `-` は床を描くが歩けないマス（カウンターの内側）。`stairAxis`（'i' か 'j'）は階段の段が並ぶ向き（それと直角の横の辺は手すりがあるので、高さの違うマスへは乗り降りできない）。出口に `edge`（向き）を付けると、乗っても出ず、そのマスからその向きへ進もうとしたときに出る。`props`（`{ art, at, size, offset, key, blocks, across }`）は家具で（`offset` はマスの中でずらす量 [i, j]）、奥から順に人と一緒に描く（`key` で順番を決められる）。`blocks: false` なら通れる、`across: true` ならその向こうの人に話しかけられる（椅子とカウンターが続けば、その先まで。正面に人がいなければ、向こう側の同じ列で左右1マスの人）。`wallArt: "cafe"` で壁の絵がカフェになり、`extraWalls`（`{ side, at: [i, j], style, start, end }`）で1行目・1列目のほかのマスの縁にも壁を立てられ、`walls` の並びの `null` の所には壁を立てない。`neWallTop` で右奥の壁（`walls.ne`）だけ低くできる。`wallDecor`（`{ side, at, style, flag }`。`at` は数か [i, j]）で壁に物を掛けられる（`flag` が立つまで出ない）。NPC の `sit`（座面の高さ）で座らせられる（腰から下を描かない）
 - **クエストを増やす**：`data/quests/` に JSON を足し（`name`・`summary`・`need`（集める物と数）・`offer`（頼まれる会話と、受ける／受けない）・`waiting`・`deliver`（渡すか聞く・はい・いいえ・`reward` のお金とスコア）・`done`）、NPC の `quest` にその id を書く。会話の各行は `{ speaker, text }` で、speaker を変えるとほかの人のセリフにできる。受けたクエストはポーズメニューの「クエスト」に、受注中／完了と集めた数が出る（`session.quests`）。
 - **NPC を増やす**：`data/npcs/` に JSON を足し、マップの `npcs` に置く。選択肢は `say`・`shop`・`appraise`・`trade`・`buy`（買い取り。`prompt` の `{price}` が値段になる）・`job`（`tired` は同じ日の2回目のセリフ）・`rest`（ベッド。`say` の `{date}` が日付になる）のどれか。どれも無い選択肢は会話を終える。`if.has`（と `if.count`）で持ち物がその数以上あるとき、`if.sellable` で売れる物を持っているときだけ出す選択肢にできる。`sprite` の代わりに `object`（いまは `bed` と `atm`）を書くと家具になる。`hideName` を付けると頭の上に名前を出さない（並んだ出納機）。`hidden` を付けると絵を描かない（壁の奥の窓口。床の外の壁の奥のマスに置き、手前のマスから話しかける）。`hours`（[開く, 閉まる] の分）を付けるとその時間の外は `closedText` だけ言う。`say` を文字の並びにすると順に言う（プレストの説明）。`travel`（`to`・`spawn`・`say`）で電車に乗って別のマップへ行ける。`bank`（`deposit` か `withdraw`）で出納機になる（セリフは NPC の `bank`。`ask` の `{step}`・`{bigStep}` は金額の刻み、`done` の `{amount}`・`{balance}` は動かした額と残高、あいさつの `{balance}` は残高）。出せる選択肢が1つだけなら、話しかけるとすぐそれが始まる。`trade.giveCount` で渡す個数を決められる。`trade.prompt` の `{price}` は値段になる。
-- **敵を増やす**：`data/enemies/` に JSON を足し、町のマップの `encounters`（1対1の戦闘）か、ダンジョンの `spawns` から呼ぶ。見た目は `sprite` と `palette`（色の置き換え表）で決まる。`"boss": true` なら毒でも逃げない。`aggro` を書くとザコになり、その距離より遠いとうろつく。
+- **敵を増やす**：`data/enemies/` に JSON を足し、町のマップの `encounters`（1対1の戦闘）か、ダンジョンの `spawns` から呼ぶ。見た目は `sprite` と `palette`（色の置き換え表）で決まる。`"boss": true` なら毒でも逃げない。`aggro` を書くとザコになり、その距離より遠いとうろつく。`race` には `data/races.json` の種族のキーを書く（スライムは `zelfos`、オオカミは `beast`、看守は `menates`、ゴロツキは `goblin`、チャック＆ジッパーは `aurin`）。
 - **調整する**：テンポ・判定幅・ダメージ・先読み拍数・戦場の広さ・歩く速さは `data/gameConfig.json`。
 - **主人公の立ち絵**：`assets/img/an_sw.png` は描いた本番の絵（an_se はその左右反転）。立っているあいだは4コマの待機（`assets/img/an_idle_{向き}.png`、`data/sprites.json` の `anims.idle`。町では1秒に4コマ、バトルとダンジョンでは1拍に1コマ。奥向き（ne・nw）はまだ静止画を並べただけ）。`tools/extract_sprites.py` は手前向きを作らない（上書きしない）。主人公の絵を色替えして使う仮の人（シャルヴィスたち）は、絵の定義の `shades`（陰や光の色 → その元の色）から、置き換え先の色の陰と光も作る（`core/Assets.js` の色替え。明るさの割合だけ合わせる）
 - **モーション**：`tools/animate_sprites.py` が静止チップを上半身・左脚・右脚に割り、ずらして歩き（4コマ）・走り（4コマ）・攻撃（3コマ）・回避（3コマ）のシートを作る。1コマの動きはスクリプト内の `MOTIONS` で調整する。手描きのコマができたら、`assets/img/an_{モーション}_{向き}.png` を同じ並びのシートで置き換えればよい（`data/sprites.json` の `anims`）。
-- **アイテムとエネミーの一覧表（アンエプ図鑑）を作り直す**：`python3 tools/build_catalog.py 出力先.html`。`data/items.json`・`data/enemies/`・`data/patterns/`・`data/npcs/`（お店・交換・買い取り・鑑定）・`data/maps/`（拾える物・敵の数）・`data/gameConfig.json` から、効果・値段・手に入る所・売れる所、HP・攻撃・出る所を集める。アーティファクト https://claude.ai/artifact/7dGnG8USXzwVWcw6knxU3d に載せている
+- **アイテムとエネミーの一覧表（アンエプ図鑑）を作り直す**：`python3 tools/build_catalog.py 出力先.html`。`data/items.json`・`data/races.json`（種族）・`data/calendar.json`（月相）・`data/enemies/`・`data/patterns/`・`data/npcs/`（お店・交換・買い取り・鑑定）・`data/maps/`（拾える物・敵の数）・`data/gameConfig.json` から、効果・値段・手に入る所・売れる所、HP・攻撃・出る所を集める。アーティファクト https://claude.ai/artifact/7dGnG8USXzwVWcw6knxU3d に載せている
 - **ドット絵を差し替える**：`art/reference/` の画像を差し替えて `python3 tools/extract_sprites.py`（要 Pillow）。画像が無い間は仮の絵で動く。タイトルの線画（`title.png`）は、縮小率・2値化の濃さ・消す範囲（手描きのメニュー文字）をスクリプト内の `TITLE` で調整する。
 
 ブラウザのコンソールで `game` を見ると、今の State・EventTrack・敵AIの選択履歴を覗ける。

@@ -11,7 +11,7 @@ import { Enemy } from '../battle/Enemy.js';
 import { areaTiles } from '../battle/areas.js';
 import { DialogState } from './DialogState.js';
 import { poisonTick, regen, regenStep, attackMultiplier } from '../core/Hero.js';
-import { passTime, eventsOf } from '../core/Calendar.js';
+import { passTime, eventsOf, moonOf } from '../core/Calendar.js';
 
 const THREATS = new Set(['enemy.attack', 'enemy.feint']);
 const LANE = { y: 280, h: 40, judgeX: 44 };
@@ -83,7 +83,7 @@ export class BattleState {
     this.runPhase = 0;          // 走ったマス数。走りのコマ送りに使う（1マスで2コマ）
 
     this.fightBeat = (config.bgm.battle.loopFromBar - 1) * this.bpb;
-    this.dayRates = this.dayEffects();   // 行事によるザコの強さと落とす物の数
+    this.dayRates = this.dayEffects();   // 行事によるザコの強さと落とす物の数（月相の強さも掛けてある）
     this.setupStage();
     this.warmPoses();
     this.startMusic();
@@ -111,7 +111,15 @@ export class BattleState {
   // 行事による敵の強さ（HP と攻撃力の倍率）と、ダンジョンで落とす物の数。強さが変わるのはザコだけ（ボスはいつも同じ）。
   // 忌み月：強い（taboo の倍率）・落とす物2個。祭り：落とす物2個（festival）。天赦日：弱い（restDay の倍率）。
   // 忌み月の祭り（水亀節20区のクイン＝ド＝レンチ）：強さはふだんどおり・落とす物3個（taboo.withFestival）
+  // 月相（新月 < 上弦・下弦 < 満月。gameConfig の moon）は行事とは別に数えて、行事の倍率に掛ける
   dayEffects() {
+    const e = this.eventEffects();
+    const { moon } = this.game.config;
+    const phase = moonOf(this.game.calendar, this.game.session.day);
+    return { ...e, enemyHp: e.enemyHp * (moon?.enemyHp?.[phase] ?? 1), enemyPower: e.enemyPower * (moon?.enemyPower?.[phase] ?? 1) };
+  }
+
+  eventEffects() {
     const { taboo, festival, restDay } = this.game.config;
     const ev = eventsOf(this.game.calendar, this.game.session.day);
     if (ev.taboo && ev.festival) return { enemyHp: 1, enemyPower: 1, dropCount: taboo.withFestival.dropCount };

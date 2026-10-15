@@ -1,6 +1,7 @@
 {
   "id": "gorotsuki",
   "name": "ゴロツキ",
+  "race": "goblin",
   "hp": 50,
   "aggro": 4,
   "patterns": [

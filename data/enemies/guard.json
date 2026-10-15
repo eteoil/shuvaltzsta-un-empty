@@ -1,6 +1,7 @@
 {
   "id": "guard",
   "name": "看守",
+  "race": "menates",
   "hp": 60,
   "aggro": 4,
   "faints": true,

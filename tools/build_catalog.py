@@ -1,6 +1,6 @@
 # アイテムとエネミーの一覧表（アーティファクトのページ）を、ゲームのデータから作る。
 # 使い方: python3 tools/build_catalog.py 出力先.html
-# 読むもの: data/items.json・data/enemies/*.json・data/patterns/*.json・data/npcs/*.json・data/maps/*.json・data/gameConfig.json
+# 読むもの: data/items.json・data/races.json・data/calendar.json・data/enemies/*.json・data/patterns/*.json・data/npcs/*.json・data/maps/*.json・data/gameConfig.json
 import json
 import glob
 import os
@@ -17,6 +17,8 @@ def load(path):
 
 items = load('data/items.json')
 config = load('data/gameConfig.json')
+races = load('data/races.json')
+calendar = load('data/calendar.json')
 npcs = {os.path.basename(p)[:-5]: load(p) for p in glob.glob(os.path.join(ROOT, 'data/npcs/*.json'))}
 maps = [load(p) for p in sorted(glob.glob(os.path.join(ROOT, 'data/maps/*.json')))]
 patterns = {os.path.basename(p)[:-5]: load(p) for p in glob.glob(os.path.join(ROOT, 'data/patterns/*.json'))}
@@ -147,7 +149,9 @@ for e in enemies:
     uniq.sort(key=lambda mv: mv['power'])
     powers = [mv['power'] for mv in moves]
     enemy_rows.append({
-        'id': e['id'], 'name': e['name'], 'boss': bool(e.get('boss')), 'hp': e['hp'], 'aggro': e.get('aggro'),
+        'id': e['id'], 'name': e['name'],
+        'race': f"{races[e['race']]['name']}（{races[e['race']]['label']}）" if e.get('race') in races else None,
+        'boss': bool(e.get('boss')), 'hp': e['hp'], 'aggro': e.get('aggro'),
         'min': min(powers) if powers else None, 'max': max(powers) if powers else None, 'moves': uniq,
         'drop': name(e['drop']) if e.get('drop') else None, 'faints': bool(e.get('faints')),
         'where': [{'map': k, 'n': v} for k, v in where_enemy[e['id']].items()],
@@ -157,6 +161,7 @@ for e in enemies:
 rules = {
     'heroHp': config['battle']['player']['hp'], 'hpPerLevel': config['level']['hpPerLevel'],
     'rest': config['restDay']['enemyHp'], 'taboo': config['taboo']['enemyHp'],
+    'moon': '・'.join(f"{k} {config['moon']['enemyHp'][k]}倍" for k in calendar['moon']['phases']),
 }
 
 data = json.dumps({'items': item_rows, 'enemies': enemy_rows, 'rules': rules}, ensure_ascii=False)

@@ -57,6 +57,15 @@ export function eventsOf(calendar, n) {
   return { labels, wake, festival: !!festival, rest, taboo };
 }
 
+// その日の月相（calendar の moon.phases：新月・上弦・満月・下弦）。1節を4つに分けて、節の初めから順に回る（23区の節は6・6・6・5区）
+export function moonOf(calendar, n) {
+  const phases = calendar.moon?.phases;
+  if (!phases?.length) return null;
+  const d = dateOf(calendar, n);
+  const days = calendar.months[d.month - 1].days;
+  return phases[Math.floor(((d.day - 1) * phases.length) / days)];
+}
+
 // 時刻。天（午前）／地（午後）と、2時間ごとの名前（陽・雷・炎・氷・泥・星）で表す。
 // 奇数の時は「半」（1時間）を足し、分は「片」。例：3:00 は天の雷刻半、18:25 は地の氷刻25片
 export function timeText(calendar, minute) {

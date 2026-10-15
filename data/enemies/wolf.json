@@ -1,6 +1,7 @@
 {
   "id": "wolf",
   "name": "オオカミ",
+  "race": "beast",
   "hp": 80,
   "aggro": 5,
   "drop": "wolf_meat",
