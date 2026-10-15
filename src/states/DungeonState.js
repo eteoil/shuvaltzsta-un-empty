@@ -60,6 +60,7 @@ export class DungeonState extends BattleState {
       this.addUnit(id, def, patterns, def.actors.map((a) => ({ ...a, id: one ? id : `${id}.${a.id}`, at: sp.at })));
     });
     this.drops = new Pickups(this.game, this.map, (pi, pj) => this.nearSomeone(pi, pj));
+    this.drops.clearDrops();   // 敵は入るたびに出直すので、前回倒した敵が落とした物は残さない
     this.drops.fill();
   }
 

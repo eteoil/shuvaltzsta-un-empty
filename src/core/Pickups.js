@@ -5,7 +5,7 @@ import { eventsOf } from './Calendar.js';
 // 状態は session.pickups[マップid] = { spots: [{ item, at }], waits: [秒] }。
 // 拾うと waits に pickupRespawnSec を積み、0 になったら別の場所に1つ置き直す。
 // 町のマップには pickups を書かない（特別なイベントのときだけ書く）。
-// 敵が落とした物（drop）も同じ場所に置くが、count には数えず、拾っても置き直さない
+// 敵が落とした物（drop）も同じ場所に置くが、count には数えず、拾っても置き直さない。ダンジョンに入り直すと消える
 export class Pickups {
   // blocked(i, j)：置いてはいけないマス（人のそばなど）なら true
   constructor(game, map, blocked) {
@@ -29,6 +29,11 @@ export class Pickups {
     const rest = eventsOf(this.game.calendar, this.game.session.day).rest;
     const count = this.def.count * (rest ? this.game.config.restDay.pickupRate : 1);
     while (placed() < count && this.spawn()) { /* 置けるだけ置く */ }
+  }
+
+  // 敵が落とした物を全部消す。ダンジョンに入り直したとき（拾わずに出た前回の物を残さない）
+  clearDrops() {
+    this.state.spots = this.state.spots.filter((p) => !p.drop);
   }
 
   // 敵が倒れたマスに落とす
