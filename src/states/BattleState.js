@@ -108,15 +108,20 @@ export class BattleState {
     this.tracks.system.add({ beat: this.fightBeat, type: 'system.phase', payload: { phase: 'fight' } });
   }
 
-  // 行事による敵の強さ（HP と攻撃力の倍率）と、ダンジョンで落とす物の数。強さが変わるのはザコだけ（ボスはいつも同じ）。
+  // 行事による敵の強さ（HP と攻撃力の倍率）と、ダンジョンで落とす物の数。行事で強さが変わるのはザコだけ（ボスは変わらない）。
   // 忌み月：強い（taboo の倍率）・落とす物2個。祭り：落とす物2個（festival）。天赦日：弱い（restDay の倍率）。
   // 忌み月の祭り（水亀節20区のクイン＝ド＝レンチ）：強さはふだんどおり・落とす物3個（taboo.withFestival）
-  // 月相（新月 < 上弦・下弦 < 満月。gameConfig の moon）は行事とは別に数えて、行事の倍率に掛ける
+  // 月相（新月 < 上弦・下弦 < 満月。gameConfig の moon）は行事とは別に数えて、行事の倍率に掛ける。月相はボスにも効く（moonRates）
   dayEffects() {
     const e = this.eventEffects();
+    const m = this.moonRates();
+    return { ...e, enemyHp: e.enemyHp * m.enemyHp, enemyPower: e.enemyPower * m.enemyPower };
+  }
+
+  moonRates() {
     const { moon } = this.game.config;
     const phase = moonOf(this.game.calendar, this.game.session.day);
-    return { ...e, enemyHp: e.enemyHp * (moon?.enemyHp?.[phase] ?? 1), enemyPower: e.enemyPower * (moon?.enemyPower?.[phase] ?? 1) };
+    return { enemyHp: moon?.enemyHp?.[phase] ?? 1, enemyPower: moon?.enemyPower?.[phase] ?? 1 };
   }
 
   eventEffects() {
@@ -130,10 +135,10 @@ export class BattleState {
   }
 
   // actors：[{ id, name, sprite, palette, at: [i, j] }]。id は戦闘の中で重ならない名前にする。
-  // ザコ（boss の無い敵）は、行事の倍率で HP を変え、攻撃力の倍率を powerRate に持つ
+  // ザコ（boss の無い敵）は行事と月相の倍率、ボスは月相の倍率だけで HP を変え、攻撃力の倍率を powerRate に持つ
   addUnit(id, def, patterns, actors) {
     const track = new EventTrack(`enemy:${id}`);
-    const rates = def.boss ? { enemyHp: 1, enemyPower: 1 } : this.dayRates;
+    const rates = def.boss ? this.moonRates() : this.dayRates;
     const scaled = { ...def, hp: Math.max(1, Math.round(def.hp * rates.enemyHp)) };
     const unit = {
       id, def: scaled, enemy: new Enemy(scaled, patterns), track, actorIds: [],
@@ -1010,6 +1015,11 @@ export class BattleState {
     g.fillRect(0, 0, W, 26);
     const unit = this.focusUnit();
     text(g, this.hudTitle(unit), 8, 5);
+    // 帯の下に、敵の種族（data/races.json）と今日の月相
+    const race = unit && this.game.races?.[unit.def.race];
+    const moon = moonOf(this.game.calendar, this.game.session.day);
+    [race && `${race.name}（${race.label}）`, moon].filter(Boolean)
+      .forEach((t, i) => text(g, t, 8, 28 + i * 14, { size: 12, color: COLORS.muted }));
     if (unit) {
       gauge(g, 150, 9, 110, 9, unit.enemy.hp / unit.enemy.maxHp, COLORS.rose);
       if (unit.poisonUntil > beat) text(g, '毒', 150, 26, { size: 12, color: COLORS.unguard });

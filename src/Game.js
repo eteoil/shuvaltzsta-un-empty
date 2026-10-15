@@ -4,7 +4,7 @@ import { Assets } from './core/Assets.js';
 import { Sfx } from './core/Sfx.js';
 import { Bgm } from './core/Bgm.js';
 import { StateMachine } from './core/StateMachine.js';
-import { loadMap, loadDialog, loadEnemy } from './core/Data.js';
+import { loadMap, loadDialog, loadEnemy, loadJSON } from './core/Data.js';
 import { FONT } from './core/draw.js';
 import { TitleState } from './states/TitleState.js';
 import { FieldState } from './states/FieldState.js';
@@ -45,7 +45,8 @@ export class Game {
   async load() {
     const font = document.fonts ? Promise.race([document.fonts.load(`16px ${FONT}`), wait(3000)]) : null;
     const calendar = loadCalendar().then((c) => { this.calendar = c; });
-    await Promise.all([font, calendar, this.assets.loadSprites('data/sprites.json'), this.bgm.load('battle')]);
+    const races = loadJSON('data/races.json').then((r) => { this.races = r; });
+    await Promise.all([font, calendar, races, this.assets.loadSprites('data/sprites.json'), this.bgm.load('battle')]);
   }
 
   start() {

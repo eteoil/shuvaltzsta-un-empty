@@ -38,32 +38,47 @@ export function clockText(minute) {
 }
 
 // その日の行事。labels は画面に出す短い名前、wake はベッドで起きたときの一言。
-// festival（祭りの日）・rest（天赦日。区が restDays.fromDay 以降＝23区ある節の最後の3区）・taboo（忌み月）は、その日の効果に使う
+// festival（祭りの日）・rest（天赦日。restDays.phases の月相（新月・上弦・満月）の末日）・taboo（忌み月）は、その日の効果に使う。
+// tabooWeek（忌み週。tabooWeek.phase の月相＝天赦日の無い下弦の間）は、いまは名前と一言だけ
 export function eventsOf(calendar, n) {
   const d = dateOf(calendar, n);
   const labels = [];
   const wake = [];
   const festival = (calendar.festivals ?? []).find((f) => f.month === d.month && f.day === d.day) ?? null;
   if (festival) { labels.push(festival.name); wake.push(festival.wake); }
+  const moon = moonDayOf(calendar, n);
   const restDays = calendar.restDays;
-  const rest = !!restDays && d.day >= restDays.fromDay;
+  const rest = !!restDays && !!moon && moon.last && restDays.phases.includes(moon.phase);
   if (rest) { labels.push(restDays.name); wake.push(restDays.wake); }
+  const tabooWeekDef = calendar.tabooWeek;
+  const tabooWeek = !!tabooWeekDef && !!moon && moon.phase === tabooWeekDef.phase;
+  if (tabooWeek) {
+    labels.push(tabooWeekDef.name);
+    if (moon.first) wake.push(tabooWeekDef.wake);   // 忌み週の一言は初日だけ
+  }
   const tabooMonth = calendar.tabooMonth;
   const taboo = !!tabooMonth && d.month === tabooMonth.month;
   if (taboo) {
     labels.push(tabooMonth.name);
     if (d.day === 1) wake.push(tabooMonth.wake);   // 忌み月の一言は月の初日だけ
   }
-  return { labels, wake, festival: !!festival, rest, taboo };
+  return { labels, wake, festival: !!festival, rest, taboo, tabooWeek };
 }
 
 // その日の月相（calendar の moon.phases：新月・上弦・満月・下弦）。1節を4つに分けて、節の初めから順に回る（23区の節は6・6・6・5区）
 export function moonOf(calendar, n) {
+  return moonDayOf(calendar, n)?.phase ?? null;
+}
+
+// その日の月相と、その月相の初日（first）・末日（last）か
+export function moonDayOf(calendar, n) {
   const phases = calendar.moon?.phases;
   if (!phases?.length) return null;
   const d = dateOf(calendar, n);
   const days = calendar.months[d.month - 1].days;
-  return phases[Math.floor(((d.day - 1) * phases.length) / days)];
+  const at = (day) => Math.floor(((day - 1) * phases.length) / days);
+  const k = at(d.day);
+  return { phase: phases[k], first: d.day === 1 || at(d.day - 1) !== k, last: d.day === days || at(d.day + 1) !== k };
 }
 
 // 時刻。天（午前）／地（午後）と、2時間ごとの名前（陽・雷・炎・氷・泥・星）で表す。
