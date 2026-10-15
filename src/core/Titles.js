@@ -1,5 +1,5 @@
 // 称号。条件を満たしたら session.titles に覚えて、画面の上に「称号獲得：〇〇」を出す。
-// 中身は data/titles.json。いまの条件は図鑑（core/Dex.js）を全部埋めること（dex: items / enemies）
+// 中身は data/titles.json。条件は、図鑑（core/Dex.js）を全部埋めること（dex: items / enemies）と、HP が 0 になること（faint）
 import { loadJSON } from './Data.js';
 import { loadDex, hasSeenItem, hasMetEnemy } from './Dex.js';
 import { loadItems } from './Items.js';
@@ -27,13 +27,20 @@ export class Titles {
     return this.all[kind].length > 0 && this.all[kind].every(has);
   }
 
+  // HP が 0 になるのは戦闘とダンジョンで負けたときだけ（毒やアイテムでは倒れない）。負けてから町へ戻るまで HP は 0 のままなので、毎フレームの確かめで拾える
+  met(session, d) {
+    if (d.dex) return this.complete(session, d.dex);
+    if (d.faint) return session.hero.hp <= 0;
+    return false;
+  }
+
   // 毎フレーム呼ぶ。まだ持っていない称号の条件を満たしていたら取る
   check() {
     const s = this.game.session;
     if (!s) return;
     s.titles ??= {};
     for (const d of this.defs) {
-      if (s.titles[d.id] || !d.dex || !this.complete(s, d.dex)) continue;
+      if (s.titles[d.id] || !this.met(s, d)) continue;
       s.titles[d.id] = true;
       this.queue.push({ text: `称号獲得：${d.name}`, at: null });
     }
