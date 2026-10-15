@@ -1,5 +1,5 @@
 // 称号。条件を満たしたら session.titles に覚えて、画面の上に「称号獲得：〇〇」を出す。
-// 中身は data/titles.json。条件は、図鑑（core/Dex.js）を全部埋めること（dex: items / enemies）と、HP が 0 になること（faint）
+// 中身は data/titles.json。条件は、図鑑（core/Dex.js）を全部埋めること（dex: items / enemies）・はじめてクエストを受けること（quest）・HP が 0 になること（faint）
 import { loadJSON } from './Data.js';
 import { loadDex, hasSeenItem, hasMetEnemy } from './Dex.js';
 import { loadItems } from './Items.js';
@@ -30,6 +30,7 @@ export class Titles {
   // HP が 0 になるのは戦闘とダンジョンで負けたときだけ（毒やアイテムでは倒れない）。負けてから町へ戻るまで HP は 0 のままなので、毎フレームの確かめで拾える
   met(session, d) {
     if (d.dex) return this.complete(session, d.dex);
+    if (d.quest) return Object.keys(session.quests ?? {}).length > 0;   // 受けたクエスト（受注中・完了）が1つでもある
     if (d.faint) return session.hero.hp <= 0;
     return false;
   }
