@@ -109,7 +109,7 @@ export class BattleState {
   }
 
   // 行事による敵の強さ（HP と攻撃力の倍率）と、ダンジョンで落とす物の数。行事で強さが変わるのはザコだけ（ボスは変わらない）。
-  // 忌み月：強い（taboo の倍率）・落とす物2個。祭り：落とす物2個（festival）。天赦日：弱い（restDay の倍率）。
+  // 忌み月・忌み週：強い（taboo の倍率）・落とす物2個。祭り：落とす物2個（festival）。天赦日：弱い（restDay の倍率）。
   // 忌み月の祭り（水亀節20区のクイン＝ド＝レンチ）：強さはふだんどおり・落とす物3個（taboo.withFestival）
   // 月相（新月 < 上弦・下弦 < 満月。gameConfig の moon）は行事とは別に数えて、行事の倍率に掛ける。月相はボスにも効く（moonRates）
   dayEffects() {
@@ -127,8 +127,9 @@ export class BattleState {
   eventEffects() {
     const { taboo, festival, restDay } = this.game.config;
     const ev = eventsOf(this.game.calendar, this.game.session.day);
-    if (ev.taboo && ev.festival) return { enemyHp: 1, enemyPower: 1, dropCount: taboo.withFestival.dropCount };
-    if (ev.taboo) return { enemyHp: taboo.enemyHp, enemyPower: taboo.enemyPower, dropCount: taboo.dropCount };
+    const tabooDay = ev.taboo || ev.tabooWeek;   // 忌み週も忌み月と同じ
+    if (tabooDay && ev.festival) return { enemyHp: 1, enemyPower: 1, dropCount: taboo.withFestival.dropCount };
+    if (tabooDay) return { enemyHp: taboo.enemyHp, enemyPower: taboo.enemyPower, dropCount: taboo.dropCount };
     if (ev.festival) return { enemyHp: 1, enemyPower: 1, dropCount: festival.dropCount };
     if (ev.rest) return { enemyHp: restDay.enemyHp, enemyPower: restDay.enemyPower, dropCount: 1 };
     return { enemyHp: 1, enemyPower: 1, dropCount: 1 };
