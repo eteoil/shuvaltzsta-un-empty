@@ -29,6 +29,7 @@ export class MenuState {
       { label: 'アイテム', run: () => { this.mode = 'items'; this.itemSel = 0; } },
       { label: 'クエスト', run: () => this.openQuests() },
       { label: '図鑑', run: () => this.openDex() },
+      { label: '称号', run: () => { this.mode = 'titles'; this.titleSel = 0; } },
       { label: '時間を進める', run: () => this.openWait() },
       { label: () => `チート：${this.game.options.cheat ? 'ON' : 'OFF'}`, run: () => this.toggleCheat() },
       { label: 'タイトルへ', run: () => this.game.toTitle() },
@@ -99,6 +100,16 @@ export class MenuState {
     const n = this.dexList().length;
     if (n && (btn === 'up' || btn === 'down')) {
       this.dexSel = (this.dexSel + n + (btn === 'up' ? -1 : 1)) % n;
+      this.game.sfx.play('select');
+    }
+  }
+
+  // 称号の一覧（data/titles.json の順）。まだ取っていない称号は ???
+  updateTitles(btn) {
+    if (btn === 'b' || btn === 'pause' || btn === 'start') { this.mode = 'main'; return; }
+    const n = this.game.titles.defs.length;
+    if (n && (btn === 'up' || btn === 'down')) {
+      this.titleSel = (this.titleSel + n + (btn === 'up' ? -1 : 1)) % n;
       this.game.sfx.play('select');
     }
   }
@@ -199,6 +210,7 @@ export class MenuState {
       if (this.mode === 'wait') { this.updateWait(btn); continue; }
       if (this.mode === 'quests') { this.updateQuests(btn); continue; }
       if (this.mode === 'dex') { this.updateDex(btn); continue; }
+      if (this.mode === 'titles') { this.updateTitles(btn); continue; }
       if (btn === 'up' || btn === 'down') {
         this.sel = (this.sel + this.items.length + (btn === 'up' ? -1 : 1)) % this.items.length;
         this.game.sfx.play('select');
@@ -240,6 +252,7 @@ export class MenuState {
     if (this.mode === 'items') this.renderItems(g, W, H);
     else if (this.mode === 'quests') this.renderQuests(g, W, H);
     else if (this.mode === 'dex') this.renderDex(g, W, H);
+    else if (this.mode === 'titles') this.renderTitles(g, W, H);
     else this.renderMain(g, W);
     if (this.mode === 'wait') this.renderWait(g, W);
     this.renderStatus(g, W);
@@ -408,5 +421,26 @@ export class MenuState {
     const tall = Math.max(...poses.map((p) => p.def.anchor[1]));
     const foot = Math.min(H - 18, (top + H - 8) / 2 + tall / 2);
     poses.forEach(({ img, def }, k) => sprite(g, img, def, W - 92 + (k - (poses.length - 1) / 2) * 52, foot));
+  }
+
+  renderTitles(g, W, H) {
+    panel(g, 12, 8, W - 196, H - 16);
+    text(g, '称号', 28, 20, { color: COLORS.brass });
+    const list = this.game.titles.defs;
+    const got = (t) => !!this.session.titles?.[t.id];
+    text(g, `${list.filter(got).length}/${list.length}`, W - 200, 20, { align: 'right', color: COLORS.muted });
+    const first = Math.max(0, Math.min(this.titleSel - ROWS + 1, list.length - ROWS));
+    list.slice(first, first + ROWS).forEach((t, k) => {
+      const i = first + k;
+      const y = 50 + k * 24;
+      const on = i === this.titleSel;
+      if (on) text(g, '▶', 26, y, { color: COLORS.signal });
+      text(g, got(t) ? t.name : '???', 44, y, { color: on ? (got(t) ? COLORS.perfect : COLORS.ink) : COLORS.muted });
+    });
+    const t = list[this.titleSel];
+    if (!t) return;
+    g.fillStyle = COLORS.line;
+    g.fillRect(24, 226, W - 220, 1);
+    text(g, got(t) ? t.desc ?? '' : 'まだ取っていない', 28, 236, { color: COLORS.muted });
   }
 }
