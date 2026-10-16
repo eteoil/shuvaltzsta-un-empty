@@ -213,6 +213,50 @@ const WALL_COL = {
   ne: { plaster: '#c4b38d', speck: '#b4a27c', glow: '#dccb9f', beam: '#4a3424', beamLight: '#654733', wood: '#5c3a24', woodDark: '#46291a', panel: '#4f311f' },
   nw: { plaster: '#a99977', speck: '#9a8a68', glow: '#bfae88', beam: '#3c2a1d', beamLight: '#523a29', wood: '#4b2f1d', woodDark: '#3a2316', panel: '#41291a' },
 };
+// 額の絵（ユーザーのイラストを写したドット絵。1文字が1ドット、PAINTING_COL の色）
+const PAINTING_COL = { A: '#d8a838', B: '#6e5030', D: '#2c5088', F: '#7a5a1e', G: '#2e6e46', K: '#1c4a2e', L: '#f8e6a0', R: '#c8283a', S: '#c8c2d6', V: '#1e5034', W: '#f6f4f8', Y: '#c89a38', a: '#a87c26', b: '#4f3820', c: '#e8b840', d: '#4272b4', e: '#3a40a0', f: '#b0b0ac', g: '#8e8e8a', h: '#d8b050', m: '#3c4a40', n: '#82623a', o: '#d02c34', r: '#b83038', s: '#ece8f2', v: '#2e7a4c', w: '#e4e2ea', y: '#f0d070' };
+const PAINTING = [
+  'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',
+  'FLLAALAALAALAALLLLAALAALAALAALLF',
+  'FLaaaaaaaaaaaaaaaaaaaaaaaaaaaaAF',
+  'FAabbbbbbbbbbbbbbbbbbbbbbbbbbaLF',
+  'FAabnnBBBBBBBBBBbnnBGGGGBBBBbaAF',
+  'FLabnnBBBBBBBBBBbnnBGGGooBBBbaAF',
+  'FAabnnBBBcrcBBBBbnnBKKKKKBBBbaLF',
+  'FAabbbbbbcccbbbbbbbGGGGGGGbbbaAF',
+  'FLabnnyBBrrrBByBbnnwwwwwBBBBbaAF',
+  'FAabnnByyyyyyyBBbnnwssswBBBBbaLF',
+  'FAabnnBByYyyyBBBbnnwSsSBBBBBbaAF',
+  'FLabnnBBysseyBBBbnnBsSsBBBBBbaAF',
+  'FAabnnBBysssyBBBbnnBBsBBBBBBbaLF',
+  'FAabnnBBySsSyBBBbnWvWWWvWBBBbaAF',
+  'FLabnnBydsssdyBBbnWvWWWvWBBBbaAF',
+  'FAabnnByddRddyBBbnKvSWWvKBBBbaLF',
+  'FAabbbbyDdddDybbbbSvvWvvSbbbbaAF',
+  'FLabnnBydddddyhBbnSvvvvvSBBBbaAF',
+  'FAabnnBydddddyhBbnSvVvSSBBBBbaLF',
+  'FAabnnBydsSsdyhBbnSvvvvvBBBBbaAF',
+  'FLabnnByDddddyhBbnhvVvvvBBBBbaLF',
+  'FAabnnByDddddyhBbnhVvvvVBBBBbaLF',
+  'FAabnnBBDddddBhBbnhvvVvvBBBBbaAF',
+  'FLabnnBDddddddBBbnhvvVvvBBBBbaAF',
+  'FAabnnBDddddddBBbnvvvVvvvBBBbaLF',
+  'FAabnnBDddddddBBbnvvvVvvvBBBbaAF',
+  'FLabnnDdddddDddBbnvvvVvvvBBBbaAF',
+  'FAabbbDdddddDddbbbvvvVvvvbbbbaLF',
+  'FAabnnDdddddDddBbnvvvVvvvBBBbaAF',
+  'FLabnDdddddddDddbnvvvVvvvBBBbaAF',
+  'FAabnDdddddddDddbnvvvVvvvBBBbaLF',
+  'FAabnDdddddddDddbnnvvVvvBBBBbaAF',
+  'FLagDdddddddddDddggvvVvvgggggaAF',
+  'FAaggggRRRgRRRgggmmmmgmmmmgggaLF',
+  'FAaffffffffffffffffffffffffffaAF',
+  'FLaggggggggggggggggggggggggggaAF',
+  'FAaffffffffffffffffffffffffffaLF',
+  'FAaaaaaaaaaaaaaaaaaaaaaaaaaaaaAF',
+  'FLAALAALAALAALALLAALAALAALAALALF',
+  'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',
+];
 const BOOKS = ['#7a3a32', '#3e5a6e', '#6e6a3a', '#4a3a5e', '#8a6a3a', '#2f5a46', '#9a5a3a', '#5a2a2a', '#c0a87a'];
 
 // 壁。side は 'ne'（右奥）か 'nw'（左奥）。style：
@@ -282,33 +326,15 @@ export function cafeWallDots(side, style, { start = false, end = false, seed = 0
   }
 
   if (style === 'painting') {
-    // 蓄音機のそばに掛ける額（イベントで後から）。梁のすぐ下。金の額縁に、青いドレスと緑の服の2人の肖像
-    const Z0 = 66;   // 絵の中の高さを、梁の下へ下げるぶん
-    const frame = region((t, z) => t >= 0.22 && t <= 0.78 && z >= 116 - Z0 && z <= 186 - Z0);
-    const canvas = region((t, z) => t >= 0.27 && t <= 0.73 && z >= 122 - Z0 && z <= 180 - Z0);
-    d.fill(frame, (x, y) => ((x + y) % 4 === 0 ? WOOD.brassLight : WOOD.brass), plain);
-    d.fill(canvas, (x, y) => {
-      const [t, z0] = at(x, y);
-      const z = z0 + Z0;
-      const fig = (ct, colBody, colHead, ears) => {
-        const dt = (t - ct) * 40;
-        if (Math.abs(dt) < 4.5 - (z - 126) / 14 && z >= 126 && z < 152) return colBody;   // 服
-        if ((dt / 4.5) ** 2 + ((z - 158) / 6) ** 2 <= 1) return colHead;                  // 顔
-        if (ears && z > 162 && z < 170 && (Math.abs(dt - 3) < 1.3 || Math.abs(dt + 3) < 1.3)) return colHead;   // 猫の耳
-        return null;
-      };
-      return fig(0.38, '#4a6ab0', '#b8b6c4', true) ?? fig(0.62, '#3f7a4a', '#f0dcc0', false)
-        ?? (z > 160 && Math.abs((t - 0.62) * 40) < 5 && z < 166 ? '#2a2420' : (z < 135 ? '#8a7a5a' : '#d0bf96'));
+    // 蓄音機のそばに掛ける額（イベントで後から）。梁のすぐ下。ユーザーのイラストを写したドット絵（PAINTING）：
+    // 金の額縁の中、木の両開きの扉の前に、王冠の金髪の人（青いドレス・赤い靴）と、バラの付いた緑の帽子の人（緑のベストとズボン）
+    const t0 = 0.1;                 // 絵の左の端（壁の幅 40 ドットのうち 4 ドット目から 32 ドット）
+    const top = 120;                // 絵のてっぺんの高さ（梁のすぐ下）
+    d.fill(region((t, z) => t >= t0 && t < t0 + PAINTING[0].length / 40 && z <= top && z > top - PAINTING.length), (x, y) => {
+      const [t, z] = at(x, y);
+      const row = PAINTING[Math.floor(top - z)];
+      return PAINTING_COL[row?.[Math.floor((t - t0) * 40)]] ?? null;
     }, plain);
-    const r = (shape, c) => {
-      const pts = [];
-      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-        if (shape(x + 0.5, y + 0.5) && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => !shape(x + a + 0.5, y + b + 0.5))) pts.push([x, y]);
-      }
-      d.stroke(pts, c);
-    };
-    r(frame, LINE);
-    r(canvas, WOOD.brassDark);
     d.finish({ outline: false });
     return d.result();
   }
