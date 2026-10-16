@@ -1,5 +1,5 @@
 import { STATES } from '../core/constants.js';
-import { COLORS, text, textWidth, panel, wrap } from '../core/draw.js';
+import { COLORS, text, panel, wrap } from '../core/draw.js';
 import { money, count, addItem } from '../core/Items.js';
 
 const CHAR_MS = 32;
@@ -130,7 +130,7 @@ export class ShopState {
     // 店の人のセリフ
     const top = H - 92;
     panel(g, 8, top, W - 16, 84);
-    panel(g, 16, top - 26, Math.max(80, textWidth(g, this.npc.name) + 24), 30);
+    panel(g, 16, top - 26, Math.max(80, [...this.npc.name].length * 16 + 24), 30);
     text(g, this.npc.name, 28, top - 21, { color: COLORS.brass });
     const shown = [...this.line].slice(0, Math.floor((performance.now() - this.shownAt) / CHAR_MS)).join('');
     wrap(g, shown, W - 48).slice(0, 2).forEach((l, i) => text(g, l, 24, top + 16 + i * 24));

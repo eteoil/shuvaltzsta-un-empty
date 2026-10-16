@@ -167,7 +167,7 @@ src/
     Assets.js         ドット絵の読み込みと色替え。画像が無ければ仮の絵を描く
     Data.js           JSON の読み込み
     fitScreen.js      ゲーム画面を端末の実ピクセルでちょうど整数倍（iPhone 16e は2倍）に映す。半端な倍率だと線の太さがバラつくため
-    draw.js           文字・枠・等角グリッドの描画（文字の幅は textWidth で測る。字数×16 では測らない）
+    draw.js           文字・枠・等角グリッドの描画
     grid.js           十字ボタンと等角グリッドの対応、距離、向き
     Items.js          所持品とアイテムの効果（data/items.json のフィールドの組み合わせで決まる）
     Dex.js            図鑑（手に入れたアイテム・出会った敵を session.dex に覚える）
@@ -211,7 +211,6 @@ data/
 assets/
   img/                ドット絵チップ（1ドット＝1px。表示時はぼかさずに拡大）
   bgm/battle.mp3      戦闘曲
-  fonts/              ゲームの文字のフォント「ノスタルドット（M+）」（M+ FONTS のライセンスで組み込み可。LICENSE.txt）。10ドットのドットフォントなので、文字は 10px の倍数で描く（draw.js の fontPx：12 → 10、16 → 20、24 → 20、32 → 30）
 art/reference/        ドット絵の元にした参考画像
 tools/extract_sprites.py  参考画像 → チップ・タイトル線画 の変換
 tools/build_catalog.py    アイテムとエネミーの一覧表（アンエプ図鑑）のページを、ゲームのデータから作る（見た目は tools/catalog_template.html）

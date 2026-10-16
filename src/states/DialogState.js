@@ -1,5 +1,5 @@
 import { STATES } from '../core/constants.js';
-import { COLORS, text, textWidth, panel, wrap } from '../core/draw.js';
+import { COLORS, text, panel, wrap } from '../core/draw.js';
 
 const CHAR_MS = 32;
 
@@ -44,7 +44,7 @@ export class DialogState {
     const top = H - 108;
     panel(g, 8, top, W - 16, 100);
     if (line.speaker) {
-      panel(g, 16, top - 26, Math.max(80, textWidth(g, line.speaker) + 24), 30);
+      panel(g, 16, top - 26, Math.max(80, [...line.speaker].length * 16 + 24), 30);
       text(g, line.speaker, 28, top - 21, { color: COLORS.brass });
     }
     const shown = [...line.text].slice(0, this.visible()).join('');

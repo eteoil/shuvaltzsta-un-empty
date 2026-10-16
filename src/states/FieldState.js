@@ -1,6 +1,6 @@
 import { STATES } from '../core/constants.js';
 import { loadEnemy, loadJSON, loadMap } from '../core/Data.js';
-import { COLORS, text, textWidth, panel, sprite, gauge, isoTop, isoCenter } from '../core/draw.js';
+import { COLORS, text, panel, sprite, gauge, isoTop, isoCenter } from '../core/draw.js';
 import { loadItems, money, addItem } from '../core/Items.js';
 import { poisonTick, regen, regenStep } from '../core/Hero.js';
 import { drawPickup, drawExit, drawObject, objectHeight, drawWall, drawProp, drawTileBox, drawRail } from '../core/icons.js';
@@ -521,7 +521,7 @@ export class FieldState {
 
     const age = this.toast ? performance.now() - this.toast.at : Infinity;
     if (age < 1600) {
-      const w = textWidth(g, this.toast.text) + 32;
+      const w = [...this.toast.text].length * 16 + 32;
       panel(g, W / 2 - w / 2, 34, w, 32, { alpha: age > 1300 ? (1600 - age) / 300 : 1 });
       text(g, this.toast.text, W / 2, 42, { align: 'center', alpha: age > 1300 ? (1600 - age) / 300 : 1 });
     }
