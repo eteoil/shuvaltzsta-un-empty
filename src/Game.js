@@ -87,7 +87,7 @@ export class Game {
       hero: { hp: maxHp, maxHp, poisoned: false, poisonTicks: 0 },
       money: start.money,
       items: { ...start.items },
-      flags: {},
+      flags: { cafe_painting: true },   // cafe_painting（カフェの額）は、絵を掛けるイベントができるまで仮で最初から立てておく
       day: 1,             // 何日目か。ベッドで休むか、0時を過ぎると進む（core/Calendar.js）
       minute: this.config.time.startMinute,   // その日の0時から何分
       worked: {},

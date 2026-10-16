@@ -1,0 +1,9 @@
+{
+  "id": "cafe_painting",
+  "name": "額の絵",
+  "hidden": true,
+  "hideName": true,
+  "options": [
+    { "label": "見る", "say": "扉の前に、王冠をのせた金髪の少女と、緑の帽子の人が並んで立っている絵だ。" }
+  ]
+}

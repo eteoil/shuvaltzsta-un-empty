@@ -326,10 +326,10 @@ export function cafeWallDots(side, style, { start = false, end = false, seed = 0
   }
 
   if (style === 'painting') {
-    // 蓄音機のそばに掛ける額（イベントで後から）。梁のすぐ下。ユーザーのイラストを写したドット絵（PAINTING）：
+    // 蓄音機のそばに掛ける額（イベントで後から）。明るい漆喰の面の真ん中。ユーザーのイラストを写したドット絵（PAINTING）：
     // 金の額縁の中、木の両開きの扉の前に、王冠の金髪の人（青いドレス・赤い靴）と、バラの付いた緑の帽子の人（緑のベストとズボン）
     const t0 = 0.1;                 // 絵の左の端（壁の幅 40 ドットのうち 4 ドット目から 32 ドット）
-    const top = 120;                // 絵のてっぺんの高さ（梁のすぐ下）
+    const top = 104;                // 絵のてっぺんの高さ。腰板の上（44）から梁の下（124）までの明るい漆喰の真ん中（84）に絵の真ん中が来る
     d.fill(region((t, z) => t >= t0 && t < t0 + PAINTING[0].length / 40 && z <= top && z > top - PAINTING.length), (x, y) => {
       const [t, z] = at(x, y);
       const row = PAINTING[Math.floor(top - z)];

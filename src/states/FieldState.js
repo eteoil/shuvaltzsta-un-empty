@@ -106,6 +106,7 @@ export class FieldState {
   presentNpcs() {
     const rest = eventsOf(this.game.calendar, this.session.day).rest;
     return (this.map.npcs ?? []).filter((n) => (!n.staff || this.open) && (!n.night || this.night) && isOpen(n.hours, this.session.minute)
+      && (!n.flag || this.session.flags[n.flag])   // flag の人（カフェの額）は、そのフラグが立ってから
       && (n.restDay === undefined || n.restDay === rest));
   }
 

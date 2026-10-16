@@ -102,6 +102,7 @@
     { "id": "shalvis", "at": [3, 4], "dir": "se", "staff": true },
     { "id": "elena", "at": [3, 5], "dir": "se", "staff": true, "night": true },
     { "id": "cafe_door", "at": [2, 1], "dir": "se" },
+    { "id": "cafe_painting", "at": [2, 0], "dir": "se", "flag": "cafe_painting" },
     { "id": "kou", "at": [7, 1], "dir": "se", "staff": true, "restDay": false, "sit": 34 }
   ],
   "encounters": []
