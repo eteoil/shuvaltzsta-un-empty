@@ -3,7 +3,7 @@
 import { loadJSON } from './Data.js';
 import { loadDex, hasSeenItem, hasMetEnemy } from './Dex.js';
 import { loadItems } from './Items.js';
-import { COLORS, text, panel } from './draw.js';
+import { COLORS, text, textWidth, panel } from './draw.js';
 
 const SHOW_MS = 3200;
 const FADE_MS = 400;
@@ -58,7 +58,7 @@ export class Titles {
     if (age >= SHOW_MS) { this.queue.shift(); return; }
     const alpha = Math.min(1, age / FADE_MS, (SHOW_MS - age) / FADE_MS);
     const W = this.game.config.screen.width;
-    const w = [...n.text].length * 16 + 40;
+    const w = textWidth(g, n.text) + 40;
     panel(g, (W - w) / 2, 54, w, 36, { alpha });
     text(g, n.text, W / 2, 63, { align: 'center', color: COLORS.perfect, alpha });
   }

@@ -1,3 +1,10 @@
+/* ノスタルドット（M+）。M+ FONTS のライセンスで、組み込み・配布してよい（assets/fonts/LICENSE.txt） */
+@font-face {
+  font-family: "Nosutaru";
+  src: url("../assets/fonts/nosutaru-dot-mplus-h10.woff2") format("woff2");
+  font-display: block;
+}
+
 :root {
   --room: #b75252;
   --shell: #2a2f52;
@@ -38,7 +45,7 @@ html, body {
   min-height: 100%;
   background: var(--room);
   color: var(--ink);
-  font-family: "DotGothic16", ui-monospace, monospace;
+  font-family: "Nosutaru", ui-monospace, monospace;
 }
 
 body {
@@ -240,7 +247,7 @@ button:focus-visible { outline: 2px solid var(--led-on); outline-offset: 2px; }
   padding: 1px 5px;
   border: 1px solid var(--label);
   border-radius: 3px;
-  font: 10px/1.3 "DotGothic16", ui-monospace, monospace;
+  font: 10px/1.3 "Nosutaru", ui-monospace, monospace;
   letter-spacing: .04em;
   color: var(--label);
 }

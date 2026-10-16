@@ -1,7 +1,7 @@
 import { STATES } from '../core/constants.js';
 import { BeatManager } from '../core/BeatManager.js';
 import { WHITE } from '../core/Assets.js';
-import { COLORS, text, panel, gauge, sprite, diamond, isoTop, isoCenter } from '../core/draw.js';
+import { COLORS, text, textWidth, panel, gauge, sprite, diamond, isoTop, isoCenter } from '../core/draw.js';
 import { DIRS, FACE_STEP, distance, stepToward, faceToward, frameOf } from '../core/grid.js';
 import { EventTrack } from '../battle/EventTrack.js';
 import { Sequencer } from '../battle/Sequencer.js';
@@ -1026,7 +1026,10 @@ export class BattleState {
     g.fillStyle = 'rgba(11,12,24,0.8)';
     g.fillRect(0, 0, W, 26);
     const unit = this.focusUnit();
-    text(g, this.hudTitle(unit), 8, 5);
+    // 名前が長くて HP のゲージ（x 150〜）に届くときは、小さい字で
+    const title = this.hudTitle(unit);
+    const fits = textWidth(g, title) <= 136;
+    text(g, title, 8, fits ? 5 : 8, { size: fits ? 16 : 12 });
     // 帯の下に、敵の種族（data/races.json）と今日の月相
     const race = unit && this.game.races?.[unit.def.race];
     const moon = moonOf(this.game.calendar, this.game.session.day);
@@ -1113,7 +1116,7 @@ export class BattleState {
       if (beat < 8) {
         text(g, `VS ${this.def.name}`, cx, 100, { size: 24, color: COLORS.rose, align: 'center' });
       } else if (beat < this.fightBeat - 2 * this.bpb) {
-        panel(g, 24, 50, W - 48, 172, { alpha: 0.92 });
+        panel(g, 8, 50, W - 16, 172, { alpha: 0.92 });
         text(g, this.def.tagline ?? '', cx, 64, { color: COLORS.brass, align: 'center' });
         text(g, '十字：いどう　A：となりの敵をこうげき', cx, 92, { align: 'center' });
         text(g, '赤いマスは攻撃の予告。拍に合わせて B で回避', cx, 118, { align: 'center' });

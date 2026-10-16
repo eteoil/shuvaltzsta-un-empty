@@ -1,5 +1,5 @@
 import { STATES } from '../core/constants.js';
-import { COLORS, text, panel, wrap } from '../core/draw.js';
+import { COLORS, text, textWidth, panel, wrap } from '../core/draw.js';
 import { loadItems, money, count, addItem, takeItem } from '../core/Items.js';
 import { loadJSON } from '../core/Data.js';
 import { setTotalScore } from '../core/Level.js';
@@ -447,7 +447,7 @@ export class TalkState {
     panel(g, 8, top, W - 16, 100);
     const name = this.speaker ?? this.npc.name;
     if (name) {
-      panel(g, 16, top - 26, Math.max(80, [...name].length * 16 + 24), 30);
+      panel(g, 16, top - 26, Math.max(80, textWidth(g, name) + 24), 30);
       text(g, name, 28, top - 21, { color: COLORS.brass });
     }
     const shown = [...this.line].slice(0, this.visible()).join('');
@@ -466,7 +466,7 @@ export class TalkState {
     }
     const c = this.choices;
     if (c && this.visible() >= [...this.line].length) {
-      const w = Math.max(...c.options.map((o) => [...o.label].length)) * 16 + 44;
+      const w = Math.max(...c.options.map((o) => textWidth(g, o.label))) + 44;
       const h = c.options.length * 24 + 16;
       const x = W - 12 - w;
       const y = top - 34 - h;

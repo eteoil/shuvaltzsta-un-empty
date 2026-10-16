@@ -1,4 +1,17 @@
-export const FONT = '"DotGothic16", ui-monospace, monospace';
+// ノスタルドット（M+）。10ドットのドットフォントで、10px の倍数で描くとドットがにじまない（assets/fonts。css/console.css の @font-face）
+export const FONT = '"Nosutaru", ui-monospace, monospace';
+
+// 文字の大きさを 10px の倍数にそろえる（12 → 10、16 → 20、24 → 20、32 → 30）。呼ぶ側の size はこれまでどおりの目安でよい
+export const fontPx = (size) => Math.max(10, Math.round(size / 10) * 10);
+
+// 文字列の幅（名前札や吹き出しの枠の幅に使う）
+export function textWidth(g, str, size = 16) {
+  g.save();
+  g.font = `${fontPx(size)}px ${FONT}`;
+  const w = g.measureText(str).width;
+  g.restore();
+  return w;
+}
 
 export const COLORS = {
   ink: '#e6e5f0',
@@ -26,7 +39,7 @@ const ASCENT = 0.9;
 export function text(g, str, x, y, { size = 16, color = COLORS.ink, align = 'left', shadow = COLORS.deep, alpha = 1 } = {}) {
   g.save();
   g.globalAlpha = alpha;
-  g.font = `${size}px ${FONT}`;
+  g.font = `${fontPx(size)}px ${FONT}`;
   g.textAlign = align;
   g.textBaseline = 'alphabetic';
   y += size * ASCENT;
@@ -92,7 +105,7 @@ export function isoCenter(i, j, ox, oy, tile) {
 
 // 1文字ずつ折り返す（日本語は単語の区切りが無いので）
 export function wrap(g, str, maxW, size = 16) {
-  g.font = `${size}px ${FONT}`;
+  g.font = `${fontPx(size)}px ${FONT}`;
   const lines = [];
   let line = '';
   for (const ch of str) {
