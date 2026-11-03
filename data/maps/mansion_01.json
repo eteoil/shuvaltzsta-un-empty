@@ -2,6 +2,7 @@
   "id": "mansion_01",
   "kind": "town",
   "name": "屋敷（仮）",
+  "bgm": "fest",
   "floor": [
     "########",
     "########",

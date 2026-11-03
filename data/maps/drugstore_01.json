@@ -2,6 +2,7 @@
   "id": "drugstore_01",
   "kind": "town",
   "name": "万屋：ターデリオンズ",
+  "bgm": "fest",
   "hours": [540, 1020],
   "closedOnRestDay": true,
   "floor": [

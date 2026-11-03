@@ -2,6 +2,7 @@
   "id": "library_01",
   "kind": "town",
   "name": "図書館（仮）",
+  "bgm": "fest",
   "floor": [
     "########",
     "########",

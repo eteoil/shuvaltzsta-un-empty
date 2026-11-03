@@ -2,6 +2,7 @@
   "id": "theater_01",
   "kind": "town",
   "name": "劇場（仮）",
+  "bgm": "fest",
   "floor": [
     "########",
     "########",

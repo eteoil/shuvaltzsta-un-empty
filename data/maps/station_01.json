@@ -2,6 +2,7 @@
   "id": "station_01",
   "kind": "town",
   "name": "フェスト駅（仮）",
+  "bgm": "fest",
   "floor": [
     "########",
     "########",

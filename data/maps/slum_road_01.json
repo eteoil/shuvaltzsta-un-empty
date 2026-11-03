@@ -2,6 +2,7 @@
   "id": "slum_road_01",
   "kind": "town",
   "name": "南の道（仮）",
+  "bgm": "fest",
   "floor": [
     "...#...",
     "...#...",
