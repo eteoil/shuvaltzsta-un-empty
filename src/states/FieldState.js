@@ -42,6 +42,7 @@ export class FieldState {
   }
 
   enter() {
+    this.game.bgm.field(this.map.bgm ?? null);   // 町の曲（マップの bgm）。無いマップでは止める
     loadItems().then((d) => { this.itemDefs = d; });
     this.destMaps = {};
     for (const e of this.map.exits ?? []) loadMap(e.to).then((m) => { this.destMaps[e.to] = m; });

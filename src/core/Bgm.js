@@ -14,6 +14,7 @@ export class Bgm {
     this.current = null;
     this.outroEndsAt = 0;       // アウトロが鳴り終わる AudioContext 時刻
     this.muted = false;         // 曲の音を消しているか（mute）
+    this.fieldKey = null;       // 鳴らしている町の曲（field）
   }
 
   get spb() {
@@ -51,6 +52,7 @@ export class Bgm {
   // 戻り値は「1小節目の頭」が鳴る AudioContext 時刻。Beat 0 はここになる
   play(key, at, startBar = null) {
     this.stop(0);
+    this.fieldKey = null;
     const def = this.config.bgm[key];
     // MP3 の頭の無音（エンコーダ遅延）は、ブラウザによって残ったり取り除かれたりする。
     // 測れたらその値、測れなければ offsetMs を使う
@@ -130,7 +132,25 @@ export class Bgm {
     return this.config.volume?.bgm ?? 0.8;
   }
 
+  // 町の曲（マップの bgm。フェスト・ラボ：ラグナ）。曲の最初から最後までを、そのまま繰り返す。拍とは関係ない。
+  // 頭と終わりの無音（MP3 のエンコーダの遅延と詰め物）は除いて、継ぎ目なくつなぐ。
+  // 同じ曲のマップへ移ったときは鳴らし直さない。key が無いマップでは止める。読み込みは初めて鳴らすときに
+  async field(key, fadeSec = 0.5) {
+    if (this.fieldKey === key && (key ? this.voices.length : true)) return;
+    this.stop(fadeSec);
+    this.fieldKey = key;
+    if (!key) return;
+    if (!(key in this.buffers)) await this.load(key);
+    const buffer = this.buffers[key];
+    if (this.fieldKey !== key || !buffer) return;   // 読み込みのあいだに別のマップへ移った
+    if (this.muted) this.mute(false, 0.01);
+    const lead = this.leads[key] ?? 0;
+    const tail = trailingSilence(buffer) ?? 0;
+    this.voice(buffer, this.clock.now + 0.05, lead, { start: lead, end: buffer.duration - tail });
+  }
+
   stop(fadeSec = 0.3) {
+    this.fieldKey = null;
     const now = this.clock.now;
     for (const v of this.voices) this.fade(v, now, fadeSec);
     this.click = null;
@@ -199,6 +219,16 @@ export class Bgm {
       c.next++;
     }
   }
+}
+
+// 終わりの無音の長さ（秒）。最後から振幅が 0.005 を超えるところまで。100ms を超えたら曲の作りと見て測らない
+function trailingSilence(buffer) {
+  const d = buffer.getChannelData(0);
+  const limit = Math.min(d.length, Math.floor(buffer.sampleRate * 0.1));
+  for (let i = 0; i < limit; i++) {
+    if (Math.abs(d[d.length - 1 - i]) >= 0.005) return i / buffer.sampleRate;
+  }
+  return null;
 }
 
 // 頭の無音の長さ（秒）。最初に振幅が 0.005 を超えるところまで。100ms を超えたら曲の作りと見て測らない

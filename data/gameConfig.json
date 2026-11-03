@@ -115,7 +115,9 @@
       "outroFromBar": 25,
       "outroJoinBars": [11, 17, 25],
       "offsetMs": 23
-    }
+    },
+    "fest": { "src": "assets/bgm/fest.mp3" },
+    "lab": { "src": "assets/bgm/lab.mp3" }
   },
   "volume": {
     "bgm": 0.8,
